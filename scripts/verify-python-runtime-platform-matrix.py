@@ -28,6 +28,13 @@ REQUIRED_GATES = {
     "clean-wheel-install",
     "clean-sdist-install",
     "server-extra-install",
+    "clean-wheel-local-quickstart",
+    "clean-sdist-local-quickstart",
+    "first-citation-under-five-minutes",
+    "receipt-before-dispatch",
+    "restart-preserved-run-identity",
+    "second-process-idempotent-replay",
+    "owned-state-safe-reset",
 }
 
 
@@ -144,6 +151,69 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
             raise MatrixError(
                 f"Platform receipt {path} does not prove every required gate."
             )
+        local_experience = _object(
+            root.get("localExperience"),
+            f"{path}: localExperience",
+        )
+        if (
+            local_experience.get("schemaVersion")
+            != "vyral.python-runtime-clean-install.v1"
+            or local_experience.get("status") != "passed"
+            or local_experience.get("serverExtraVerified") is not True
+        ):
+            raise MatrixError(
+                f"Platform receipt {path} has no passing clean-install evidence."
+            )
+        first_citation_budget = local_experience.get(
+            "firstCitationBudgetMs"
+        )
+        if (
+            not isinstance(first_citation_budget, (int, float))
+            or isinstance(first_citation_budget, bool)
+        ):
+            raise MatrixError(
+                f"Platform receipt {path} has no first-citation budget."
+            )
+        experience_artifacts = local_experience.get("artifacts")
+        if (
+            not isinstance(experience_artifacts, list)
+            or len(experience_artifacts) != 2
+        ):
+            raise MatrixError(
+                f"Platform receipt {path} must prove wheel and sdist quickstarts."
+            )
+        artifact_kinds: set[str] = set()
+        first_citation_values: list[float] = []
+        first_command_values: list[float] = []
+        for artifact_value in experience_artifacts:
+            artifact = _object(
+                artifact_value,
+                f"{path}: localExperience artifact",
+            )
+            kind = _text(
+                artifact.get("artifactKind"),
+                f"{path}: localExperience artifactKind",
+            )
+            artifact_kinds.add(kind)
+            first_citation = artifact.get("firstCitationMs")
+            first_command = artifact.get("firstCommandMs")
+            if (
+                not isinstance(first_citation, (int, float))
+                or isinstance(first_citation, bool)
+                or not isinstance(first_command, (int, float))
+                or isinstance(first_command, bool)
+                or float(first_citation) > float(first_citation_budget)
+                or float(first_command) > float(first_citation_budget)
+            ):
+                raise MatrixError(
+                    f"Platform receipt {path} exceeded its local time budget."
+                )
+            first_citation_values.append(float(first_citation))
+            first_command_values.append(float(first_command))
+        if artifact_kinds != {"wheel", "sdist"}:
+            raise MatrixError(
+                f"Platform receipt {path} has incomplete artifact kinds."
+            )
         cells[cell] = {
             "system": system,
             "python": python,
@@ -152,6 +222,11 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
             "platform": environment.get("platform"),
             "sqliteVersion": environment.get("sqliteVersion"),
             "fts5Available": environment.get("fts5Available"),
+            "localExperience": {
+                "firstCitationBudgetMs": first_citation_budget,
+                "maxFirstCitationMs": max(first_citation_values),
+                "maxFirstCommandMs": max(first_command_values),
+            },
         }
 
     missing = sorted(EXPECTED_MATRIX - set(cells))

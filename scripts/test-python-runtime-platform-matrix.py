@@ -39,6 +39,20 @@ def _receipt(system: str, python: str) -> dict[str, object]:
             "fixtureVersion": "1.0.0",
             "profiles": [{"id": "portable", "available": True}],
         },
+        "localExperience": {
+            "schemaVersion": "vyral.python-runtime-clean-install.v1",
+            "status": "passed",
+            "serverExtraVerified": True,
+            "firstCitationBudgetMs": 300_000,
+            "artifacts": [
+                {
+                    "artifactKind": artifact_kind,
+                    "firstCommandMs": 1_200,
+                    "firstCitationMs": 900,
+                }
+                for artifact_kind in ("wheel", "sdist")
+            ],
+        },
         "gates": sorted(MODULE.REQUIRED_GATES),
     }
 
@@ -73,6 +87,29 @@ def main() -> int:
             pass
         else:
             raise SystemExit("A duplicate/incomplete matrix was accepted.")
+
+        over_budget = _receipt("Linux", "3.10")
+        local_experience = over_budget["localExperience"]
+        assert isinstance(local_experience, dict)
+        artifacts = local_experience["artifacts"]
+        assert isinstance(artifacts, list)
+        first_artifact = artifacts[0]
+        assert isinstance(first_artifact, dict)
+        first_artifact["firstCitationMs"] = 300_001
+        over_budget_path = root / "over-budget.json"
+        over_budget_path.write_text(
+            json.dumps(over_budget),
+            encoding="utf-8",
+        )
+        try:
+            replaced = root / "Linux" / "3.10" / "platform.json"
+            MODULE.verify(
+                [over_budget_path, *(path for path in receipts if path != replaced)]
+            )
+        except MODULE.MatrixError:
+            pass
+        else:
+            raise SystemExit("An over-budget local experience was accepted.")
     print("python-runtime-platform-matrix-test=ok cells=9")
     return 0
 

@@ -179,6 +179,12 @@ assert first["execution"]["admittedStatus"] == "queued"
 assert first["execution"]["persistedStatusAfterReopen"] == "queued"
 assert first["execution"]["completedStatus"] == "succeeded"
 assert first["execution"]["dispatchedRuns"] == 1
+assert 0 <= first["timings"]["firstCitationMs"] <= 300_000
+assert (
+    first["timings"]["firstCitationMs"]
+    <= first["timings"]["durableReceiptMs"]
+    <= first["timings"]["completedMs"]
+)
 assert inspection["topology"] == "local-single-node"
 assert inspection["providers"]["records"]["healthy"] is True
 assert inspection["providers"]["execution"]["healthy"] is True
@@ -190,7 +196,8 @@ assert replay["retrieval"]["reusedChunks"] == 3
 print(
     "python-runtime-local-quickstart=ok "
     f"run={first['execution']['runId']} "
-    f"citations={len(first['retrieval']['citations'])}"
+    f"citations={len(first['retrieval']['citations'])} "
+    f"first-citation-ms={first['timings']['firstCitationMs']}"
 )
 PY
 "$work_root/venv/bin/vyral-runtime" quickstart \

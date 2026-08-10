@@ -101,6 +101,11 @@ without rerunning the quickstart:
 vyral-runtime inspect --root ./.vyral/quickstart
 ```
 
+Add `--json` to capture machine-readable first-citation, durable-receipt,
+restart-recovery, and completion timings. Clean wheel and source-distribution
+qualification runs the same command in an isolated environment and enforces a
+five-minute first-citation budget rather than relying on a synthetic smoke.
+
 The quickstart owns only the directory bearing its marker. Its reset command
 refuses foreign, symbolic-link, home, filesystem-root, and working-directory
 targets:

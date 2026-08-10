@@ -3,8 +3,11 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from threading import Barrier, Thread
+from threading import Barrier, RLock, Thread
 import unittest
+from unittest.mock import patch
+
+import vyral_runtime.local.object_store as object_store
 
 from vyral_runtime import (
     FileObjectStore,
@@ -229,6 +232,64 @@ class FileObjectStoreTests(unittest.TestCase):
             thread.join()
 
         self.assertEqual(["rejected", "written"], sorted(outcomes))
+
+    def test_windows_process_lock_backend_locks_one_stable_byte(self) -> None:
+        class FakeMsvcrt:
+            LK_LOCK = 1
+            LK_UNLCK = 2
+
+            def __init__(self) -> None:
+                self.calls: list[tuple[int, int]] = []
+
+            def locking(
+                self,
+                file_descriptor: int,
+                mode: int,
+                byte_count: int,
+            ) -> None:
+                del file_descriptor
+                self.calls.append((mode, byte_count))
+
+        fake = FakeMsvcrt()
+        path = Path(self.temporary_directory.name) / "windows.lock"
+        with (
+            patch.object(object_store, "_fcntl", None),
+            patch.object(object_store, "_msvcrt", fake),
+            object_store._FileLock(path, RLock()),
+        ):
+            self.assertEqual(b"\0", path.read_bytes())
+
+        self.assertEqual([(fake.LK_LOCK, 1), (fake.LK_UNLCK, 1)], fake.calls)
+
+    def test_process_lock_failure_closes_file_and_releases_thread_lock(
+        self,
+    ) -> None:
+        class FailingMsvcrt:
+            LK_LOCK = 1
+            LK_UNLCK = 2
+
+            def locking(
+                self,
+                file_descriptor: int,
+                mode: int,
+                byte_count: int,
+            ) -> None:
+                del file_descriptor, mode, byte_count
+                raise OSError("lock unavailable")
+
+        path = Path(self.temporary_directory.name) / "failure.lock"
+        thread_lock = RLock()
+        with (
+            patch.object(object_store, "_fcntl", None),
+            patch.object(object_store, "_msvcrt", FailingMsvcrt()),
+            self.assertRaisesRegex(OSError, "lock unavailable"),
+        ):
+            with object_store._FileLock(path, thread_lock):
+                self.fail("The failing lock backend unexpectedly entered.")
+
+        self.assertTrue(thread_lock.acquire(blocking=False))
+        thread_lock.release()
+        path.unlink()
 
 
 if __name__ == "__main__":

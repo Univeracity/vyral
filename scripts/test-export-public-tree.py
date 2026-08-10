@@ -71,6 +71,8 @@ def main() -> int:
 
     if not MODULE.is_public("ROADMAP.md"):
         raise SystemExit("The public roadmap is absent from the export.")
+    if not MODULE.is_public(".gitattributes"):
+        raise SystemExit("The cross-platform line-ending policy is absent from the export.")
     print(
         "public-export-policy-test=ok "
         f"docs={len(public_docs)} designs={len(public_designs)} "

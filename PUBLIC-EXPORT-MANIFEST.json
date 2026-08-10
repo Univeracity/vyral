@@ -1,5 +1,5 @@
 {
-  "fileCount": 814,
+  "fileCount": 815,
   "files": [
     {
       "mode": "644",
@@ -15,6 +15,11 @@
       "mode": "644",
       "path": ".gcloudignore",
       "sha256": "8407c8a13ba547c7b2ec31aaf4ca0ac79264ef510972cbc865f688609ec48f56"
+    },
+    {
+      "mode": "644",
+      "path": ".gitattributes",
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c"
     },
     {
       "mode": "644",
@@ -74,7 +79,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/python-runtime-qualification.yml",
-      "sha256": "66fa2c00be266319be8a9a64a85e98901f493868c2280d3627fe5ab7a89b7cf9"
+      "sha256": "e2644bbf1ea1b5cf06917e8a2f0a51359ebc519823fab7309ac7be6652f56d86"
     },
     {
       "mode": "644",
@@ -124,7 +129,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "49c08cc55f653a1987a7ce9daf93a6a2cf2742af674363c9c479bb7f0622f5a9"
+      "sha256": "e0725bb5a4e54f6143f1b1afbbae3e48131ffc1ed7671ea7b261529dae01e6b7"
     },
     {
       "mode": "644",
@@ -654,7 +659,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "d6f49d16ef0d5c26e262488d6c0a62dbb1edc1653091f216ba410ca39313f8c0"
+      "sha256": "edec7886576e96ca62c04d80952efef731bc3ec4d6bc88dc8f3dace1dbee04a7"
     },
     {
       "mode": "644",
@@ -789,7 +794,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/_local_experience.py",
-      "sha256": "7ed47623ae40fef2164a6ee94552a402470d33d99b0c3ed5b2ec5d9cc83e467f"
+      "sha256": "c00ff042ebb73e6518b9f2e87a50c61a4b1daf6512dd6fab472403f3d794689d"
     },
     {
       "mode": "644",
@@ -1019,7 +1024,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/local/object_store.py",
-      "sha256": "de5562d037fb22a189dd644c9c4eec10a522c027c6da593f7a46ac104716df4c"
+      "sha256": "03c6a2d8319d9d86adb67f9a1633a5201a39ef7f29684957b30c8fd5ced53690"
     },
     {
       "mode": "644",
@@ -1189,7 +1194,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_local_experience.py",
-      "sha256": "ec153cd5f316be04bdeb2d2c38ffbbcda22af771a80478cadeff483d03bbc848"
+      "sha256": "fe7948aa0501f626ca7b7485048d0ee3a22438f187c8857256ab5773037664c0"
     },
     {
       "mode": "644",
@@ -1204,7 +1209,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_object_store.py",
-      "sha256": "9c335616e93c44ae80e8822ee9fb6907e375252464a4cfe92733651e92585b17"
+      "sha256": "b149ca5e551e41c4b42b62667e7c114f88b93a0bb824dc47a1ae8c0939857537"
     },
     {
       "mode": "644",
@@ -1399,7 +1404,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "be4a9d5d9bba838554c2abe803b0c84f3e66f4d8a970c5c31695df4be2271b76"
+      "sha256": "309b2a397b85609ea2dd1ecc03b06662e40cbe615cba88c3fb505ee25b6bb306"
     },
     {
       "mode": "755",
@@ -1504,7 +1509,7 @@
     {
       "mode": "644",
       "path": "scripts/test-export-public-tree.py",
-      "sha256": "a52a5ed8f2b9a89cb18a2292c3121f40c51f2cd3f12833c8d1c17b10217df8d0"
+      "sha256": "e834af5d61ce44dcd2ddcd3f0cfab37710aa30ed080122d41a6491427babe8c6"
     },
     {
       "mode": "755",
@@ -1514,7 +1519,7 @@
     {
       "mode": "644",
       "path": "scripts/test-python-runtime-platform-matrix.py",
-      "sha256": "6ec2270241fad474e45ef221232ec000c8215309e410e10230d145e6a8368a45"
+      "sha256": "3f8d53916d72ad2bfe25d7ba45d64baafa272d9b1f13661fc797021e2116a26f"
     },
     {
       "mode": "755",
@@ -1694,7 +1699,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime-install.py",
-      "sha256": "f64d7f981402da9718265b310a30a8ac3d8a8f15e5f6f71997fde3ea01d53a58"
+      "sha256": "2a105eee7f5c5b648c3160b2e5f4d3e88c710053a19b672b617454397d0ee132"
     },
     {
       "mode": "755",
@@ -1704,7 +1709,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-python-runtime-platform-matrix.py",
-      "sha256": "082accbd32ed53d170be35af3299c64d2d6ba228f7d3af0eda0e6f7c0e349235"
+      "sha256": "479ebe8be702cdec6f2f6a2ca1cfaa8d2f67c1affacd7c0c6c93ba1fececdd4d"
     },
     {
       "mode": "644",
@@ -1719,7 +1724,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime.sh",
-      "sha256": "3b958588166ac6ad09a4f426203a99c36a104c58fb00a45d92e1aee879f613b2"
+      "sha256": "6a0c28f9829a74e5d4adfaac6a0c6832d532a2e14826f992cd17c7cf8728cf8f"
     },
     {
       "mode": "755",
@@ -1744,7 +1749,7 @@
     {
       "mode": "644",
       "path": "scripts/write-python-runtime-platform-receipt.py",
-      "sha256": "74c8a3bbd6f539ea02127ef2f506da4a07a9b0967ac69bd553fb38b4ac4f375a"
+      "sha256": "4610d63939fb59ece2a9747bbd70bf501139b5223aa5683a2a5c00ed039dd167"
     },
     {
       "mode": "644",
@@ -4074,5 +4079,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "8a21a0a511b3acdce8fb6bfa727627d19b46e00a2666f14c036341366aa7100c"
+  "treeSha256": "24e6d0d2e0c1d04ee2b6149149cf2fa42f3e9bdd329bcea9db9f26c9d3297791"
 }

@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 import shutil
+from time import perf_counter
 
 from .embeddings import EmbeddingProviderRegistry
 from .execution import (
@@ -109,6 +110,10 @@ class LocalQuickstartResult:
     completed_status: str
     completed_result: object
     dispatched_runs: int
+    first_citation_ms: float
+    durable_receipt_ms: float
+    restart_recovery_ms: float
+    completed_ms: float
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -142,6 +147,12 @@ class LocalQuickstartResult:
                 "completedStatus": self.completed_status,
                 "completedResult": self.completed_result,
                 "dispatchedRuns": self.dispatched_runs,
+            },
+            "timings": {
+                "firstCitationMs": self.first_citation_ms,
+                "durableReceiptMs": self.durable_receipt_ms,
+                "restartRecoveryMs": self.restart_recovery_ms,
+                "completedMs": self.completed_ms,
             },
         }
 
@@ -180,6 +191,7 @@ async def run_local_quickstart(
     *,
     emit: Callable[[str], None] | None = None,
 ) -> LocalQuickstartResult:
+    started_at = perf_counter()
     root = prepare_local_quickstart_root(root_path)
     created_chunks = 0
     reused_chunks = 0
@@ -288,6 +300,7 @@ async def run_local_quickstart(
             raise RuntimeError(
                 "The local quickstart did not produce citation-ready context."
             )
+        first_citation_ms = _elapsed_ms(started_at)
         citations = tuple(
             LocalQuickstartCitation(
                 citation.source_label or citation.record_id,
@@ -318,6 +331,7 @@ async def run_local_quickstart(
             raise RuntimeError(
                 "Durable admission did not preserve the idempotent run identity."
             )
+        durable_receipt_ms = _elapsed_ms(started_at)
         _emit(
             emit,
             (
@@ -327,6 +341,7 @@ async def run_local_quickstart(
         )
 
     _emit(emit, "Closed the first runtime instance.")
+    restart_started_at = perf_counter()
     with VyralRuntime.open_local(
         root,
         execution_plugins=(_QUICKSTART_PLUGIN,),
@@ -336,6 +351,7 @@ async def run_local_quickstart(
             raise RuntimeError(
                 "The admitted run was not present after reopening local state."
             )
+        restart_recovery_ms = _elapsed_ms(restart_started_at)
         _emit(
             emit,
             (
@@ -359,6 +375,7 @@ async def run_local_quickstart(
                 "the same durable identity."
             ),
         )
+    completed_ms = _elapsed_ms(started_at)
 
     return LocalQuickstartResult(
         root_path=str(root),
@@ -383,6 +400,10 @@ async def run_local_quickstart(
         completed_status=completed.status,
         completed_result=completed.result,
         dispatched_runs=dispatched,
+        first_citation_ms=first_citation_ms,
+        durable_receipt_ms=durable_receipt_ms,
+        restart_recovery_ms=restart_recovery_ms,
+        completed_ms=completed_ms,
     )
 
 
@@ -514,6 +535,10 @@ def _reject_broad_root(root: Path) -> None:
 def _emit(emit: Callable[[str], None] | None, message: str) -> None:
     if emit is not None:
         emit(message)
+
+
+def _elapsed_ms(started_at: float) -> float:
+    return round((perf_counter() - started_at) * 1_000, 3)
 
 
 def run_local_quickstart_sync(
