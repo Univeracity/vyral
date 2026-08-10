@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import redirect_stdout
 from io import StringIO
+import json
 import os
 from pathlib import Path
 import sys
@@ -21,8 +22,31 @@ class HostCliTests(unittest.TestCase):
         with redirect_stdout(output), self.assertRaises(SystemExit) as raised:
             main(["--help"])
         self.assertEqual(0, raised.exception.code)
+        self.assertIn("vyral-runtime init", output.getvalue())
         self.assertIn("vyral-runtime quickstart", output.getvalue())
         self.assertIn("vyral-runtime inspect", output.getvalue())
+
+    def test_init_creates_an_editable_application_without_server_extra(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-cli-starter-"
+        ) as temporary:
+            target = Path(temporary) / "vyral_app.py"
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    ["init", "--path", str(target), "--json"]
+                )
+
+            self.assertEqual(0, status)
+            result = json.loads(output.getvalue())
+            self.assertEqual(str(target.resolve()), result["createdPath"])
+            self.assertEqual(
+                ["python", str(target.resolve())],
+                result["runArguments"],
+            )
+            self.assertIn("@vyral(", target.read_text(encoding="utf-8"))
 
     def test_quickstart_subcommand_does_not_require_server_extra(self) -> None:
         result = SimpleNamespace(

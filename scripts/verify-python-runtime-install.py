@@ -247,6 +247,148 @@ def _quickstart_smoke(
     }
 
 
+def _starter_run_id(output: str, label: str) -> str:
+    for line in output.splitlines():
+        if not line.startswith("Accepted receipt: "):
+            continue
+        for field in line.split():
+            if field.startswith("run=") and len(field) > 4:
+                return field.removeprefix("run=")
+    raise InstallVerificationError(
+        f"The generated starter {label} returned no durable run ID."
+    )
+
+
+def _starter_smoke(
+    python: Path,
+    project_root: Path,
+) -> dict[str, object]:
+    target = project_root / "vyral_app.py"
+    create_started_at = perf_counter()
+    created = _json_command(
+        str(python),
+        "-m",
+        "vyral_runtime",
+        "init",
+        "--path",
+        str(target),
+        "--json",
+    )
+    create_command_ms = round(
+        (perf_counter() - create_started_at) * 1_000,
+        3,
+    )
+    created_path = created.get("createdPath")
+    state_root_path = created.get("stateRootPath")
+    if (
+        not isinstance(created_path, str)
+        or Path(created_path).resolve() != target.resolve()
+        or not isinstance(state_root_path, str)
+    ):
+        raise InstallVerificationError(
+            "The installed runtime generated an invalid starter receipt."
+        )
+    if "@vyral(" not in target.read_text(encoding="utf-8"):
+        raise InstallVerificationError(
+            "The installed runtime starter does not use the @vyral surface."
+        )
+
+    first_started_at = perf_counter()
+    first = _command(str(python), str(target), capture_output=True)
+    first_run_ms = round((perf_counter() - first_started_at) * 1_000, 3)
+    first_run_id = _starter_run_id(first.stdout, "first run")
+    if not all(
+        marker in first.stdout
+        for marker in (
+            "status=queued replayed=false",
+            "Closed the first runtime instance before dispatch.",
+            "Recovered: ",
+            "status=succeeded dispatched=1",
+            'result={"message": "Hello, Vyral!"}',
+        )
+    ):
+        raise InstallVerificationError(
+            "The generated starter did not prove first-run admission, "
+            "restart, and completion."
+        )
+
+    replay_started_at = perf_counter()
+    replay = _command(str(python), str(target), capture_output=True)
+    replay_run_ms = round((perf_counter() - replay_started_at) * 1_000, 3)
+    replay_run_id = _starter_run_id(replay.stdout, "replay")
+    if (
+        replay_run_id != first_run_id
+        or "status=succeeded replayed=true" not in replay.stdout
+        or "status=succeeded dispatched=0" not in replay.stdout
+    ):
+        raise InstallVerificationError(
+            "The generated starter did not idempotently replay its durable run."
+        )
+
+    source = target.read_text(encoding="utf-8")
+    versioned_source = source.replace(
+        "RUN_VERSION = 1",
+        "RUN_VERSION = 2",
+        1,
+    ).replace(
+        'payload={"name": "Vyral",',
+        'payload={"name": "Vyral 2",',
+        1,
+    )
+    if versioned_source == source:
+        raise InstallVerificationError(
+            "The generated starter has no editable RUN_VERSION contract."
+        )
+    with target.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write(versioned_source)
+    versioned_started_at = perf_counter()
+    versioned = _command(str(python), str(target), capture_output=True)
+    versioned_run_ms = round(
+        (perf_counter() - versioned_started_at) * 1_000,
+        3,
+    )
+    versioned_run_id = _starter_run_id(versioned.stdout, "versioned run")
+    if (
+        versioned_run_id == first_run_id
+        or "status=queued replayed=false" not in versioned.stdout
+        or "status=succeeded dispatched=1" not in versioned.stdout
+        or 'result={"message": "Hello, Vyral 2!"}' not in versioned.stdout
+    ):
+        raise InstallVerificationError(
+            "Incrementing the generated starter RUN_VERSION did not admit "
+            "new work."
+        )
+
+    state_root = Path(state_root_path).resolve()
+    inspection = _json_command(
+        str(python),
+        "-m",
+        "vyral_runtime",
+        "inspect",
+        "--root",
+        str(state_root),
+        "--json",
+    )
+    if inspection.get("topology") != "local-single-node":
+        raise InstallVerificationError(
+            "The generated starter did not leave inspectable local state."
+        )
+    return {
+        "status": "passed",
+        "createdPath": str(target.resolve()),
+        "stateRootPath": str(state_root),
+        "createCommandMs": create_command_ms,
+        "firstRunMs": first_run_ms,
+        "replayRunMs": replay_run_ms,
+        "versionedRunMs": versioned_run_ms,
+        "receiptBeforeDispatch": True,
+        "restartPreservedRunIdentity": True,
+        "secondProcessReplayed": True,
+        "versionedNewRun": True,
+        "inspectableState": True,
+    }
+
+
 def _install_and_smoke(
     artifact: Path,
     destination: Path,
@@ -266,13 +408,45 @@ def _install_and_smoke(
         str(artifact),
     )
     install_ms = round((perf_counter() - install_started_at) * 1_000, 3)
+    starter = _starter_smoke(python, destination / "starter-project")
     quickstart = _quickstart_smoke(python, destination / "quickstart-state")
+    quickstart_first_command_ms = _number(
+        quickstart.get("firstCommandMs"),
+        "quickstart.firstCommandMs",
+    )
+    starter_create_ms = _number(
+        starter.get("createCommandMs"),
+        "starter.createCommandMs",
+    )
+    starter_first_run_ms = _number(
+        starter.get("firstRunMs"),
+        "starter.firstRunMs",
+    )
+    install_to_quickstart_ms = round(
+        install_ms + quickstart_first_command_ms,
+        3,
+    )
+    install_to_editable_result_ms = round(
+        install_ms + starter_create_ms + starter_first_run_ms,
+        3,
+    )
+    if max(
+        install_to_quickstart_ms,
+        install_to_editable_result_ms,
+    ) > FIRST_CITATION_BUDGET_MS:
+        raise InstallVerificationError(
+            "The installed artifact exceeded the five-minute clean-install "
+            "to useful-result budget."
+        )
     _command(str(python), "-c", SMOKE)
     return {
         "artifactKind": artifact_kind,
         "artifactName": artifact.name,
         "installMs": install_ms,
+        "installToQuickstartCompleteMs": install_to_quickstart_ms,
+        "installToEditableResultMs": install_to_editable_result_ms,
         "quickstart": quickstart,
+        "starter": starter,
     }
 
 
@@ -341,7 +515,7 @@ def main() -> int:
             _server_smoke(wheels[0], destination / "server")
 
     receipt: dict[str, object] = {
-        "schemaVersion": "vyral.python-runtime-clean-install.v1",
+        "schemaVersion": "vyral.python-runtime-clean-install.v2",
         "status": "passed",
         "generatedAtUtc": datetime.now(timezone.utc)
         .isoformat()
@@ -353,6 +527,7 @@ def main() -> int:
             "machine": platform.machine(),
         },
         "firstCitationBudgetMs": FIRST_CITATION_BUDGET_MS,
+        "firstUseBudgetMs": FIRST_CITATION_BUDGET_MS,
         "serverExtraVerified": arguments.server,
         "artifacts": artifact_results,
     }

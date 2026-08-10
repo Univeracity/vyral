@@ -40,15 +40,30 @@ def _receipt(system: str, python: str) -> dict[str, object]:
             "profiles": [{"id": "portable", "available": True}],
         },
         "localExperience": {
-            "schemaVersion": "vyral.python-runtime-clean-install.v1",
+            "schemaVersion": "vyral.python-runtime-clean-install.v2",
             "status": "passed",
             "serverExtraVerified": True,
             "firstCitationBudgetMs": 300_000,
+            "firstUseBudgetMs": 300_000,
             "artifacts": [
                 {
                     "artifactKind": artifact_kind,
                     "firstCommandMs": 1_200,
                     "firstCitationMs": 900,
+                    "installToQuickstartCompleteMs": 2_000,
+                    "installToEditableResultMs": 2_300,
+                    "starter": {
+                        "status": "passed",
+                        "receiptBeforeDispatch": True,
+                        "restartPreservedRunIdentity": True,
+                        "secondProcessReplayed": True,
+                        "versionedNewRun": True,
+                        "inspectableState": True,
+                        "createCommandMs": 100,
+                        "firstRunMs": 800,
+                        "replayRunMs": 500,
+                        "versionedRunMs": 850,
+                    },
                 }
                 for artifact_kind in ("wheel", "sdist")
             ],
@@ -110,6 +125,34 @@ def main() -> int:
             pass
         else:
             raise SystemExit("An over-budget local experience was accepted.")
+
+        incomplete_starter = _receipt("Linux", "3.10")
+        local_experience = incomplete_starter["localExperience"]
+        assert isinstance(local_experience, dict)
+        artifacts = local_experience["artifacts"]
+        assert isinstance(artifacts, list)
+        first_artifact = artifacts[0]
+        assert isinstance(first_artifact, dict)
+        starter = first_artifact["starter"]
+        assert isinstance(starter, dict)
+        starter["inspectableState"] = False
+        incomplete_starter_path = root / "incomplete-starter.json"
+        incomplete_starter_path.write_text(
+            json.dumps(incomplete_starter),
+            encoding="utf-8",
+        )
+        try:
+            replaced = root / "Linux" / "3.10" / "platform.json"
+            MODULE.verify(
+                [
+                    incomplete_starter_path,
+                    *(path for path in receipts if path != replaced),
+                ]
+            )
+        except MODULE.MatrixError:
+            pass
+        else:
+            raise SystemExit("An incomplete generated starter was accepted.")
     print("python-runtime-platform-matrix-test=ok cells=9")
     return 0
 

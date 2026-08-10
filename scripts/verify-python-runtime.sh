@@ -50,6 +50,7 @@ wheel_path, sdist_path = sys.argv[1:]
 required_package_files = {
     "vyral_runtime/__main__.py",
     "vyral_runtime/_local_experience.py",
+    "vyral_runtime/_starter.py",
     "vyral_runtime/_contracts/public-sdk-surface.json",
     "vyral_runtime/_contracts/vyral-public.schema.json",
     "vyral_runtime/_contracts/vyral.openapi.json",
@@ -86,6 +87,7 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "README.md",
         "src/vyral_runtime/__main__.py",
         "src/vyral_runtime/_local_experience.py",
+        "src/vyral_runtime/_starter.py",
         "src/vyral_runtime/_contracts/public-sdk-surface.json",
         "src/vyral_runtime/_contracts/vyral-public.schema.json",
         "src/vyral_runtime/_contracts/vyral.openapi.json",
@@ -245,3 +247,7 @@ python3 -m venv "$work_root/server-venv"
 "$work_root/server-venv/bin/python" -m vyral_runtime.host --help \
   >/dev/null
 printf 'python-runtime-server-extra=ok\n'
+
+python3 scripts/verify-python-runtime-install.py \
+  --server \
+  "$work_root/dist"

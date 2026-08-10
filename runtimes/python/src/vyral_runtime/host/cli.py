@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 from typing import Sequence
 
+from .._starter import create_local_starter
 from .._local_experience import (
     inspect_local_runtime,
     reset_local_quickstart,
@@ -21,6 +22,8 @@ from .rest import RestApplicationConfig
 
 def main(argv: Sequence[str] | None = None) -> int:
     selected = list(sys.argv[1:] if argv is None else argv)
+    if selected and selected[0] == "init":
+        return _init_main(selected[1:])
     if selected and selected[0] == "quickstart":
         return _quickstart_main(selected[1:])
     if selected and selected[0] == "inspect":
@@ -33,14 +36,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _serve_main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="vyral-runtime",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Serve the local Vyral Python runtime over REST and "
             "stateless MCP."
         ),
         epilog=(
-            "Local single-player commands: "
-            "'vyral-runtime quickstart --root ./.vyral/quickstart' "
-            "and 'vyral-runtime inspect --root ./.vyral/quickstart'. "
+            "Local single-player commands:\n"
+            "  vyral-runtime init --path ./vyral_app.py\n"
+            "  vyral-runtime quickstart --root ./.vyral/quickstart\n"
+            "  vyral-runtime inspect --root ./.vyral/quickstart\n\n"
             "The explicit 'serve' command is also accepted before the "
             "server options."
         ),
@@ -175,6 +180,44 @@ def _serve_main(argv: Sequence[str]) -> int:
         port=arguments.port,
         log_level=arguments.log_level,
     )
+    return 0
+
+
+def _init_main(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="vyral-runtime init",
+        description=(
+            "Create one editable @vyral application that proves durable "
+            "admission, close/reopen recovery, completion, and idempotent rerun."
+        ),
+    )
+    parser.add_argument(
+        "--path",
+        default="vyral_app.py",
+        help=(
+            "New Python file to create (default: ./vyral_app.py). "
+            "Existing paths are never overwritten."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Write the created path and run arguments as JSON.",
+    )
+    arguments = parser.parse_args(argv)
+    try:
+        result = create_local_starter(arguments.path)
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
+    if arguments.json:
+        print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        return 0
+    print(f"Created editable Vyral application: {result.created_path}")
+    print("Run it:")
+    print(f"  {sys.executable} {result.created_path}")
+    print(f"Durable state will remain visible at: {result.state_root_path}")
+    print("Rerun unchanged to observe idempotent replay with no dispatch.")
+    print("After editing the work, increment RUN_VERSION to admit a new run.")
     return 0
 
 

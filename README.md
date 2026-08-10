@@ -85,7 +85,23 @@ python3 -m venv .venv
 python -m pip install --editable runtimes/python
 ```
 
-Run the connected local quickstart against an explicit durable directory:
+Create and run the smallest user-owned application:
+
+```bash
+vyral-runtime init --path ./vyral_app.py
+python ./vyral_app.py
+```
+
+The generated file uses the concise `@vyral(...)` authoring surface, prints a
+durable receipt before dispatch, closes and reopens its local runtime, and then
+completes the preserved run. Rerunning the file replays the same idempotent run
+instead of dispatching duplicate work. The generator creates one readable
+Python file, never overwrites an existing path, and keeps its state visibly
+beside the file under `.vyral/starter`. After editing the intended work, the
+developer increments the visible `RUN_VERSION` to admit a new idempotent run.
+
+Run the connected retrieval-and-execution quickstart against a separate,
+explicit durable directory:
 
 ```bash
 vyral-runtime quickstart --root ./.vyral/quickstart
@@ -101,10 +117,12 @@ without rerunning the quickstart:
 vyral-runtime inspect --root ./.vyral/quickstart
 ```
 
-Add `--json` to capture machine-readable first-citation, durable-receipt,
-restart-recovery, and completion timings. Clean wheel and source-distribution
-qualification runs the same command in an isolated environment and enforces a
-five-minute first-citation budget rather than relying on a synthetic smoke.
+Add `--json` to the quickstart to capture machine-readable first-citation,
+durable-receipt, restart-recovery, and completion timings. Clean wheel and
+source-distribution qualification generates and runs the editable application
+as well as the connected quickstart in isolated environments. It enforces a
+five-minute package-install-to-useful-result budget rather than relying on a
+synthetic import smoke.
 
 The quickstart owns only the directory bearing its marker. Its reset command
 refuses foreign, symbolic-link, home, filesystem-root, and working-directory
