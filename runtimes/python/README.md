@@ -43,11 +43,13 @@ prototype includes:
 
 Every required portable-local profile is implemented and reports
 `available: true`. All remain `prototype`, and `fullLocalReady` deliberately
-remains false until the manual Python 3.10–3.12 Linux/macOS/Windows matrix and
-independent security review are complete. A Linux/Python 3.12 platform receipt,
-the combined `0.1.0` → `0.1.1` upgrade/restart rehearsal, and the executable
-adversarial security gate pass locally; those results do not stand in for the
-remaining platform or human-review evidence.
+remains false pending independent security review and an explicit promotion
+decision. The manual Python 3.10–3.12 Linux/macOS/Windows matrix now passes:
+every cell builds and installs clean wheel and source artifacts, completes the
+cited restart/replay quickstart, verifies the server extra, and contributes to
+one consistent aggregate receipt. The combined `0.1.0` → `0.1.1`
+upgrade/restart rehearsal and the executable adversarial security gate also
+pass locally; automated evidence does not substitute for independent review.
 Unsupported optional providers are disclosed explicitly; the runtime does not
 silently delegate embedded behavior to .NET or to the existing HTTP client.
 

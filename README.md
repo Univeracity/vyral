@@ -64,7 +64,7 @@ compatibility policy.
 | --- | --- |
 | .NET local server, SQLite, retrieval, and RAG | Primary supported implementation |
 | Python and JavaScript HTTP clients | Implemented and tested against the public SDK catalog |
-| Python-native embedded runtime and REST/MCP host | Prototype; implemented, cross-runtime qualification in progress |
+| Python-native embedded runtime and REST/MCP host | Prototype; implemented and clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
 | Stateless MCP `2026-07-28` endpoint | Preview; opt-in and REST-backed |
 | Local SQLite and Azure Durable execution | Preview; locally conformant |
 | AWS, Google, Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
