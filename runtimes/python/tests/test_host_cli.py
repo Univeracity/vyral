@@ -42,6 +42,11 @@ class HostCliTests(unittest.TestCase):
             self.assertEqual(0, status)
             result = json.loads(output.getvalue())
             self.assertEqual(str(target.resolve()), result["createdPath"])
+            self.assertEqual("starter.vyral_app", result["appId"])
+            self.assertEqual(
+                str((target.parent / ".vyral" / "vyral_app").resolve()),
+                result["stateRootPath"],
+            )
             self.assertEqual(
                 ["python", str(target.resolve())],
                 result["runArguments"],

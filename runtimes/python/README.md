@@ -72,9 +72,11 @@ python ./vyral_app.py
 
 The generated file uses `@vyral(...)`, admits work with a stable idempotency
 key, prints the durable receipt, closes the first runtime before dispatch,
-reopens `.vyral/starter`, and completes the preserved run. Running the same
-file again reports `replayed=true` and dispatches no duplicate work. The
-generator refuses to overwrite an existing path; the result is ordinary
+reopens its own `.vyral/<application-id>` directory, and completes the
+preserved run. For `vyral_app.py`, that directory is `.vyral/vyral_app`.
+Running the same file again reports `replayed=true` and dispatches no duplicate
+work. Sibling generated files receive distinct state and durable identities.
+The generator refuses to overwrite an existing path; the result is ordinary
 Python source intended to be edited or absorbed into an application. A visible
 `RUN_VERSION` makes intent explicit: leave it unchanged to prove replay, then
 increment it after changing the work to admit a new run.

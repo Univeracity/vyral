@@ -20,6 +20,11 @@ class LocalStarterTests(unittest.TestCase):
             result = create_local_starter(target)
 
             self.assertEqual(target.resolve(), result.created_path)
+            self.assertEqual("starter.vyral_app", result.app_id)
+            self.assertEqual(
+                (target.parent / ".vyral" / "vyral_app").resolve(),
+                result.state_root_path,
+            )
             self.assertIn("@vyral(", target.read_text(encoding="utf-8"))
             environment = os.environ.copy()
             source = str(Path(__file__).resolve().parents[1] / "src")
@@ -91,6 +96,67 @@ class LocalStarterTests(unittest.TestCase):
             self.assertEqual(first_run.group(1), second_run.group(1))
             self.assertNotEqual(first_run.group(1), versioned_run.group(1))
             self.assertTrue(result.state_root_path.is_dir())
+
+    def test_sibling_generated_apps_have_isolated_durable_identity(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-starter-siblings-"
+        ) as temporary:
+            root = Path(temporary)
+            first_result = create_local_starter(root / "alpha.py")
+            second_result = create_local_starter(root / "beta.py")
+            environment = os.environ.copy()
+            source = str(Path(__file__).resolve().parents[1] / "src")
+            environment["PYTHONPATH"] = os.pathsep.join(
+                value
+                for value in (source, environment.get("PYTHONPATH", ""))
+                if value
+            )
+
+            first = subprocess.run(
+                [sys.executable, str(first_result.created_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=environment,
+                timeout=30,
+            )
+            second = subprocess.run(
+                [sys.executable, str(second_result.created_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=environment,
+                timeout=30,
+            )
+
+            self.assertNotEqual(first_result.app_id, second_result.app_id)
+            self.assertNotEqual(
+                first_result.state_root_path,
+                second_result.state_root_path,
+            )
+            self.assertIn("status=queued replayed=false", first.stdout)
+            self.assertIn("status=queued replayed=false", second.stdout)
+            self.assertTrue(first_result.state_root_path.is_dir())
+            self.assertTrue(second_result.state_root_path.is_dir())
+
+    def test_generated_identity_is_safe_for_unusual_filenames(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-starter-identity-"
+        ) as temporary:
+            target = Path(temporary) / "My app (draft).py"
+            result = create_local_starter(target)
+            source = target.read_text(encoding="utf-8")
+
+            self.assertRegex(
+                result.app_id,
+                r"^starter\.my-app-draft-[0-9a-f]{8}$",
+            )
+            self.assertEqual(
+                result.app_id.removeprefix("starter."),
+                result.state_root_path.name,
+            )
+            self.assertIn(repr(result.app_id), source)
+            self.assertNotIn("__VYRAL_STARTER_", source)
 
     def test_generator_refuses_overwrite_and_non_python_paths(self) -> None:
         with tempfile.TemporaryDirectory(
