@@ -21,6 +21,24 @@ SPEC.loader.exec_module(MODULE)
 
 
 def main() -> int:
+    expected_checks = {
+        "Analyze csharp",
+        "Analyze go",
+        "Analyze javascript-typescript",
+        "Analyze python",
+        "Build and test .NET",
+        "Review dependency changes",
+        "Test language clients",
+        "Verify contracts and public export",
+        "Verify releasable artifacts",
+    }
+    if MODULE.REQUIRED_CHECK_CONTEXTS != expected_checks:
+        raise SystemExit("Required checks must use GitHub's emitted job contexts.")
+    if not MODULE._contains_required_checks(expected_checks | {"Optional check"}):
+        raise SystemExit("The complete hosted-check set must satisfy the audit.")
+    if MODULE._contains_required_checks(expected_checks - {"Analyze go"}):
+        raise SystemExit("The audit accepted an incomplete CodeQL matrix.")
+
     response = subprocess.CompletedProcess(
         args=("gh", "api"),
         returncode=0,

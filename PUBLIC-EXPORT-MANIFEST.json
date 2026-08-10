@@ -1359,7 +1359,7 @@
     {
       "mode": "644",
       "path": "scripts/audit-github-launch-controls.py",
-      "sha256": "a977f5fbd8793cb0f8151559c58613d4671aea3a57a7ac81681b519523e467ba"
+      "sha256": "5a76b0a411c0ca89becfbbbf37cdcce5ffc8a7b637129d42a8ded8233afdf349"
     },
     {
       "mode": "755",
@@ -1469,7 +1469,7 @@
     {
       "mode": "644",
       "path": "scripts/test-audit-github-launch-controls.py",
-      "sha256": "8f585e8c9d2286ed54743ed888bce0d210eb1b1c6a3f17fa63723e8c4ee8c545"
+      "sha256": "4314da8422e7ffa65f62c3c142deebf43dbbaf25b156c4affc12afc0ef2aecc3"
     },
     {
       "mode": "755",
@@ -4054,5 +4054,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "f2bdbd43d10a2568c25b29adaff7660d0979a4704aca654e28a880a3f02b8117"
+  "treeSha256": "4effd5d182f9e403d07ce2066bcf7d665eecfb872162dc8551b9b732a560d054"
 }
