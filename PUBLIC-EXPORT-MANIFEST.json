@@ -1264,7 +1264,7 @@
     {
       "mode": "644",
       "path": "samples/Vyral.CanonicalProjectionStarter/Vyral.CanonicalProjectionStarter.csproj",
-      "sha256": "8c3ed748aeefbe0cd7e369baf3bec1749539c617e315271f7e61d51f78feadbb"
+      "sha256": "a050649f62e93ce495f5486e6edcaa4751b5a53169cd95427beba0fbb21ad273"
     },
     {
       "mode": "644",
@@ -1284,7 +1284,7 @@
     {
       "mode": "644",
       "path": "samples/Vyral.Execution.AzureDurableFunctionsSmoke/Vyral.Execution.AzureDurableFunctionsSmoke.csproj",
-      "sha256": "a1144191d7a399a6a4087e5d090aa81b27345b3c37b3268415acb1b869231a24"
+      "sha256": "92a491d9effd6ad26f46a78149faaf565f655a1a81b416e7e573b732ce370ef6"
     },
     {
       "mode": "644",
@@ -2174,7 +2174,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Execution.AzureDurable.Functions/Vyral.Execution.AzureDurable.Functions.csproj",
-      "sha256": "531dbba53eaf7eeea102a44a086d42f01ffc74422f55ef289e3fa837e004d25f"
+      "sha256": "ddcb9e50e26fde2818836b2499bd7eec13b8c9fcb971d92132dc038655ab1edb"
     },
     {
       "mode": "644",
@@ -2269,7 +2269,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Execution.Local/Vyral.Execution.Local.csproj",
-      "sha256": "41beb0be748ced4a56e994497eb1b52acf453ded638085e4e67ddb66ba0e4293"
+      "sha256": "1c020cabfd2d488eace8771077e16c1db70402c28af5d6f3548c1ab74d39381f"
     },
     {
       "mode": "644",
@@ -2699,7 +2699,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Local/Vyral.Local.csproj",
-      "sha256": "c3272199faa78649605b679a5e597680f2ee3f3e9a2cf6f67b1c938d1de6074a"
+      "sha256": "339077726216da8a21cc10ce83270ac15e0310d9e24b0a770cf43c597f969d0c"
     },
     {
       "mode": "644",
@@ -3349,7 +3349,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Aws/Vyral.Tests.Aws.csproj",
-      "sha256": "b04deb3f6e765c7f666e9e75b18a0524a409f8ce6385ce552164c2468ed194c1"
+      "sha256": "337ebf4bf6608717f08debc91d019bd1c404c5a9fa4b0e7d2c81b5232b3d0bf1"
     },
     {
       "mode": "644",
@@ -3424,7 +3424,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Azure/Vyral.Tests.Azure.csproj",
-      "sha256": "b6c5fc663fd89080f8916bec7dfd91d65fec70800da40446be59240d78cf2a2e"
+      "sha256": "50c22f8660ef8b7ca3e69b3cf7964c0c8eeb8c0a122ba698c9ad4d10fb1ebc8e"
     },
     {
       "mode": "644",
@@ -3444,7 +3444,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Cloudflare/Vyral.Tests.Cloudflare.csproj",
-      "sha256": "3bc12ab9aa46ad1f3512f8336ee095c0f4655df449f1542415096fb860db32ae"
+      "sha256": "2f4c63d55b8831c52d2449f486693774c0e344b9f3bf9979cd9ffcd2e1425a22"
     },
     {
       "mode": "644",
@@ -3574,7 +3574,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj",
-      "sha256": "0dabf73d3a70e4b2901b9b9fe640bfee610a51cd45bd3c5b9491a3f79918dcf8"
+      "sha256": "36c23682ac9484c9ca2bc73bc94c03b4861f32e721d0b7bd40eae5f0d580736d"
     },
     {
       "mode": "644",
@@ -3589,7 +3589,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.ExecutionWorkerClient/Vyral.Tests.ExecutionWorkerClient.csproj",
-      "sha256": "d42065211fd9da12c80a4242d539ae0a28e733a8b6ba15f61f6e70cbc6976c86"
+      "sha256": "c282804600e3fdc4e2a760003ad681cc0f7cea6ee43923cca2aae9c6a68df1ad"
     },
     {
       "mode": "644",
@@ -3644,7 +3644,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Google/Vyral.Tests.Google.csproj",
-      "sha256": "f992a86bd667d20b52d575bbf41f32d9fae5d3dd98f41b1e9dc22945d8266c21"
+      "sha256": "40cbda5885c35d2d7d4aa1236b5cc3f01ac08e034ffc31adea600f907339759b"
     },
     {
       "mode": "644",
@@ -3814,7 +3814,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Local/Vyral.Tests.Local.csproj",
-      "sha256": "dfbbd4979df116490b0de07eb162949bfe79cf1f76309c5ab159a8b55e38c4ef"
+      "sha256": "20c10fa117abeca8f6f58c3d8e0bcb7910a597fbf8b78030f48c2556f5b5d12b"
     },
     {
       "mode": "644",
@@ -3869,7 +3869,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Pgvector/Vyral.Tests.Pgvector.csproj",
-      "sha256": "4018b3251925def300b63f91b11b178f3c4f0e360bab803556572a0089242800"
+      "sha256": "582ce0843730b3df15a02392aae8ddad83b98dcdad78bf6c603d10a84d5d8666"
     },
     {
       "mode": "644",
@@ -3914,7 +3914,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Providers/Vyral.Tests.Providers.csproj",
-      "sha256": "060d539ba25136852d474d39a72e5c63aff231bde5c6f6001fa6c6b9ed1ef571"
+      "sha256": "30b6e5ceecf10d18a39eb3fabba78646c26cbb384988b3b4bea94ebd7ed0be73"
     },
     {
       "mode": "644",
@@ -3999,7 +3999,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Temporal/Vyral.Tests.Temporal.csproj",
-      "sha256": "d640e73120ce60c36fa0402f05b281d8d78c3d16a3e83b030f158ac7739337de"
+      "sha256": "47efbcbb28dcb73f95bff11fc41bca8e57d38ccf534b944d0892160f5ac2714f"
     },
     {
       "mode": "644",
@@ -4054,5 +4054,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "4effd5d182f9e403d07ce2066bcf7d665eecfb872162dc8551b9b732a560d054"
+  "treeSha256": "23c75d6dcf9b7a0b605691903684a47a5b866c002f35c697703c2a33f88c9eb6"
 }
