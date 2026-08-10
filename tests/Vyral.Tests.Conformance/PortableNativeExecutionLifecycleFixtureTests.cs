@@ -430,6 +430,10 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
                 _runtime,
                 run.Id,
                 ExecutionRunStatuses.Waiting);
+            await WaitForHistoryEventAsync(
+                _runtime,
+                run.Id,
+                ExecutionEventTypes.WaitRegistered);
 
             _runtime = CreateRuntime();
             var rawEvent = arguments.GetProperty("event");
@@ -613,6 +617,24 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
             }
             throw new TimeoutException(
                 $"Run {runId} did not become {status}.");
+        }
+
+        private static async Task WaitForHistoryEventAsync(
+            IExecutionRuntime runtime,
+            string runId,
+            string eventType)
+        {
+            for (var attempt = 0; attempt < 400; attempt++)
+            {
+                var history = await runtime.GetHistoryAsync(runId);
+                if (history.Any(item => item.Type == eventType))
+                {
+                    return;
+                }
+                await Task.Delay(10);
+            }
+            throw new TimeoutException(
+                $"Run {runId} did not record {eventType}.");
         }
     }
 
