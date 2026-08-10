@@ -25,6 +25,12 @@ public sealed class AwsDynamoExecutionRuntimeAdapterConformanceTests : ExternalE
 
     protected override Task<ExternalExecutionWorkerRuntimeFixture> CreateExternalWorkerRuntimeAsync()
     {
+        var fixture = CreateExternalWorkerRuntimeFixture();
+        return Task.FromResult(fixture.Runtime);
+    }
+
+    private static (ExternalExecutionWorkerRuntimeFixture Runtime, InMemoryAwsDynamoExecutionStateStore State) CreateExternalWorkerRuntimeFixture()
+    {
         var handler = new ExecutionHandlerDescriptor
         {
             HandlerId = "conformance.aws.external.worker",
@@ -32,8 +38,9 @@ public sealed class AwsDynamoExecutionRuntimeAdapterConformanceTests : ExternalE
             DisplayName = "AWS external worker conformance handler"
         };
         var dispatcher = new CapturingExecutionRunDispatcher();
+        var state = new InMemoryAwsDynamoExecutionStateStore();
         var runtime = new AwsDynamoExecutionRuntimeAdapter(
-            new InMemoryAwsDynamoExecutionStateStore(),
+            state,
             dispatcher,
             new AwsDynamoExecutionRuntimeOptions
             {
@@ -46,12 +53,14 @@ public sealed class AwsDynamoExecutionRuntimeAdapterConformanceTests : ExternalE
                     }
                 ]
             });
-        return Task.FromResult(new ExternalExecutionWorkerRuntimeFixture
-        {
-            Adapter = runtime,
-            Worker = runtime,
-            Handler = handler
-        });
+        return (
+            new ExternalExecutionWorkerRuntimeFixture
+            {
+                Adapter = runtime,
+                Worker = runtime,
+                Handler = handler
+            },
+            state);
     }
 
     [Fact]
@@ -503,7 +512,8 @@ public sealed class AwsDynamoExecutionRuntimeAdapterConformanceTests : ExternalE
     [Fact]
     public async Task AwsRuntime_EventAndTimeoutRaceConsumesExactlyOneDurableWait()
     {
-        var fixture = await CreateExternalWorkerRuntimeAsync();
+        var created = CreateExternalWorkerRuntimeFixture();
+        var fixture = created.Runtime;
         fixture.Worker.RegisterExternalHandler(fixture.Handler);
         var accepted = await fixture.Adapter.StartRunAsync(new ExecutionRunRequest { HandlerId = fixture.Handler.HandlerId });
         var firstLease = Assert.IsType<ExecutionExternalWorkerLease>(await fixture.Worker.LeaseNextRunAsync(new ExecutionExternalWorkerLeaseRequest
@@ -519,11 +529,11 @@ public sealed class AwsDynamoExecutionRuntimeAdapterConformanceTests : ExternalE
             WorkerId = firstLease.WorkerId,
             Kind = ExecutionExternalWorkerWaitKinds.ExternalEvent,
             Name = "approval",
-            TimeoutAtUtc = DateTime.UtcNow.AddMilliseconds(20)
+            TimeoutAtUtc = DateTime.UtcNow.AddHours(1)
         });
         Assert.True(suspended.Suspended);
 
-        await Task.Delay(40);
+        created.State.MakeWaitDue(accepted.Id);
         var eventTask = fixture.Adapter.RaiseEventAsync(new ExecutionExternalEventRequest
         {
             RunId = accepted.Id,
@@ -632,6 +642,16 @@ public sealed class AwsDynamoExecutionRuntimeAdapterConformanceTests : ExternalE
         private readonly Dictionary<string, AwsDynamoExecutionWait> _waits = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ExecutionWaitResult> _waitOutcomes = new(StringComparer.Ordinal);
         private readonly HashSet<string> _consumedEvents = new(StringComparer.Ordinal);
+
+        public void MakeWaitDue(string runId)
+        {
+            lock (_gate)
+            {
+                if (!_waits.TryGetValue(runId, out var wait))
+                    throw new InvalidOperationException($"Execution wait for run '{runId}' was not found.");
+                wait.FireAtUtc = DateTime.UtcNow.AddSeconds(-1);
+            }
+        }
 
         public Task CreateRunAsync(ExecutionRun run, CancellationToken ct = default)
         {

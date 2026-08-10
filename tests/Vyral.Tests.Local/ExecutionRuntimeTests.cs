@@ -1100,8 +1100,8 @@ public class ExecutionRuntimeConformanceTests
         var timeoutRun = await runtime.StartRunAsync(new ExecutionRunRequest { HandlerId = TimeoutWaitHandler.HandlerId });
         await timerHandler.WaitRegistered.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await timeoutHandler.WaitRegistered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await WaitForRunAsync(runtime, timerRun.Id, ExecutionRunStatuses.Waiting);
-        await WaitForRunAsync(runtime, timeoutRun.Id, ExecutionRunStatuses.Waiting);
+        await WaitForHistoryEventAsync(runtime, timerRun.Id, ExecutionEventTypes.WaitRegistered);
+        await WaitForHistoryEventAsync(runtime, timeoutRun.Id, ExecutionEventTypes.WaitRegistered);
 
         var timerCompleted = await WaitForRunAsync(runtime, timerRun.Id, ExecutionRunStatuses.Succeeded);
         var timeoutCompleted = await WaitForRunAsync(runtime, timeoutRun.Id, ExecutionRunStatuses.Succeeded);
@@ -1294,6 +1294,24 @@ public class ExecutionRuntimeConformanceTests
         var history = await runtime.GetHistoryAsync(id);
         var historySummary = string.Join(", ", history.Select(item => $"{item.Type}:{item.Status}"));
         throw new InvalidOperationException($"Run {id} did not reach {status}. Last status: {run?.Status ?? "(missing)"}. History: {historySummary}");
+    }
+
+    private static async Task WaitForHistoryEventAsync(IExecutionRuntime runtime, string id, string eventType)
+    {
+        IReadOnlyList<ExecutionTraceEvent> history = Array.Empty<ExecutionTraceEvent>();
+        for (var i = 0; i < 200; i++)
+        {
+            history = await runtime.GetHistoryAsync(id);
+            if (history.Any(item => item.Type == eventType))
+            {
+                return;
+            }
+
+            await Task.Delay(25);
+        }
+
+        var historySummary = string.Join(", ", history.Select(item => $"{item.Type}:{item.Status}"));
+        throw new InvalidOperationException($"Run {id} did not record {eventType}. History: {historySummary}");
     }
 
     private static async Task WaitForMissingRunAsync(IExecutionRuntime runtime, string id)
