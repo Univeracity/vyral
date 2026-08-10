@@ -32,7 +32,8 @@ public_root="$work_root/public-root"
 mkdir -p "$public_root/scripts" "$public_root/benchmarks/canonical-store"
 cp scripts/validate-canonical-mysql-benchmark-report.sh "$public_root/scripts/"
 cp "$source_report" "$public_root/$source_report"
-python3 - "$public_root" <<'PY'
+write_public_manifest() {
+  python3 - "$public_root" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -44,7 +45,13 @@ import sys
 
 root = Path(sys.argv[1])
 entries = []
-for path in sorted(item for item in root.rglob("*") if item.is_file()):
+for path in sorted(
+    item
+    for item in root.rglob("*")
+    if item.is_file()
+    and ".git" not in item.relative_to(root).parts
+    and item.name != "PUBLIC-EXPORT-MANIFEST.json"
+):
     relative = path.relative_to(root).as_posix()
     mode = "755" if path.stat().st_mode & stat.S_IXUSR else "644"
     entries.append(
@@ -69,6 +76,8 @@ manifest = {
     encoding="utf-8",
 )
 PY
+}
+write_public_manifest
 git -C "$public_root" init --initial-branch=main --quiet
 git -C "$public_root" add --all
 git -C "$public_root" \
@@ -79,8 +88,24 @@ public_result="$(
   cd "$public_root"
   scripts/validate-canonical-mysql-benchmark-report.sh "$source_report"
 )"
-if [[ "$public_result" != *"provenance=public-export"* ]]; then
+if [[ "$public_result" != *"provenance=public-export-lineage"* ]]; then
   echo "Canonical MySQL benchmark validator did not recognize verified public-export provenance." >&2
+  exit 1
+fi
+
+printf 'public maintenance\n' > "$public_root/README.md"
+write_public_manifest
+git -C "$public_root" add --all
+git -C "$public_root" \
+  -c user.name='Vyral Tests' \
+  -c user.email='tests@openvyral.com' \
+  commit --quiet --message='Public maintenance'
+public_result="$(
+  cd "$public_root"
+  scripts/validate-canonical-mysql-benchmark-report.sh "$source_report"
+)"
+if [[ "$public_result" != *"provenance=public-export-lineage"* ]]; then
+  echo "Canonical MySQL benchmark validator rejected a verified public-export descendant." >&2
   exit 1
 fi
 

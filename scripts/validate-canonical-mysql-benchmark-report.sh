@@ -75,10 +75,10 @@ source_commit="$(jq -r '.sourceCommit' "$REPORT")"
 provenance="ancestor"
 if ! git cat-file -e "$source_commit^{commit}" 2>/dev/null ||
    ! git merge-base --is-ancestor "$source_commit" HEAD; then
-  # A fresh public root deliberately omits private canonical history. Preserve the original
-  # benchmark receipt in that tree, but accept it only when the entire clean, one-commit tree is
-  # byte-for-byte identical to its deterministic public-export manifest. Canonical release
-  # validation continues to require normal Git ancestry.
+  # A public history deliberately omits private canonical history. Preserve the original
+  # benchmark receipt in that history, but accept it only when the immutable root and the current
+  # clean tree match their deterministic public-export manifests and the receipt is unchanged from
+  # that root. Canonical release validation continues to require normal Git ancestry.
   python3 - "$REPORT" <<'PY'
 from __future__ import annotations
 
@@ -88,11 +88,76 @@ from pathlib import Path
 import stat
 import subprocess
 import sys
+from typing import Any
 
 
 root = Path.cwd().resolve()
 report = Path(sys.argv[1]).resolve()
 manifest_path = root / "PUBLIC-EXPORT-MANIFEST.json"
+manifest_name = manifest_path.name
+
+
+def git_bytes(*arguments: str) -> bytes:
+    return subprocess.run(
+        ["git", *arguments],
+        check=True,
+        capture_output=True,
+    ).stdout
+
+
+def load_manifest(content: bytes, context: str) -> dict[str, Any]:
+    try:
+        value = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"{context} public-export manifest is invalid JSON.") from exc
+    if not isinstance(value, dict):
+        raise SystemExit(f"{context} public-export manifest is not an object.")
+    return value
+
+
+def validate_manifest(
+    manifest: dict[str, Any],
+    actual: dict[str, tuple[str, str]],
+    context: str,
+) -> None:
+    if manifest.get("schemaVersion") != 1 or manifest.get("sourceDirty") is not False:
+        raise SystemExit(f"{context} public-export manifest is not a clean schema-version 1 export.")
+
+    entries = manifest.get("files")
+    if not isinstance(entries, list) or manifest.get("fileCount") != len(entries):
+        raise SystemExit(f"{context} public-export manifest file count is invalid.")
+
+    manifest_paths: set[str] = set()
+    ordered_paths: list[str] = []
+    tree_hasher = hashlib.sha256()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise SystemExit(f"{context} public-export manifest contains a malformed file entry.")
+        relative = entry.get("path")
+        mode = entry.get("mode")
+        expected_digest = entry.get("sha256")
+        if (
+            not isinstance(relative, str)
+            or not isinstance(mode, str)
+            or not isinstance(expected_digest, str)
+            or relative in manifest_paths
+        ):
+            raise SystemExit(
+                f"{context} public-export manifest contains an invalid or duplicate file entry."
+            )
+        if actual.get(relative) != (mode, expected_digest):
+            raise SystemExit(f"{context} public-export manifest mismatch: {relative}")
+
+        manifest_paths.add(relative)
+        ordered_paths.append(relative)
+        tree_hasher.update(f"{mode} {expected_digest} {relative}\n".encode("utf-8"))
+
+    if ordered_paths != sorted(ordered_paths):
+        raise SystemExit(f"{context} public-export manifest paths are not ordered.")
+    if manifest_paths != set(actual):
+        raise SystemExit(f"{context} public-export manifest paths do not exactly match its tree.")
+    if tree_hasher.hexdigest() != manifest.get("treeSha256"):
+        raise SystemExit(f"{context} public-export manifest tree digest is invalid.")
 
 try:
     report_relative = report.relative_to(root).as_posix()
@@ -105,82 +170,66 @@ if not manifest_path.is_file():
         "manifest is present."
     )
 
-commit_count = subprocess.run(
-    ["git", "rev-list", "--count", "HEAD"],
-    check=True,
-    capture_output=True,
-    text=True,
-).stdout.strip()
-if commit_count != "1":
-    raise SystemExit("Public-export benchmark provenance requires a one-commit history.")
-
 for command in (["git", "diff", "--quiet"], ["git", "diff", "--cached", "--quiet"]):
     if subprocess.run(command, check=False).returncode != 0:
         raise SystemExit("Public-export benchmark provenance requires a clean tracked tree.")
 
-try:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-except (OSError, json.JSONDecodeError) as exc:
-    raise SystemExit("Public-export manifest is unreadable or invalid JSON.") from exc
-
-if manifest.get("schemaVersion") != 1 or manifest.get("sourceDirty") is not False:
-    raise SystemExit("Public-export manifest is not a clean schema-version 1 export.")
-
-entries = manifest.get("files")
-if not isinstance(entries, list) or manifest.get("fileCount") != len(entries):
-    raise SystemExit("Public-export manifest file count is invalid.")
-
-tracked_output = subprocess.run(
-    ["git", "ls-files", "-z"],
-    check=True,
-    capture_output=True,
-).stdout
-tracked = {
-    item.decode("utf-8")
-    for item in tracked_output.split(b"\0")
-    if item and item.decode("utf-8") != manifest_path.name
-}
-
-manifest_paths: set[str] = set()
-tree_hasher = hashlib.sha256()
-for entry in entries:
-    if not isinstance(entry, dict):
-        raise SystemExit("Public-export manifest contains a malformed file entry.")
-    relative = entry.get("path")
-    mode = entry.get("mode")
-    expected_digest = entry.get("sha256")
-    if (
-        not isinstance(relative, str)
-        or not isinstance(mode, str)
-        or not isinstance(expected_digest, str)
-        or relative in manifest_paths
-    ):
-        raise SystemExit("Public-export manifest contains an invalid or duplicate file entry.")
-
+current_actual: dict[str, tuple[str, str]] = {}
+for encoded_path in git_bytes("ls-files", "-z").split(b"\0"):
+    if not encoded_path:
+        continue
+    relative = encoded_path.decode("utf-8")
+    if relative == manifest_name:
+        continue
     path = root / relative
     try:
         path.resolve().relative_to(root)
     except ValueError as exc:
-        raise SystemExit(f"Public-export path escapes the root: {relative}") from exc
+        raise SystemExit(f"Current public-export path escapes the root: {relative}") from exc
     if path.is_symlink() or not path.is_file():
-        raise SystemExit(f"Public-export path is not a regular file: {relative}")
+        raise SystemExit(f"Current public-export path is not a regular file: {relative}")
+    mode = "755" if path.stat().st_mode & stat.S_IXUSR else "644"
+    current_actual[relative] = (mode, hashlib.sha256(path.read_bytes()).hexdigest())
 
-    actual_mode = "755" if path.stat().st_mode & stat.S_IXUSR else "644"
-    actual_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if mode != actual_mode or expected_digest != actual_digest:
-        raise SystemExit(f"Public-export manifest mismatch: {relative}")
-
-    manifest_paths.add(relative)
-    tree_hasher.update(f"{mode} {expected_digest} {relative}\n".encode("utf-8"))
-
-if manifest_paths != tracked:
-    raise SystemExit("Public-export manifest paths do not exactly match the tracked tree.")
-if report_relative not in manifest_paths:
+current_manifest = load_manifest(manifest_path.read_bytes(), "Current")
+validate_manifest(current_manifest, current_actual, "Current")
+if report_relative not in current_actual:
     raise SystemExit("Benchmark report is absent from the public-export manifest.")
-if tree_hasher.hexdigest() != manifest.get("treeSha256"):
-    raise SystemExit("Public-export manifest tree digest is invalid.")
+
+roots = git_bytes("rev-list", "--max-parents=0", "HEAD").decode("ascii").splitlines()
+if len(roots) != 1:
+    raise SystemExit("Public-export benchmark provenance requires exactly one history root.")
+history_root = roots[0]
+
+try:
+    root_manifest = load_manifest(
+        git_bytes("show", f"{history_root}:{manifest_name}"),
+        "Root",
+    )
+except subprocess.CalledProcessError as exc:
+    raise SystemExit("Initial public-export manifest is absent from the history root.") from exc
+
+root_actual: dict[str, tuple[str, str]] = {}
+for record in git_bytes("ls-tree", "-rz", history_root).split(b"\0"):
+    if not record:
+        continue
+    metadata, encoded_path = record.split(b"\t", 1)
+    git_mode, object_type, object_id = metadata.decode("ascii").split()
+    relative = encoded_path.decode("utf-8")
+    if relative == manifest_name:
+        continue
+    if object_type != "blob" or git_mode not in {"100644", "100755"}:
+        raise SystemExit(f"Root public-export path is not a regular file: {relative}")
+    content = git_bytes("cat-file", "blob", object_id)
+    root_actual[relative] = (git_mode[-3:], hashlib.sha256(content).hexdigest())
+
+validate_manifest(root_manifest, root_actual, "Root")
+if report_relative not in root_actual:
+    raise SystemExit("Benchmark report is absent from the initial public-export manifest.")
+if current_actual[report_relative] != root_actual[report_relative]:
+    raise SystemExit("Benchmark report has changed since the initial public-export root.")
 PY
-  provenance="public-export"
+  provenance="public-export-lineage"
 fi
 
 printf 'canonical-mysql-benchmark-report=ok report=%s sourceCommit=%s provenance=%s\n' \

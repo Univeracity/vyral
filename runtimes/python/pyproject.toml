@@ -34,7 +34,7 @@ server = [
 ]
 dev = [
   "build>=1.2,<2",
-  "coverage==7.15.3",
+  "coverage==7.15.4",
   "jsonschema>=4.23,<5",
   "mypy>=1.18,<3"
 ]

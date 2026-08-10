@@ -669,7 +669,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/pyproject.toml",
-      "sha256": "7d97c403f9705fbb4c0aa344c5e58f24c5acbd0b7d16a737f76b8e29a8ce130c"
+      "sha256": "f1cee92bb54f219014ec84bcd167ba9d0c32231c517968a90bededf7e1490e99"
     },
     {
       "mode": "644",
@@ -1519,7 +1519,7 @@
     {
       "mode": "755",
       "path": "scripts/test-validate-canonical-mysql-benchmark-report.sh",
-      "sha256": "2ee1157ab18d0c96681b0c204a572008545e5e5ef96d48ba38fa4eb044bb48d2"
+      "sha256": "a1dad72b1c39304d6b8fb15f5222203b5dd2209ddb5878458e199393eb2a9df0"
     },
     {
       "mode": "755",
@@ -1559,7 +1559,7 @@
     {
       "mode": "755",
       "path": "scripts/validate-canonical-mysql-benchmark-report.sh",
-      "sha256": "00a9dfbf1aa2739af40e14bf19d525a19d8f63e3882fc85ccc60305123cff0f7"
+      "sha256": "ff42316c8c9fe1ba9444632413c00930e8180e5237e5953e69b181cdfcc172ae"
     },
     {
       "mode": "755",
@@ -4054,5 +4054,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "d2cfe2cefa55b2ca6f4b891527e7435b6a28bf5cec509f53c69508131ee009f9"
+  "treeSha256": "37f5fbd242988c3003ad232e313d7ad13ea03b06c4e1b894f319185bd7557961"
 }
