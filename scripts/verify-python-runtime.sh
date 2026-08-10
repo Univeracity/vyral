@@ -48,6 +48,8 @@ import zipfile
 
 wheel_path, sdist_path = sys.argv[1:]
 required_package_files = {
+    "vyral_runtime/__main__.py",
+    "vyral_runtime/_local_experience.py",
     "vyral_runtime/_contracts/public-sdk-surface.json",
     "vyral_runtime/_contracts/vyral-public.schema.json",
     "vyral_runtime/_contracts/vyral.openapi.json",
@@ -82,6 +84,8 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "LICENSE",
         "pyproject.toml",
         "README.md",
+        "src/vyral_runtime/__main__.py",
+        "src/vyral_runtime/_local_experience.py",
         "src/vyral_runtime/_contracts/public-sdk-surface.json",
         "src/vyral_runtime/_contracts/vyral-public.schema.json",
         "src/vyral_runtime/_contracts/vyral.openapi.json",
@@ -139,6 +143,63 @@ print(
     f"goldens={len(run_bundled_goldens())}"
 )
 PY
+
+quickstart_root="$work_root/local-quickstart"
+"$work_root/venv/bin/vyral-runtime" quickstart \
+  --root "$quickstart_root" \
+  --json >"$work_root/quickstart-first.json"
+"$work_root/venv/bin/vyral-runtime" inspect \
+  --root "$quickstart_root" \
+  --json >"$work_root/quickstart-inspection.json"
+"$work_root/venv/bin/python" -m vyral_runtime quickstart \
+  --root "$quickstart_root" \
+  --json >"$work_root/quickstart-replay.json"
+"$work_root/venv/bin/python" - \
+  "$work_root/quickstart-first.json" \
+  "$work_root/quickstart-inspection.json" \
+  "$work_root/quickstart-replay.json" <<'PY'
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+first_path, inspection_path, replay_path = map(Path, sys.argv[1:])
+first = json.loads(first_path.read_text(encoding="utf-8"))
+inspection = json.loads(inspection_path.read_text(encoding="utf-8"))
+replay = json.loads(replay_path.read_text(encoding="utf-8"))
+
+assert first["topology"] == "local-single-node"
+assert first["maturity"] == "prototype"
+assert first["fullLocalReady"] is False
+assert first["embedding"]["provider"] == "local-token-hash"
+assert first["embedding"]["requiresNetwork"] is False
+assert len(first["retrieval"]["citations"]) >= 1
+assert first["execution"]["admittedStatus"] == "queued"
+assert first["execution"]["persistedStatusAfterReopen"] == "queued"
+assert first["execution"]["completedStatus"] == "succeeded"
+assert first["execution"]["dispatchedRuns"] == 1
+assert inspection["topology"] == "local-single-node"
+assert inspection["providers"]["records"]["healthy"] is True
+assert inspection["providers"]["execution"]["healthy"] is True
+assert replay["execution"]["runId"] == first["execution"]["runId"]
+assert replay["execution"]["admissionReplayed"] is True
+assert replay["execution"]["dispatchedRuns"] == 0
+assert replay["retrieval"]["createdChunks"] == 0
+assert replay["retrieval"]["reusedChunks"] == 3
+print(
+    "python-runtime-local-quickstart=ok "
+    f"run={first['execution']['runId']} "
+    f"citations={len(first['retrieval']['citations'])}"
+)
+PY
+"$work_root/venv/bin/vyral-runtime" quickstart \
+  --root "$quickstart_root" \
+  --reset >/dev/null
+if [[ -e "$quickstart_root" ]]; then
+  echo "Python runtime quickstart reset left its owned state directory." >&2
+  exit 1
+fi
 
 python3 -m venv "$work_root/sdist-venv"
 "$work_root/sdist-venv/bin/python" -m pip install \

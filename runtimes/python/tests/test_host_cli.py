@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import redirect_stdout
+from io import StringIO
 import os
 from pathlib import Path
 import sys
@@ -14,6 +16,95 @@ from vyral_runtime.host.cli import main  # noqa: E402
 
 
 class HostCliTests(unittest.TestCase):
+    def test_help_discovers_local_single_player_commands(self) -> None:
+        output = StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as raised:
+            main(["--help"])
+        self.assertEqual(0, raised.exception.code)
+        self.assertIn("vyral-runtime quickstart", output.getvalue())
+        self.assertIn("vyral-runtime inspect", output.getvalue())
+
+    def test_quickstart_subcommand_does_not_require_server_extra(self) -> None:
+        result = SimpleNamespace(
+            root_path="/tmp/vyral-demo",
+            context_text="Context:\nlocal evidence",
+            to_dict=lambda: {"rootPath": "/tmp/vyral-demo"},
+        )
+        output = StringIO()
+        with patch(
+            "vyral_runtime.host.cli.run_local_quickstart_sync",
+            return_value=result,
+        ) as run, redirect_stdout(output):
+            status = main(
+                [
+                    "quickstart",
+                    "--root",
+                    "/tmp/vyral-demo",
+                    "--json",
+                ]
+            )
+        self.assertEqual(0, status)
+        run.assert_called_once_with("/tmp/vyral-demo", emit=None)
+        self.assertIn('"rootPath": "/tmp/vyral-demo"', output.getvalue())
+
+    def test_inspect_subcommand_summarizes_local_providers(self) -> None:
+        inspection = {
+            "rootPath": "/tmp/vyral-demo",
+            "topology": "local-single-node",
+            "runtime": {
+                "version": "0.1.1",
+                "contractVersion": "0.3.0",
+                "maturity": "prototype",
+                "fullLocalReady": False,
+            },
+            "providers": {
+                "records": {
+                    "adapter": "SQLiteRecordStore",
+                    "healthy": True,
+                },
+                "objects": {
+                    "adapter": "FileObjectStore",
+                    "healthy": True,
+                },
+                "embeddings": {"provider": "local-token-hash"},
+                "execution": {
+                    "adapter": "python-local-sqlite",
+                    "healthy": True,
+                },
+            },
+            "warnings": ["prototype evidence only"],
+        }
+        output = StringIO()
+        with patch(
+            "vyral_runtime.host.cli.inspect_local_runtime",
+            return_value=inspection,
+        ), redirect_stdout(output):
+            status = main(
+                ["inspect", "--root", "/tmp/vyral-demo"]
+            )
+        self.assertEqual(0, status)
+        self.assertIn("Topology: local-single-node", output.getvalue())
+        self.assertIn("Embeddings: local-token-hash", output.getvalue())
+        self.assertIn("Warning: prototype evidence only", output.getvalue())
+
+    def test_reset_subcommand_uses_owned_reset_boundary(self) -> None:
+        output = StringIO()
+        with patch(
+            "vyral_runtime.host.cli.reset_local_quickstart",
+            return_value=Path("/tmp/vyral-demo"),
+        ) as reset, redirect_stdout(output):
+            status = main(
+                [
+                    "quickstart",
+                    "--root",
+                    "/tmp/vyral-demo",
+                    "--reset",
+                ]
+            )
+        self.assertEqual(0, status)
+        reset.assert_called_once_with("/tmp/vyral-demo")
+        self.assertIn("Removed Vyral quickstart state", output.getvalue())
+
     def test_remote_bind_requires_authentication(self) -> None:
         with tempfile.TemporaryDirectory() as root, patch.dict(
             os.environ, {}, clear=True
