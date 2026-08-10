@@ -97,7 +97,9 @@ durable receipt before dispatch, closes and reopens its local runtime, and then
 completes the preserved run. Rerunning the file replays the same idempotent run
 instead of dispatching duplicate work. The generator creates one readable
 Python file, never overwrites an existing path, and keeps its state visibly
-beside the file under `.vyral/starter`. After editing the intended work, the
+beside the file under its own `.vyral/<application-id>` directory (for the
+example above, `.vyral/vyral_app`). Sibling generated applications receive
+distinct state and durable identities. After editing the intended work, the
 developer increments the visible `RUN_VERSION` to admit a new idempotent run.
 
 Run the connected retrieval-and-execution quickstart against a separate,

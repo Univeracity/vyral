@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
 
@@ -24,9 +25,13 @@ from vyral_runtime import (
 )
 
 
-STATE_ROOT = Path(__file__).resolve().parent / ".vyral" / "starter"
-PLUGIN_ID = "starter"
-HANDLER_ID = "starter.hello"
+STATE_ROOT = (
+    Path(__file__).resolve().parent
+    / ".vyral"
+    / __VYRAL_STARTER_STATE_DIRECTORY__
+)
+PLUGIN_ID = __VYRAL_STARTER_PLUGIN_ID__
+HANDLER_ID = __VYRAL_STARTER_HANDLER_ID__
 # Rerun unchanged to prove idempotency. Increment only to admit new work.
 RUN_VERSION = 1
 
@@ -41,7 +46,7 @@ async def hello(context: ExecutionRunContext) -> ExecutionRunResult:
         if isinstance(candidate, str) and candidate.strip():
             name = candidate.strip()
     await context.record_event(
-        "starter.hello",
+        HANDLER_ID,
         message="The user-owned Vyral handler is running.",
     )
     return ExecutionRunResult.succeeded_result(
@@ -62,7 +67,7 @@ async def main() -> None:
         HANDLER_ID,
         plugin_id=PLUGIN_ID,
         payload={"name": "Vyral", "runVersion": RUN_VERSION},
-        idempotency_key=f"starter.hello.v{RUN_VERSION}",
+        idempotency_key=f"{HANDLER_ID}.v{RUN_VERSION}",
     )
 
     with VyralRuntime.open_local(
@@ -109,11 +114,13 @@ if __name__ == "__main__":
 class LocalStarterResult:
     created_path: Path
     state_root_path: Path
+    app_id: str
 
     def to_dict(self) -> dict[str, object]:
         return {
             "createdPath": str(self.created_path),
             "stateRootPath": str(self.state_root_path),
+            "appId": self.app_id,
             "runArguments": ["python", str(self.created_path)],
         }
 
@@ -130,9 +137,20 @@ def create_local_starter(output_path: str | Path) -> LocalStarterResult:
         )
     requested.parent.mkdir(parents=True, exist_ok=True)
     target = requested.absolute()
+    identity = _starter_identity(target.stem)
+    state_directory = identity.removeprefix("starter.")
+    handler_id = f"{identity}.hello"
+    source = (
+        _STARTER_SOURCE.replace(
+            "__VYRAL_STARTER_STATE_DIRECTORY__",
+            repr(state_directory),
+        )
+        .replace("__VYRAL_STARTER_PLUGIN_ID__", repr(identity))
+        .replace("__VYRAL_STARTER_HANDLER_ID__", repr(handler_id))
+    )
     try:
         with target.open("x", encoding="utf-8", newline="\n") as stream:
-            stream.write(_STARTER_SOURCE)
+            stream.write(source)
     except FileExistsError as error:
         raise ValueError(
             f"Refusing to overwrite an existing starter path: {target}"
@@ -140,8 +158,30 @@ def create_local_starter(output_path: str | Path) -> LocalStarterResult:
     created = target.resolve()
     return LocalStarterResult(
         created_path=created,
-        state_root_path=created.parent / ".vyral" / "starter",
+        state_root_path=created.parent / ".vyral" / state_directory,
+        app_id=identity,
     )
+
+
+def _starter_identity(stem: str) -> str:
+    characters: list[str] = []
+    previous_separator = False
+    for character in stem.casefold():
+        if character.isascii() and (
+            character.isalnum() or character in {"_", "-"}
+        ):
+            characters.append(character)
+            previous_separator = False
+        elif not previous_separator:
+            characters.append("-")
+            previous_separator = True
+    normalized = "".join(characters).strip("-_") or "app"
+    changed = normalized != stem or len(normalized) > 80
+    if changed:
+        digest = sha256(stem.encode("utf-8")).hexdigest()[:8]
+        base = normalized[:70].rstrip("-_") or "app"
+        normalized = f"{base}-{digest}"
+    return f"starter.{normalized}"
 
 
 __all__ = ["LocalStarterResult", "create_local_starter"]
