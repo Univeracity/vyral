@@ -3589,7 +3589,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Conformance/PortableNativeExecutionLifecycleFixtureTests.cs",
-      "sha256": "7a215e545856a7d989f48bb74fe5aee557d596ed315d38d8e39d64ab96b091ac"
+      "sha256": "4954dce087f8c13ee709195b505e3456b8f288460993505039b1defb8ce7d4e9"
     },
     {
       "mode": "644",
@@ -4089,5 +4089,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "ab0c8cce92a13d4aad77ce0b80d86ac70d6e2c5ac7b341c50b36a7b4e39d93c7"
+  "treeSha256": "16d953977567cbb53f57e1d59b047e8da3631cce744876a6753477016ba353a1"
 }
