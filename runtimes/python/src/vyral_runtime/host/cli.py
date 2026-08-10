@@ -20,6 +20,9 @@ from .mcp import McpApplicationConfig
 from .rest import RestApplicationConfig
 
 
+DEFAULT_QUICKSTART_ROOT = ".vyral/quickstart"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     selected = list(sys.argv[1:] if argv is None else argv)
     if selected and selected[0] == "init":
@@ -43,9 +46,9 @@ def _serve_main(argv: Sequence[str]) -> int:
         ),
         epilog=(
             "Local single-player commands:\n"
-            "  vyral-runtime init --path ./vyral_app.py\n"
-            "  vyral-runtime quickstart --root ./.vyral/quickstart\n"
-            "  vyral-runtime inspect --root ./.vyral/quickstart\n\n"
+            "  vyral-runtime quickstart\n"
+            "  vyral-runtime inspect\n"
+            "  vyral-runtime init\n\n"
             "The explicit 'serve' command is also accepted before the "
             "server options."
         ),
@@ -238,10 +241,10 @@ def _quickstart_main(argv: Sequence[str]) -> int:
     )
     parser.add_argument(
         "--root",
-        required=True,
+        default=DEFAULT_QUICKSTART_ROOT,
         help=(
-            "Dedicated durable directory. The quickstart refuses a "
-            "non-empty directory it did not create."
+            "Dedicated durable directory (default: ./.vyral/quickstart). "
+            "The quickstart refuses a non-empty directory it did not create."
         ),
     )
     parser.add_argument(
@@ -275,15 +278,23 @@ def _quickstart_main(argv: Sequence[str]) -> int:
     if arguments.json:
         print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
     else:
+        default_root = Path(DEFAULT_QUICKSTART_ROOT).resolve()
+        result_root = Path(result.root_path).resolve()
         print("\nCitation-ready context:\n")
         print(result.context_text)
         print("\nInspect this state:")
-        print(f"  vyral-runtime inspect --root {result.root_path}")
+        if result_root == default_root:
+            print("  vyral-runtime inspect")
+        else:
+            print(f"  vyral-runtime inspect --root {result.root_path}")
         print("Reset only this quickstart-owned directory:")
-        print(
-            "  vyral-runtime quickstart "
-            f"--root {result.root_path} --reset"
-        )
+        if result_root == default_root:
+            print("  vyral-runtime quickstart --reset")
+        else:
+            print(
+                "  vyral-runtime quickstart "
+                f"--root {result.root_path} --reset"
+            )
     return 0
 
 
@@ -297,8 +308,11 @@ def _inspect_main(argv: Sequence[str]) -> int:
     )
     parser.add_argument(
         "--root",
-        required=True,
-        help="Existing durable local runtime directory.",
+        default=DEFAULT_QUICKSTART_ROOT,
+        help=(
+            "Existing durable local runtime directory "
+            "(default: ./.vyral/quickstart)."
+        ),
     )
     parser.add_argument(
         "--json",

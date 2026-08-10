@@ -76,6 +76,27 @@ class HostCliTests(unittest.TestCase):
         run.assert_called_once_with("/tmp/vyral-demo", emit=None)
         self.assertIn('"rootPath": "/tmp/vyral-demo"', output.getvalue())
 
+    def test_quickstart_uses_the_visible_local_default(self) -> None:
+        result = SimpleNamespace(
+            root_path=str((Path.cwd() / ".vyral/quickstart").resolve()),
+            context_text="Context:\nlocal evidence",
+            to_dict=lambda: {},
+        )
+        output = StringIO()
+        with patch(
+            "vyral_runtime.host.cli.run_local_quickstart_sync",
+            return_value=result,
+        ) as run, redirect_stdout(output):
+            status = main(["quickstart"])
+
+        self.assertEqual(0, status)
+        run.assert_called_once_with(".vyral/quickstart", emit=print)
+        self.assertIn("  vyral-runtime inspect\n", output.getvalue())
+        self.assertIn(
+            "  vyral-runtime quickstart --reset\n",
+            output.getvalue(),
+        )
+
     def test_inspect_subcommand_summarizes_local_providers(self) -> None:
         inspection = {
             "rootPath": "/tmp/vyral-demo",
@@ -115,6 +136,33 @@ class HostCliTests(unittest.TestCase):
         self.assertIn("Topology: local-single-node", output.getvalue())
         self.assertIn("Embeddings: local-token-hash", output.getvalue())
         self.assertIn("Warning: prototype evidence only", output.getvalue())
+
+    def test_inspect_uses_the_quickstart_default(self) -> None:
+        inspection = {
+            "rootPath": "/tmp/vyral-demo",
+            "topology": "local-single-node",
+            "runtime": {
+                "version": "0.1.1",
+                "contractVersion": "0.3.0",
+                "maturity": "prototype",
+                "fullLocalReady": False,
+            },
+            "providers": {
+                "records": {"adapter": "SQLiteRecordStore"},
+                "objects": {"adapter": "FileObjectStore"},
+                "embeddings": {"provider": "local-token-hash"},
+                "execution": {"adapter": "python-local-sqlite"},
+            },
+            "warnings": [],
+        }
+        with patch(
+            "vyral_runtime.host.cli.inspect_local_runtime",
+            return_value=inspection,
+        ) as inspect, redirect_stdout(StringIO()):
+            status = main(["inspect"])
+
+        self.assertEqual(0, status)
+        inspect.assert_called_once_with(".vyral/quickstart")
 
     def test_reset_subcommand_uses_owned_reset_boundary(self) -> None:
         output = StringIO()
