@@ -20,6 +20,7 @@ NORMALIZED_MTIME = 315532800  # 1980-01-01; portable to ZIP-based tooling.
 
 ROOT_FILES = {
     ".dockerignore",
+    ".gitattributes",
     ".gcloudignore",
     ".gitignore",
     "CODE_OF_CONDUCT.md",
@@ -123,6 +124,7 @@ FORBIDDEN_SUFFIXES = {
 }
 
 REQUIRED_FILES = {
+    ".gitattributes",
     ".github/workflows/ci.yml",
     ".github/workflows/python-runtime-qualification.yml",
     "conformance/invariant.md",

@@ -1,5 +1,5 @@
 {
-  "fileCount": 814,
+  "fileCount": 815,
   "files": [
     {
       "mode": "644",
@@ -15,6 +15,11 @@
       "mode": "644",
       "path": ".gcloudignore",
       "sha256": "8407c8a13ba547c7b2ec31aaf4ca0ac79264ef510972cbc865f688609ec48f56"
+    },
+    {
+      "mode": "644",
+      "path": ".gitattributes",
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c"
     },
     {
       "mode": "644",
@@ -1019,7 +1024,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/local/object_store.py",
-      "sha256": "de5562d037fb22a189dd644c9c4eec10a522c027c6da593f7a46ac104716df4c"
+      "sha256": "03c6a2d8319d9d86adb67f9a1633a5201a39ef7f29684957b30c8fd5ced53690"
     },
     {
       "mode": "644",
@@ -1204,7 +1209,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_object_store.py",
-      "sha256": "9c335616e93c44ae80e8822ee9fb6907e375252464a4cfe92733651e92585b17"
+      "sha256": "b149ca5e551e41c4b42b62667e7c114f88b93a0bb824dc47a1ae8c0939857537"
     },
     {
       "mode": "644",
@@ -1399,7 +1404,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "be4a9d5d9bba838554c2abe803b0c84f3e66f4d8a970c5c31695df4be2271b76"
+      "sha256": "309b2a397b85609ea2dd1ecc03b06662e40cbe615cba88c3fb505ee25b6bb306"
     },
     {
       "mode": "755",
@@ -1504,7 +1509,7 @@
     {
       "mode": "644",
       "path": "scripts/test-export-public-tree.py",
-      "sha256": "a52a5ed8f2b9a89cb18a2292c3121f40c51f2cd3f12833c8d1c17b10217df8d0"
+      "sha256": "e834af5d61ce44dcd2ddcd3f0cfab37710aa30ed080122d41a6491427babe8c6"
     },
     {
       "mode": "755",
@@ -4074,5 +4079,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "4ab971e5a620e67910e568268aac9cfb41897f88420840c1c487a5dcbf40cfdf"
+  "treeSha256": "24e6d0d2e0c1d04ee2b6149149cf2fa42f3e9bdd329bcea9db9f26c9d3297791"
 }

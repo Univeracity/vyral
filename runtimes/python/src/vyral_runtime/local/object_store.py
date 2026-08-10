@@ -4,22 +4,47 @@ from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
+from importlib import import_module
 from io import BytesIO
 import json
 import os
 from pathlib import Path
 import tempfile
 from threading import Lock, RLock
-from typing import Any, BinaryIO, Mapping
+from typing import Any, BinaryIO, Mapping, Protocol, cast
 
 from .._datetime import parse_iso_datetime
 from ..async_runtime import RuntimeExecutor
 from .models import JSONObject
 
-try:
-    import fcntl
-except ImportError:  # pragma: no cover - the supported baseline is POSIX.
-    fcntl = None  # type: ignore[assignment]
+class _FcntlModule(Protocol):
+    LOCK_EX: int
+    LOCK_UN: int
+
+    def flock(self, file_descriptor: int, operation: int) -> None: ...
+
+
+class _MsvcrtModule(Protocol):
+    LK_LOCK: int
+    LK_UNLCK: int
+
+    def locking(
+        self,
+        file_descriptor: int,
+        mode: int,
+        byte_count: int,
+    ) -> None: ...
+
+
+def _optional_module(name: str) -> Any | None:
+    try:
+        return import_module(name)
+    except ModuleNotFoundError:
+        return None
+
+
+_fcntl = cast(_FcntlModule | None, _optional_module("fcntl"))
+_msvcrt = cast(_MsvcrtModule | None, _optional_module("msvcrt"))
 
 
 DEFAULT_OBJECT_LIST_LIMIT = 100
@@ -199,10 +224,12 @@ class _FileLock:
         self._thread_lock.acquire()
         try:
             self._file = self._path.open("a+b")
-            if fcntl is not None:
-                fcntl.flock(self._file.fileno(), fcntl.LOCK_EX)
+            _lock_process_file(self._file)
             return self
         except BaseException:
+            if self._file is not None:
+                self._file.close()
+                self._file = None
             self._thread_lock.release()
             raise
 
@@ -212,11 +239,46 @@ class _FileLock:
         exc: object,
         traceback: object,
     ) -> None:
-        if self._file is not None:
-            if fcntl is not None:
-                fcntl.flock(self._file.fileno(), fcntl.LOCK_UN)
-            self._file.close()
-        self._thread_lock.release()
+        try:
+            if self._file is not None:
+                _unlock_process_file(self._file)
+        finally:
+            try:
+                if self._file is not None:
+                    self._file.close()
+                    self._file = None
+            finally:
+                self._thread_lock.release()
+
+
+def _lock_process_file(file: BinaryIO) -> None:
+    if _fcntl is not None:
+        _fcntl.flock(file.fileno(), _fcntl.LOCK_EX)
+        return
+    if _msvcrt is not None:
+        file.seek(0, os.SEEK_END)
+        if file.tell() == 0:
+            file.write(b"\0")
+            file.flush()
+        file.seek(0)
+        _msvcrt.locking(file.fileno(), _msvcrt.LK_LOCK, 1)
+        return
+    raise RuntimeError(
+        "The local object store has no supported process-locking backend."
+    )
+
+
+def _unlock_process_file(file: BinaryIO) -> None:
+    if _fcntl is not None:
+        _fcntl.flock(file.fileno(), _fcntl.LOCK_UN)
+        return
+    if _msvcrt is not None:
+        file.seek(0)
+        _msvcrt.locking(file.fileno(), _msvcrt.LK_UNLCK, 1)
+        return
+    raise RuntimeError(
+        "The local object store has no supported process-locking backend."
+    )
 
 
 class FileObjectStore:
