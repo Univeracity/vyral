@@ -92,6 +92,13 @@ pre-release path. Once a qualified wheel is published, the install command can
 be replaced with `python -m pip install vyral-runtime` without changing the
 quickstart or inspection commands.
 
+The quickstart JSON includes measured `firstCitationMs`, `durableReceiptMs`,
+`restartRecoveryMs`, and `completedMs` milestones. Artifact qualification runs
+the installed wheel and sdist through the first command, a second-process
+idempotent replay, independent inspection, and marker-bounded reset. Each
+supported platform cell rejects a first citation or complete command taking
+more than five minutes.
+
 ```python
 from vyral_runtime import VyralRuntime
 
@@ -252,16 +259,21 @@ dotnet test tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj \
 ```
 
 The main verification command runs the full unit suite with branch
-instrumentation using pinned Coverage.py 7.15.2 and enforces a 77.5% combined
+instrumentation using pinned Coverage.py 7.15.4 and enforces a 77.5% combined
 line/branch regression floor. The floor is a regression guard, not a claim
 that every dispatch or error branch is exhaustively tested.
 
 The cross-platform qualification workflow is manual-only:
 `.github/workflows/python-runtime-qualification.yml`. This preserves the
 repository's current GitHub-run gate while keeping the promotion matrix
-reproducible. Dispatch requires the HTTPS URL and SHA-256 of a previously
-qualified `0.1.x` wheel so the installed upgrade gate cannot silently
-self-compare the candidate. The aggregate job then runs
+reproducible. Every cell builds both artifacts, installs each into a clean
+environment, completes the real cited/restart quickstart, replays it from a
+second process, inspects its limitations, and safely resets its owned state.
+The HTTPS URL and SHA-256 of a previously qualified `0.1.x` wheel are optional
+paired inputs: when supplied, the workflow also runs the installed upgrade
+gate, which cannot silently self-compare the candidate. The aggregate job then runs
 `scripts/verify-python-runtime-platform-matrix.py`; all nine cells must be
-clean, refer to one commit, and agree on runtime and contract identity before
-the matrix is valid promotion evidence.
+clean, refer to one commit, agree on runtime and contract identity, and carry
+passing measured local-experience evidence before the matrix is valid. A run
+without a baseline proves the platform matrix but is not upgrade evidence and
+does not by itself authorize maturity promotion.

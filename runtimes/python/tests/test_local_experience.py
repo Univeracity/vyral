@@ -35,6 +35,23 @@ class LocalExperienceTests(unittest.TestCase):
             self.assertEqual("queued", first.persisted_status)
             self.assertEqual("succeeded", first.completed_status)
             self.assertEqual(1, first.dispatched_runs)
+            self.assertGreaterEqual(first.first_citation_ms, 0)
+            self.assertGreaterEqual(
+                first.durable_receipt_ms,
+                first.first_citation_ms,
+            )
+            self.assertGreaterEqual(first.restart_recovery_ms, 0)
+            self.assertGreaterEqual(
+                first.completed_ms,
+                first.durable_receipt_ms,
+            )
+            timings = first.to_dict()["timings"]
+            self.assertIsInstance(timings, dict)
+            assert isinstance(timings, dict)
+            self.assertEqual(
+                first.first_citation_ms,
+                timings["firstCitationMs"],
+            )
             self.assertIsInstance(first.completed_result, dict)
             assert isinstance(first.completed_result, dict)
             self.assertEqual(

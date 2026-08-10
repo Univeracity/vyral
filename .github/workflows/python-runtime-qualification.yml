@@ -4,12 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       baseline_runtime_wheel_url:
-        description: HTTPS URL for the previously qualified 0.1.x runtime wheel
-        required: true
+        description: Optional HTTPS URL for a previously qualified 0.1.x runtime wheel
+        required: false
+        default: ""
         type: string
       baseline_runtime_wheel_sha256:
-        description: Expected SHA-256 for the baseline runtime wheel
-        required: true
+        description: Required SHA-256 when a baseline runtime wheel URL is supplied
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -58,8 +60,8 @@ jobs:
       - name: Build and consume clean artifacts
         run: |
           python -m build --sdist --wheel --outdir artifacts/python-runtime runtimes/python
-          python scripts/verify-python-runtime-install.py --server artifacts/python-runtime
-          python scripts/write-python-runtime-platform-receipt.py artifacts/python-runtime --output artifacts/qualification/platform.json
+          python scripts/verify-python-runtime-install.py --server artifacts/python-runtime --output artifacts/qualification/clean-install.json
+          python scripts/write-python-runtime-platform-receipt.py artifacts/python-runtime --clean-install-evidence artifacts/qualification/clean-install.json --output artifacts/qualification/platform.json
 
       - name: Upload platform qualification evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -100,7 +102,37 @@ jobs:
           npm ci --ignore-scripts --prefix clients/javascript
           (cd clients/javascript && npm pack --json --pack-destination ../../artifacts/javascript)
 
+      - name: Validate optional upgrade baseline inputs
+        id: baseline
+        env:
+          BASELINE_RUNTIME_WHEEL_URL: ${{ inputs.baseline_runtime_wheel_url }}
+          BASELINE_RUNTIME_WHEEL_SHA256: ${{ inputs.baseline_runtime_wheel_sha256 }}
+        run: |
+          python - <<'PY'
+          import os
+
+          url_supplied = bool(os.environ["BASELINE_RUNTIME_WHEEL_URL"].strip())
+          hash_supplied = bool(
+              os.environ["BASELINE_RUNTIME_WHEEL_SHA256"].strip()
+          )
+          if url_supplied != hash_supplied:
+              raise SystemExit(
+                  "Supply both baseline wheel inputs or leave both empty."
+              )
+          with open(
+              os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8"
+          ) as output:
+              output.write(
+                  "enabled=" + ("true" if url_supplied else "false") + "\n"
+              )
+          print(
+              "python-runtime-upgrade-baseline="
+              + ("supplied" if url_supplied else "not-supplied")
+          )
+          PY
+
       - name: Fetch verified upgrade baseline
+        if: ${{ steps.baseline.outputs.enabled == 'true' }}
         env:
           BASELINE_RUNTIME_WHEEL_URL: ${{ inputs.baseline_runtime_wheel_url }}
           BASELINE_RUNTIME_WHEEL_SHA256: ${{ inputs.baseline_runtime_wheel_sha256 }}
@@ -150,8 +182,15 @@ jobs:
           scripts/verify-python-runtime-external-worker.sh artifacts/runtime/*.whl
           scripts/verify-python-runtime-mcp-conformance.sh artifacts/runtime/*.whl
           python scripts/verify-python-runtime-security.py artifacts/runtime/*.whl --output artifacts/qualification/python-runtime-security.json
-          python scripts/verify-python-runtime-upgrade.py artifacts/baseline/*.whl artifacts/runtime/*.whl --output artifacts/qualification/python-runtime-upgrade.json
           python scripts/benchmark-python-runtime.py --output artifacts/qualification/python-runtime-performance.json
+
+      - name: Run installed upgrade qualification
+        if: ${{ steps.baseline.outputs.enabled == 'true' }}
+        run: >-
+          python scripts/verify-python-runtime-upgrade.py
+          artifacts/baseline/*.whl
+          artifacts/runtime/*.whl
+          --output artifacts/qualification/python-runtime-upgrade.json
 
       - name: Upload qualification evidence
         if: always()
