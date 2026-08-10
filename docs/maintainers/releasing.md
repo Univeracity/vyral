@@ -22,9 +22,8 @@ Each release candidate must be built from a reviewed commit in protected CI. Bef
    not part of the frozen conformance score. For the pinned alpha.11 runner, the eight failing task
    diagnostics are generic core-schema rejections of the task extension envelope after their
    functional checks pass; the ninth is an unimplemented pending JSON-Schema diagnostic fixture.
-   Do not authorize publication of `vyral-runtime` while its MCP evidence remains the explicitly
-   selected-scenario preview gate; it must first pass the same frozen requirements profile or be
-   deliberately excluded from that release.
+   The Python runtime must likewise retain a passing frozen `2026-07-28` requirements receipt
+   produced from its packaged wheel; conformance diagnostics must remain explicitly test-only.
 4. Publish packages only through a trusted-publishing or OIDC-backed registry configuration. Do
    not place long-lived registry tokens in the repository or workflow files.
 5. Attach provenance/attestations and SBOMs to the published release; publish container images with

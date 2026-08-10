@@ -180,7 +180,8 @@ jobs:
         run: |
           scripts/test-built-sdk-python-runtime.sh artifacts/runtime/*.whl artifacts/python-client/*.whl artifacts/javascript/*.tgz
           scripts/verify-python-runtime-external-worker.sh artifacts/runtime/*.whl
-          scripts/verify-python-runtime-mcp-conformance.sh artifacts/runtime/*.whl
+          VYRAL_PYTHON_MCP_CONFORMANCE_ARTIFACT_DIR=artifacts/qualification/python-mcp-conformance \
+            scripts/verify-python-runtime-mcp-conformance.sh artifacts/runtime/*.whl
           python scripts/verify-python-runtime-security.py artifacts/runtime/*.whl --output artifacts/qualification/python-runtime-security.json
           python scripts/benchmark-python-runtime.py --output artifacts/qualification/python-runtime-performance.json
 

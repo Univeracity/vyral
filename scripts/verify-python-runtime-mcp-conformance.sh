@@ -12,6 +12,9 @@ fi
 readonly MCP_SPEC_VERSION="2026-07-28"
 readonly MCP_CONFORMANCE_VERSION="0.2.0-alpha.11"
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/vyral-python-mcp-XXXXXX")"
+EVIDENCE_ROOT="${VYRAL_PYTHON_MCP_CONFORMANCE_ARTIFACT_DIR:-$TEST_ROOT/evidence}"
+RESULTS_ROOT="$EVIDENCE_ROOT/results"
+mkdir -p "$RESULTS_ROOT"
 SERVER_PID=""
 cleanup() {
   local status=$?
@@ -22,6 +25,9 @@ cleanup() {
   if [[ "$status" -ne 0 && -s "$TEST_ROOT/server.log" ]]; then
     echo "Python MCP host log (last 120 lines):" >&2
     tail -120 "$TEST_ROOT/server.log" >&2
+  fi
+  if [[ -n "${VYRAL_PYTHON_MCP_CONFORMANCE_ARTIFACT_DIR:-}" && -s "$TEST_ROOT/server.log" ]]; then
+    cp "$TEST_ROOT/server.log" "$EVIDENCE_ROOT/server.log"
   fi
   rm -rf "$TEST_ROOT"
   exit "$status"
@@ -77,35 +83,13 @@ if ! curl --fail --silent --show-error \
   exit 1
 fi
 
-readonly scenarios=(
-  server-stateless
-  http-header-validation
-  http-custom-header-server-validation
-  dns-rebinding-protection
-  caching
-  tools-list
-  resources-list
-  tasks-lifecycle
-  tasks-capability-negotiation
-  tasks-wire-fields
-  tasks-request-state-removal
-  tasks-mrtr-input
-  tasks-request-headers
-  tasks-dispatch-and-envelope
-  tasks-required-task-error
-  tasks-mrtr-composition
-)
+npx -y "@modelcontextprotocol/conformance@$MCP_CONFORMANCE_VERSION" \
+  server \
+  --url "http://127.0.0.1:$PORT/mcp" \
+  --requirements "$MCP_SPEC_VERSION" \
+  --output-dir "$RESULTS_ROOT"
 
-for scenario in "${scenarios[@]}"; do
-  npx -y "@modelcontextprotocol/conformance@$MCP_CONFORMANCE_VERSION" \
-    server \
-    --url "http://127.0.0.1:$PORT/mcp" \
-    --scenario "$scenario" \
-    --spec-version "$MCP_SPEC_VERSION" \
-    --force
-done
-
-printf 'python-runtime-mcp-preview=ok spec=%s runner=%s mode=selected scenarios=%s fullRequirements=false\n' \
+printf 'python-runtime-mcp-conformance=ok spec=%s runner=%s requirements=%s fullRequirements=true\n' \
   "$MCP_SPEC_VERSION" \
   "$MCP_CONFORMANCE_VERSION" \
-  "${#scenarios[@]}"
+  "$MCP_SPEC_VERSION"

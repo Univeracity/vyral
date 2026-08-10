@@ -126,6 +126,13 @@ def _serve_main(argv: Sequence[str]) -> int:
         parser.error(
             "A non-loopback --host requires VYRAL_API_KEY."
         )
+    if (
+        arguments.mcp_conformance_diagnostics
+        and not _loopback_bind(arguments.host)
+    ):
+        parser.error(
+            "MCP conformance diagnostics require a loopback --host."
+        )
     allowed_hosts = {
         "localhost",
         "127.0.0.1",

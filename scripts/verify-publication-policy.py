@@ -150,25 +150,25 @@ def main() -> int:
     python_gate = _read(
         ROOT / "scripts" / "verify-python-runtime-mcp-conformance.sh"
     )
-    releasing = _read(ROOT / "docs/maintainers/releasing.md")
-    python_has_frozen_requirements = "--requirements" in python_gate
+    python_has_frozen_requirements = all(
+        requirement in python_gate
+        for requirement in (
+            '--requirements "$MCP_SPEC_VERSION"',
+            "fullRequirements=true",
+            "VYRAL_PYTHON_MCP_CONFORMANCE_ARTIFACT_DIR",
+        )
+    )
     if not python_has_frozen_requirements:
-        if "fullRequirements=false" not in python_gate:
-            errors.append(
-                "Python MCP selected-scenario gate does not disclose fullRequirements=false"
-            )
-        if "Do not authorize publication of `vyral-runtime`" not in releasing:
-            errors.append(
-                "The release process does not withhold Python-runtime publication while "
-                "its MCP gate remains selected-scenario preview evidence"
-            )
+        errors.append(
+            "Python MCP gate must run and retain the frozen requirements profile"
+        )
 
     if errors:
         raise SystemExit("Publication policy failed:\n- " + "\n- ".join(errors))
     python_status = (
         "frozen-requirements"
         if python_has_frozen_requirements
-        else "selected-preview-publication-withheld"
+        else "frozen-requirements-missing"
     )
     print(
         "publication-policy=ok mode=build-only "

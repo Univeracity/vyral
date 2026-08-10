@@ -255,6 +255,10 @@ policy, and telemetry fixtures with:
 scripts/verify-mcp-conformance.sh
 ```
 
+The packaged Python host runs the same frozen official requirements profile in
+the Python runtime qualification workflow; its conformance fixtures are enabled
+only for that gate.
+
 See the [stateless MCP design](design/public-sdk-surface-and-stateless-mcp.md)
 for routing, catalog policy, security boundaries, and acceptance criteria.
 
