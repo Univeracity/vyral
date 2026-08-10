@@ -71,6 +71,7 @@ PUBLIC_DOC_FILES = {
 PUBLIC_DESIGN_FILES = {
     "design/admission-contract.md",
     "design/aws-opensearch-record-projection.md",
+    "design/developer-adoption-and-evidence-growth.md",
     "design/execution-runtime-adapter-matrix.md",
     "design/execution-runtime-plugin-authoring.md",
     "design/execution-runtime.md",
@@ -142,6 +143,7 @@ REQUIRED_FILES = {
     "conformance/runtime/v1/manifest.json",
     "conformance/runtime/v1/scenarios/goldens/admission-receipts.json",
     "design/admission-contract.md",
+    "design/developer-adoption-and-evidence-growth.md",
     "design/public-sdk-surface-and-stateless-mcp.md",
     "design/python-runtime.md",
     "qualification/adapter-qualification.json",

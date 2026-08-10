@@ -1,5 +1,5 @@
 {
-  "fileCount": 810,
+  "fileCount": 811,
   "files": [
     {
       "mode": "644",
@@ -505,6 +505,11 @@
       "mode": "644",
       "path": "design/aws-opensearch-record-projection.md",
       "sha256": "7276fc3852ab4b6e0a29d8d0db4dcb883591521bd65120c299ebd19baea77618"
+    },
+    {
+      "mode": "644",
+      "path": "design/developer-adoption-and-evidence-growth.md",
+      "sha256": "37e448c5e718ea4674cf6eb2e2867f7e4c807cefad3741f0d68c42d288e858c1"
     },
     {
       "mode": "644",
@@ -1379,7 +1384,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "f5221e6167ee2582b2ab0a1a35a802c232c3da21f9f7064f5873086d209814fe"
+      "sha256": "be4a9d5d9bba838554c2abe803b0c84f3e66f4d8a970c5c31695df4be2271b76"
     },
     {
       "mode": "755",
@@ -4054,5 +4059,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "fe07d3a6fe2bbbc92a584d162f9dde292fe11f9dec1f7296c045ef96b14cda65"
+  "treeSha256": "d5394a266e50679de75ed2bc87f939c7b9612bdc0e9de88ac960f388bc10d22e"
 }
