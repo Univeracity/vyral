@@ -35,6 +35,11 @@ REQUIRED_GATES = {
     "restart-preserved-run-identity",
     "second-process-idempotent-replay",
     "owned-state-safe-reset",
+    "generated-starter",
+    "generated-starter-first-run",
+    "generated-starter-idempotent-replay",
+    "generated-starter-versioned-new-run",
+    "install-to-use-under-five-minutes",
 }
 
 
@@ -157,7 +162,7 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
         )
         if (
             local_experience.get("schemaVersion")
-            != "vyral.python-runtime-clean-install.v1"
+            != "vyral.python-runtime-clean-install.v2"
             or local_experience.get("status") != "passed"
             or local_experience.get("serverExtraVerified") is not True
         ):
@@ -170,9 +175,19 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
         if (
             not isinstance(first_citation_budget, (int, float))
             or isinstance(first_citation_budget, bool)
+            or float(first_citation_budget) <= 0
         ):
             raise MatrixError(
                 f"Platform receipt {path} has no first-citation budget."
+            )
+        first_use_budget = local_experience.get("firstUseBudgetMs")
+        if (
+            not isinstance(first_use_budget, (int, float))
+            or isinstance(first_use_budget, bool)
+            or float(first_use_budget) != float(first_citation_budget)
+        ):
+            raise MatrixError(
+                f"Platform receipt {path} has no consistent first-use budget."
             )
         experience_artifacts = local_experience.get("artifacts")
         if (
@@ -185,6 +200,9 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
         artifact_kinds: set[str] = set()
         first_citation_values: list[float] = []
         first_command_values: list[float] = []
+        install_to_quickstart_values: list[float] = []
+        install_to_editable_values: list[float] = []
+        starter_first_run_values: list[float] = []
         for artifact_value in experience_artifacts:
             artifact = _object(
                 artifact_value,
@@ -197,19 +215,79 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
             artifact_kinds.add(kind)
             first_citation = artifact.get("firstCitationMs")
             first_command = artifact.get("firstCommandMs")
+            install_to_quickstart = artifact.get(
+                "installToQuickstartCompleteMs"
+            )
+            install_to_editable = artifact.get(
+                "installToEditableResultMs"
+            )
             if (
                 not isinstance(first_citation, (int, float))
                 or isinstance(first_citation, bool)
                 or not isinstance(first_command, (int, float))
                 or isinstance(first_command, bool)
+                or not isinstance(install_to_quickstart, (int, float))
+                or isinstance(install_to_quickstart, bool)
+                or not isinstance(install_to_editable, (int, float))
+                or isinstance(install_to_editable, bool)
+                or min(
+                    float(first_citation),
+                    float(first_command),
+                    float(install_to_quickstart),
+                    float(install_to_editable),
+                ) < 0
                 or float(first_citation) > float(first_citation_budget)
                 or float(first_command) > float(first_citation_budget)
+                or float(install_to_quickstart) > float(first_use_budget)
+                or float(install_to_editable) > float(first_use_budget)
             ):
                 raise MatrixError(
                     f"Platform receipt {path} exceeded its local time budget."
                 )
             first_citation_values.append(float(first_citation))
             first_command_values.append(float(first_command))
+            install_to_quickstart_values.append(
+                float(install_to_quickstart)
+            )
+            install_to_editable_values.append(float(install_to_editable))
+            starter = _object(
+                artifact.get("starter"),
+                f"{path}: localExperience starter",
+            )
+            starter_timings = {
+                field: starter.get(field)
+                for field in (
+                    "createCommandMs",
+                    "firstRunMs",
+                    "replayRunMs",
+                    "versionedRunMs",
+                )
+            }
+            if (
+                starter.get("status") != "passed"
+                or any(
+                    starter.get(field) is not True
+                    for field in (
+                        "receiptBeforeDispatch",
+                        "restartPreservedRunIdentity",
+                        "secondProcessReplayed",
+                        "versionedNewRun",
+                        "inspectableState",
+                    )
+                )
+                or any(
+                    not isinstance(metric, (int, float))
+                    or isinstance(metric, bool)
+                    or float(metric) < 0
+                    for metric in starter_timings.values()
+                )
+            ):
+                raise MatrixError(
+                    f"Platform receipt {path} has no passing editable starter."
+                )
+            starter_first_run = starter_timings["firstRunMs"]
+            assert isinstance(starter_first_run, (int, float))
+            starter_first_run_values.append(float(starter_first_run))
         if artifact_kinds != {"wheel", "sdist"}:
             raise MatrixError(
                 f"Platform receipt {path} has incomplete artifact kinds."
@@ -224,8 +302,16 @@ def verify(receipt_paths: list[Path]) -> dict[str, Any]:
             "fts5Available": environment.get("fts5Available"),
             "localExperience": {
                 "firstCitationBudgetMs": first_citation_budget,
+                "firstUseBudgetMs": first_use_budget,
                 "maxFirstCitationMs": max(first_citation_values),
                 "maxFirstCommandMs": max(first_command_values),
+                "maxInstallToQuickstartCompleteMs": max(
+                    install_to_quickstart_values
+                ),
+                "maxInstallToEditableResultMs": max(
+                    install_to_editable_values
+                ),
+                "maxStarterFirstRunMs": max(starter_first_run_values),
             },
         }
 

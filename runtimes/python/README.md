@@ -53,19 +53,39 @@ pass locally; automated evidence does not substitute for independent review.
 Unsupported optional providers are disclosed explicitly; the runtime does not
 silently delegate embedded behavior to .NET or to the existing HTTP client.
 
-## Local single-player quickstart
+## Local single-player experience
 
-From the repository root, install the package into an isolated environment and
-run one command against an explicit durable directory:
+From the repository root, install the package into an isolated environment:
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --editable runtimes/python
+```
+
+Generate one editable application and run it:
+
+```bash
+vyral-runtime init --path ./vyral_app.py
+python ./vyral_app.py
+```
+
+The generated file uses `@vyral(...)`, admits work with a stable idempotency
+key, prints the durable receipt, closes the first runtime before dispatch,
+reopens `.vyral/starter`, and completes the preserved run. Running the same
+file again reports `replayed=true` and dispatches no duplicate work. The
+generator refuses to overwrite an existing path; the result is ordinary
+Python source intended to be edited or absorbed into an application. A visible
+`RUN_VERSION` makes intent explicit: leave it unchanged to prove replay, then
+increment it after changing the work to admit a new run.
+
+For a connected retrieval-and-execution proof, run:
+
+```bash
 vyral-runtime quickstart --root ./.vyral/quickstart
 ```
 
-The command creates and ingests a three-document corpus, returns cited hybrid
+The quickstart creates and ingests a three-document corpus, returns cited hybrid
 retrieval context, admits a decorated handler with a stable idempotency key,
 closes the runtime before dispatch, reopens the same SQLite/filesystem state,
 and completes the preserved run identity. It reports the queued receipt before
@@ -88,18 +108,19 @@ directory bearing that marker:
 vyral-runtime quickstart --root ./.vyral/quickstart --reset
 ```
 
-Use `--json` with either command for machine-readable output. Package
-publication remains withheld, so the editable install is the supported public
-pre-release path. Once a qualified wheel is published, the install command can
-be replaced with `python -m pip install vyral-runtime` without changing the
-quickstart or inspection commands.
+Use `--json` with `init`, `quickstart`, or `inspect` for machine-readable
+output. Package publication remains withheld, so the editable install is the
+supported public pre-release path. Once a qualified wheel is published, the
+install command can be replaced with `python -m pip install vyral-runtime`
+without changing the local commands.
 
 The quickstart JSON includes measured `firstCitationMs`, `durableReceiptMs`,
 `restartRecoveryMs`, and `completedMs` milestones. Artifact qualification runs
-the installed wheel and sdist through the first command, a second-process
-idempotent replay, independent inspection, and marker-bounded reset. Each
-supported platform cell rejects a first citation or complete command taking
-more than five minutes.
+the installed wheel and sdist through the generated editable application, its
+idempotent rerun, the connected quickstart, a second-process quickstart replay,
+independent inspection, and marker-bounded reset. Each supported platform cell
+rejects either installed path if package installation through its first useful
+result takes more than five minutes.
 
 ```python
 from vyral_runtime import VyralRuntime

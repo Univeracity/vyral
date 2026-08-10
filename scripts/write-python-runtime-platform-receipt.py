@@ -67,10 +67,10 @@ def _load_clean_install_evidence(path: Path) -> dict[str, Any]:
     root = _mapping(value, "clean-install evidence")
     if (
         root.get("schemaVersion")
-        != "vyral.python-runtime-clean-install.v1"
+        != "vyral.python-runtime-clean-install.v2"
         or root.get("status") != "passed"
     ):
-        raise ValueError("Clean-install evidence is not a passing v1 receipt.")
+        raise ValueError("Clean-install evidence is not a passing v2 receipt.")
     environment = _mapping(
         root.get("environment"),
         "clean-install environment",
@@ -85,6 +85,15 @@ def _load_clean_install_evidence(path: Path) -> dict[str, Any]:
     budget = root.get("firstCitationBudgetMs")
     if not isinstance(budget, (int, float)) or isinstance(budget, bool):
         raise ValueError("Clean-install evidence has no numeric time budget.")
+    first_use_budget = root.get("firstUseBudgetMs")
+    if (
+        not isinstance(first_use_budget, (int, float))
+        or isinstance(first_use_budget, bool)
+        or float(first_use_budget) != float(budget)
+    ):
+        raise ValueError(
+            "Clean-install evidence has no consistent first-use time budget."
+        )
     artifacts = root.get("artifacts")
     if not isinstance(artifacts, list) or len(artifacts) != 2:
         raise ValueError(
@@ -101,6 +110,35 @@ def _load_clean_install_evidence(path: Path) -> dict[str, Any]:
         if not isinstance(kind, str):
             raise ValueError("Clean-install artifact kind must be a string.")
         kinds.add(kind)
+        install_ms = artifact.get("installMs")
+        install_to_quickstart_ms = artifact.get(
+            "installToQuickstartCompleteMs"
+        )
+        install_to_editable_result_ms = artifact.get(
+            "installToEditableResultMs"
+        )
+        if any(
+            not isinstance(metric, (int, float))
+            or isinstance(metric, bool)
+            or float(metric) < 0
+            for metric in (
+                install_ms,
+                install_to_quickstart_ms,
+                install_to_editable_result_ms,
+            )
+        ):
+            raise ValueError(
+                f"Clean-install {kind} has invalid first-use timings."
+            )
+        assert isinstance(install_to_quickstart_ms, (int, float))
+        assert isinstance(install_to_editable_result_ms, (int, float))
+        if max(
+            float(install_to_quickstart_ms),
+            float(install_to_editable_result_ms),
+        ) > float(first_use_budget):
+            raise ValueError(
+                f"Clean-install {kind} exceeded the first-use time budget."
+            )
         quickstart = _mapping(
             artifact.get("quickstart"),
             f"clean-install {kind} quickstart",
@@ -130,15 +168,66 @@ def _load_clean_install_evidence(path: Path) -> dict[str, Any]:
             raise ValueError(
                 f"Clean-install {kind} did not prove the complete local path."
             )
+        starter = _mapping(
+            artifact.get("starter"),
+            f"clean-install {kind} starter",
+        )
+        if starter.get("status") != "passed" or any(
+            starter.get(field) is not True
+            for field in (
+                "receiptBeforeDispatch",
+                "restartPreservedRunIdentity",
+                "secondProcessReplayed",
+                "versionedNewRun",
+                "inspectableState",
+            )
+        ):
+            raise ValueError(
+                f"Clean-install {kind} did not prove the editable starter."
+            )
+        starter_timings = {
+            field: starter.get(field)
+            for field in (
+                "createCommandMs",
+                "firstRunMs",
+                "replayRunMs",
+                "versionedRunMs",
+            )
+        }
+        if any(
+            not isinstance(metric, (int, float))
+            or isinstance(metric, bool)
+            or float(metric) < 0
+            for metric in starter_timings.values()
+        ):
+            raise ValueError(
+                f"Clean-install {kind} has invalid starter timings."
+            )
+        starter_summary: dict[str, object] = {
+            "status": "passed",
+            "receiptBeforeDispatch": True,
+            "restartPreservedRunIdentity": True,
+            "secondProcessReplayed": True,
+            "versionedNewRun": True,
+            "inspectableState": True,
+            **starter_timings,
+        }
         summaries.append(
             {
                 "artifactKind": kind,
                 "artifactName": artifact.get("artifactName"),
-                "installMs": artifact.get("installMs"),
+                "installMs": install_ms,
+                "installToQuickstartCompleteMs": (
+                    install_to_quickstart_ms
+                ),
+                "installToEditableResultMs": (
+                    install_to_editable_result_ms
+                ),
                 "firstCommandMs": first_command_ms,
                 "firstCitationMs": first_citation_ms,
                 "durableReceiptMs": quickstart.get("durableReceiptMs"),
                 "completedMs": quickstart.get("completedMs"),
+                "starter": starter_summary,
             }
         )
     if kinds != {"wheel", "sdist"}:
@@ -150,6 +239,7 @@ def _load_clean_install_evidence(path: Path) -> dict[str, Any]:
         "status": root.get("status"),
         "sha256": _hash(path),
         "firstCitationBudgetMs": budget,
+        "firstUseBudgetMs": first_use_budget,
         "serverExtraVerified": root.get("serverExtraVerified") is True,
         "artifacts": sorted(summaries, key=lambda item: str(item["artifactKind"])),
     }
@@ -301,6 +391,11 @@ def main() -> int:
                     "restart-preserved-run-identity",
                     "second-process-idempotent-replay",
                     "owned-state-safe-reset",
+                    "generated-starter",
+                    "generated-starter-first-run",
+                    "generated-starter-idempotent-replay",
+                    "generated-starter-versioned-new-run",
+                    "install-to-use-under-five-minutes",
                 )
                 if clean_install is not None
                 else ()
