@@ -159,7 +159,14 @@ async def _request(
         for item in sent
         if item["type"] == "http.response.body"
     )
-    decoded = json.loads(response_body) if response_body else None
+    if response_headers.get("content-type") == "text/event-stream":
+        decoded = [
+            json.loads(line.removeprefix("data: "))
+            for line in response_body.decode("utf-8").splitlines()
+            if line.startswith("data: ")
+        ]
+    else:
+        decoded = json.loads(response_body) if response_body else None
     return int(start["status"]), response_headers, decoded
 
 
@@ -476,12 +483,27 @@ class StatelessMcpHostTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "prompts", discovered["result"]["capabilities"]
         )
+        self.assertIn(
+            "completions", discovered["result"]["capabilities"]
+        )
         status, _, prompts = await _request(
             app, _rpc("prompts/list")
         )
         self.assertEqual(200, status)
         assert isinstance(prompts, dict)
-        self.assertEqual([], prompts["result"]["prompts"])
+        self.assertEqual(
+            {
+                "test_simple_prompt",
+                "test_prompt_with_arguments",
+                "test_prompt_with_embedded_resource",
+                "test_prompt_with_image",
+                "test_input_required_result_prompt",
+            },
+            {
+                prompt["name"]
+                for prompt in prompts["result"]["prompts"]
+            },
+        )
         self.assertEqual(
             "private", prompts["result"]["cacheScope"]
         )
@@ -519,6 +541,201 @@ class StatelessMcpHostTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(400, status)
         assert isinstance(response, dict)
         self.assertEqual(-32020, response["error"]["code"])
+
+    async def test_core_conformance_fixtures_are_diagnostic_only(
+        self,
+    ) -> None:
+        default_app = StatelessMcpApplication(self.runtime)
+        status, _, response = await _request(
+            default_app,
+            _rpc(
+                "tools/call",
+                params={"name": "test_simple_text", "arguments": {}},
+            ),
+        )
+        self.assertEqual(400, status)
+        assert isinstance(response, dict)
+        self.assertEqual(-32602, response["error"]["code"])
+
+        app = StatelessMcpApplication(
+            self.runtime,
+            McpApplicationConfig(enable_conformance_diagnostics=True),
+        )
+        expected_types = {
+            "test_simple_text": "text",
+            "test_image_content": "image",
+            "test_audio_content": "audio",
+            "test_embedded_resource": "resource",
+        }
+        for name, content_type in expected_types.items():
+            with self.subTest(name=name):
+                status, _, response = await _request(
+                    app,
+                    _rpc(
+                        "tools/call",
+                        params={"name": name, "arguments": {}},
+                    ),
+                )
+                self.assertEqual(200, status)
+                assert isinstance(response, dict)
+                self.assertEqual(
+                    content_type,
+                    response["result"]["content"][0]["type"],
+                )
+
+        status, _, response = await _request(
+            app,
+            _rpc(
+                "tools/call",
+                params={
+                    "name": "test_multiple_content_types",
+                    "arguments": {},
+                },
+            ),
+        )
+        self.assertEqual(200, status)
+        assert isinstance(response, dict)
+        self.assertEqual(
+            {"text", "image", "resource"},
+            {
+                item["type"]
+                for item in response["result"]["content"]
+            },
+        )
+
+        status, _, response = await _request(
+            app,
+            _rpc(
+                "tools/call",
+                params={
+                    "name": "test_error_handling",
+                    "arguments": {},
+                },
+            ),
+        )
+        self.assertEqual(200, status)
+        assert isinstance(response, dict)
+        self.assertTrue(response["result"]["isError"])
+
+    async def test_conformance_resources_prompts_and_completion(
+        self,
+    ) -> None:
+        app = StatelessMcpApplication(
+            self.runtime,
+            McpApplicationConfig(enable_conformance_diagnostics=True),
+        )
+        for uri, field in (
+            ("test://static-text", "text"),
+            ("test://static-binary", "blob"),
+            ("test://template/123/data", "text"),
+        ):
+            with self.subTest(uri=uri):
+                status, _, response = await _request(
+                    app, _rpc("resources/read", params={"uri": uri})
+                )
+                self.assertEqual(200, status)
+                assert isinstance(response, dict)
+                content = response["result"]["contents"][0]
+                self.assertIn(field, content)
+                if "template" in uri:
+                    self.assertIn("123", content[field])
+
+        prompt_cases = (
+            ("test_simple_prompt", {}),
+            (
+                "test_prompt_with_arguments",
+                {"arguments": {"arg1": "one", "arg2": "two"}},
+            ),
+            (
+                "test_prompt_with_embedded_resource",
+                {"arguments": {"resourceUri": "test://example"}},
+            ),
+            ("test_prompt_with_image", {}),
+        )
+        for name, extra in prompt_cases:
+            with self.subTest(prompt=name):
+                status, _, response = await _request(
+                    app,
+                    _rpc(
+                        "prompts/get",
+                        params={"name": name, **extra},
+                    ),
+                )
+                self.assertEqual(200, status)
+                assert isinstance(response, dict)
+                self.assertTrue(response["result"]["messages"])
+
+        status, _, response = await _request(
+            app,
+            _rpc(
+                "completion/complete",
+                params={
+                    "ref": {
+                        "type": "ref/prompt",
+                        "name": "test_prompt_with_arguments",
+                    },
+                    "argument": {"name": "arg1", "value": "test"},
+                },
+            ),
+        )
+        self.assertEqual(200, status)
+        assert isinstance(response, dict)
+        self.assertEqual([], response["result"]["completion"]["values"])
+
+    async def test_ephemeral_mrtr_and_progress_fixtures(self) -> None:
+        app = StatelessMcpApplication(
+            self.runtime,
+            McpApplicationConfig(enable_conformance_diagnostics=True),
+        )
+        initial = _rpc(
+            "tools/call",
+            params={
+                "name": "test_input_required_result_elicitation",
+                "arguments": {},
+            },
+        )
+        status, _, response = await _request(app, initial)
+        self.assertEqual(200, status)
+        assert isinstance(response, dict)
+        self.assertEqual(
+            "input_required", response["result"]["resultType"]
+        )
+        complete = _rpc(
+            "tools/call",
+            params={
+                "name": "test_input_required_result_elicitation",
+                "arguments": {},
+                "inputResponses": {
+                    "user_name": {
+                        "action": "accept",
+                        "content": {"name": "Ada"},
+                    }
+                },
+            },
+        )
+        status, _, response = await _request(app, complete)
+        self.assertEqual(200, status)
+        assert isinstance(response, dict)
+        self.assertIn("Ada", response["result"]["content"][0]["text"])
+
+        progress = _rpc(
+            "tools/call",
+            params={
+                "name": "test_tool_with_progress",
+                "arguments": {},
+            },
+        )
+        progress["params"]["_meta"]["progressToken"] = "progress-1"
+        status, headers, response = await _request(app, progress)
+        self.assertEqual(200, status)
+        self.assertEqual("text/event-stream", headers["content-type"])
+        assert isinstance(response, list)
+        self.assertEqual(4, len(response))
+        self.assertEqual(
+            [0, 50, 100],
+            [item["params"]["progress"] for item in response[:3]],
+        )
+        self.assertEqual("complete", response[3]["result"]["resultType"])
 
     async def test_shutdown_does_not_wait_for_durable_task_work(
         self,

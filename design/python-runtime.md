@@ -78,16 +78,16 @@ implementation exist:
   `2026-07-28` endpoint. REST routes are derived from OpenAPI and reach an
   implementation or explicit optional-adapter boundary. Clean runtime wheels
   pass the unchanged Python and JavaScript real-server consumers. A pinned
-  `@modelcontextprotocol/conformance` `0.2.0-alpha.11` preview gate covers 16
-  selected protocol, header, caching, DNS-rebinding, catalog, and Tasks
-  scenarios. It is not the frozen requirements profile and cannot authorize
-  Python-runtime publication.
+  `@modelcontextprotocol/conformance` `0.2.0-alpha.11` gate passes the complete
+  frozen `--requirements 2026-07-28` profile, including the runner's extension
+  and pending scenarios, with no failures.
 
 Availability and maturity remain separate. Every required profile reports
 `available: true`, but every profile remains `prototype` and
-`fullLocalReady` remains false until the manually gated Python 3.10–3.12
-Linux/macOS/Windows matrix and combined release qualification produce reviewed
-evidence. The local SQLite/filesystem topology reports itself as
+`fullLocalReady` remains false even though the manually gated Python 3.10–3.12
+Linux/macOS/Windows matrix has produced a complete passing receipt. Promotion
+still requires the remaining reviewed release evidence and independent
+security review. The local SQLite/filesystem topology reports itself as
 `local-single-node`; stateless MCP does not turn it into distributed storage.
 
 Executable evidence is split by concern:
@@ -101,8 +101,8 @@ Executable evidence is split by concern:
 - `scripts/verify-python-runtime-external-worker.sh` covers the real HTTP worker
   lifecycle and server restart.
 - `scripts/verify-python-runtime-mcp-conformance.sh` pins the final protocol and
-  official runner version while explicitly reporting its selected-scenario
-  preview scope and `fullRequirements=false`.
+  official runner version, executes the complete frozen requirements profile,
+  and retains runner results when an evidence directory is supplied.
 - `scripts/verify-python-runtime-security.py` emits installed-wheel adversarial
   evidence for REST/MCP authentication and routing, parser corruption,
   path/token hygiene, future-schema rejection, and bounded-work defaults.
@@ -601,9 +601,9 @@ The MCP adapter follows
 - REST retained for binary upload, automation, and operations that are
   deliberately not MCP tools.
 
-A read-only MCP preview can follow the embedded data/RAG profile. Durable task
-tools remain disabled until the native execution profile and two-instance
-durability tests pass.
+The MCP catalog remains read-only by default. Durable product task tools require
+an explicit allowlist and the native execution profile; the conformance-only
+fixtures are available solely through the explicit diagnostics switch.
 
 Plain-load-balancer support requires two separate claims:
 
@@ -984,28 +984,22 @@ only when:
 | Collection, graph, and CanonicalStore portability | Shared language-neutral envelopes and exact Python/.NET golden hashes pass; private databases are not exchanged |
 | Native and external Python handlers | In-process and real-HTTP lifecycle, wait, checkpoint, artifact, cancellation, restart, and replay gates pass |
 | REST and maintained SDKs | All 133 routes are wired; clean Python and JavaScript package consumers pass against the packaged Python host |
-| MCP `2026-07-28` | Sixteen selected alpha.11 runner scenarios plus Vyral authorization, limit, durable-task, and cross-instance fixtures pass; the frozen `--requirements 2026-07-28` profile is not yet a Python-runtime claim |
-| Clean installation without .NET | Wheel, sdist, server-extra, conformance, a pinned 77.5% combined line/branch regression floor, and strict typing gates pass locally on Linux/Python 3.12; the full Python 3.10–3.12 Linux/macOS/Windows matrix remains configured but not yet reviewed |
+| MCP `2026-07-28` | The packaged Python host passes the pinned alpha.11 runner's complete frozen `--requirements 2026-07-28` profile with 189 checks and no failures; diagnostic fixtures remain explicitly test-only |
+| Clean installation without .NET | Wheel, sdist, server-extra, conformance, a pinned 77.5% combined line/branch regression floor, and strict typing gates pass locally; the manually gated Python 3.10–3.12 Linux/macOS/Windows matrix has a complete passing receipt |
 | Readiness honesty | Implemented profiles are available but remain prototype; topology is explicitly local single node and optional providers remain unavailable |
-| Security/recovery/bounded work | A 27-case installed-wheel adversarial gate and the `0.1.0` → `0.1.1` schema/combined-host restart rehearsal pass locally; combined-host startup/shutdown rollback, redaction, owned-runtime closure, and cancellation propagation are directly tested; independent security review and the supported-platform run remain preview gates |
+| Security/recovery/bounded work | A 27-case installed-wheel adversarial gate and the `0.1.0` → `0.1.1` schema/combined-host restart rehearsal pass locally; combined-host startup/shutdown rollback, redaction, owned-runtime closure, and cancellation propagation are directly tested; independent security review remains a promotion gate |
 | Stability/qualification claim | The aggregate remains prototype and `fullLocalReady: false` |
 
 ## Immediate next actions
 
-1. Implement the frozen official MCP fixture/capability profile and pass
-   `--requirements 2026-07-28` before authorizing Python-runtime publication;
-   the selected-scenario preview gate is not a substitute.
-2. Manually dispatch and review the Python 3.10–3.12
-   Linux/macOS/Windows qualification workflow; do not enable automatic runs
-   while the repository-wide workflow gate is in place.
-3. Preserve the generated performance, security, upgrade, package identity,
+1. Preserve the generated performance, security, upgrade, package identity,
    platform, and MCP runner JSON as reviewed release evidence.
-4. Run an independent security review of host authentication, archive/import
+2. Run an independent security review of host authentication, archive/import
    parsers, worker bearer-token handling, MCP header routing, and bounded-work
    defaults.
-5. Review the completed `0.1.0` → `0.1.1` installed schema upgrade and combined
+3. Review the completed `0.1.0` → `0.1.1` installed schema upgrade and combined
    host restart receipt with the other promotion evidence.
-6. Add optional native acceleration or shared/distributed adapters only through
+4. Add optional native acceleration or shared/distributed adapters only through
    Phase 6's independent qualification rules.
 
 ## Related decisions

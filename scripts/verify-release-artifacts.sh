@@ -457,7 +457,8 @@ scripts/test-built-sdk-python-runtime.sh \
   "${javascript_packages[0]}"
 scripts/verify-python-runtime-external-worker.sh \
   "${python_runtime_wheels[0]}"
-scripts/verify-python-runtime-mcp-conformance.sh \
+VYRAL_PYTHON_MCP_CONFORMANCE_ARTIFACT_DIR="$QUALIFICATION_DIR/python-mcp-conformance" \
+  scripts/verify-python-runtime-mcp-conformance.sh \
   "${python_runtime_wheels[0]}"
 python3 scripts/verify-python-runtime-security.py \
   "${python_runtime_wheels[0]}" \

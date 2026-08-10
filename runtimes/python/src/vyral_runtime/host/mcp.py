@@ -7,8 +7,11 @@ from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, fields, is_dataclass
 from datetime import datetime
+import hashlib
+import hmac
 import json
 from typing import Any, Mapping, Protocol, cast
+import uuid
 from urllib.parse import urlsplit
 
 from .._version import CONTRACT_VERSION, RUNTIME_VERSION
@@ -57,6 +60,62 @@ _CONFORMANCE_TASK_HANDLERS = {
     "test_tool_with_task": "mcp.conformance.composed",
 }
 _CONFORMANCE_INPUT_CHECKPOINT = "mcp-input-requests"
+_CONFORMANCE_IMAGE_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHw"
+    "AFBQIAX8jx0gAAAABJRU5ErkJggg=="
+)
+_CONFORMANCE_AUDIO_BASE64 = (
+    "UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAA="
+)
+_CORE_CONFORMANCE_TOOLS = frozenset(
+    {
+        "test_simple_text",
+        "test_image_content",
+        "test_audio_content",
+        "test_embedded_resource",
+        "test_multiple_content_types",
+        "test_error_handling",
+        "test_tool_with_progress",
+        "json_schema_2020_12_tool",
+    }
+)
+_MRTR_CONFORMANCE_TOOLS = frozenset(
+    {
+        "test_input_required_result_elicitation",
+        "test_input_required_result_sampling",
+        "test_input_required_result_list_roots",
+        "test_input_required_result_request_state",
+        "test_input_required_result_multiple_inputs",
+        "test_input_required_result_multi_round",
+        "test_incomplete_result_elicitation",
+        "test_input_required_result_tampered_state",
+        "test_input_required_result_capabilities",
+    }
+)
+_CONFORMANCE_PROMPTS = frozenset(
+    {
+        "test_simple_prompt",
+        "test_prompt_with_arguments",
+        "test_prompt_with_embedded_resource",
+        "test_prompt_with_image",
+        "test_input_required_result_prompt",
+    }
+)
+_CONFORMANCE_STATIC_RESOURCES = frozenset(
+    {"test://static-text", "test://static-binary"}
+)
+_CONFORMANCE_TOOL_NAMES = (
+    _CORE_CONFORMANCE_TOOLS
+    | _MRTR_CONFORMANCE_TOOLS
+    | frozenset(_CONFORMANCE_TASK_HANDLERS)
+    | {
+        "test_custom_header",
+        "greet",
+        "test_logging_tool",
+        "test_missing_capability",
+        "test_streaming_elicitation",
+    }
+)
 
 
 class McpAuthorizer(Protocol):
@@ -337,6 +396,32 @@ class StatelessMcpApplication:
                 }
             },
         )
+        progress_token = _conformance_progress_token(
+            method, params, meta, self.config.enable_conformance_diagnostics
+        )
+        if progress_token is not None:
+            progress_messages: list[dict[str, JSONValue]] = []
+            for progress in (0, 50, 100):
+                progress_messages.append(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "notifications/progress",
+                        "params": {
+                            "progressToken": progress_token,
+                            "progress": progress,
+                            "total": 100,
+                        },
+                    }
+                )
+            progress_messages.append(
+                {
+                    "jsonrpc": "2.0",
+                    "id": cast(JSONValue, request_id),
+                    "result": result,
+                }
+            )
+            await _send_sse_json_rpc(send, progress_messages)
+            return
         await _send_json(
             send,
             200,
@@ -362,22 +447,31 @@ class StatelessMcpApplication:
             await self._authorize_catalog(
                 "resources/templates/list", headers
             )
-            return {
-                "resultType": "complete",
-                "resourceTemplates": [],
-                "ttlMs": self.config.list_ttl_ms,
-                "cacheScope": "public",
-            }
+            return self._list_resource_templates()
         if (
             method == "prompts/list"
             and self.config.enable_conformance_diagnostics
         ):
             await self._authorize_catalog("prompts/list", headers)
+            return self._list_conformance_prompts()
+        if (
+            method == "prompts/get"
+            and self.config.enable_conformance_diagnostics
+        ):
+            await self._authorize_catalog("prompts/get", headers)
+            return self._get_conformance_prompt(params)
+        if (
+            method == "completion/complete"
+            and self.config.enable_conformance_diagnostics
+        ):
+            await self._authorize_catalog("completion/complete", headers)
             return {
                 "resultType": "complete",
-                "prompts": [],
-                "ttlMs": self.config.list_ttl_ms,
-                "cacheScope": "private",
+                "completion": {
+                    "values": [],
+                    "hasMore": False,
+                    "total": 0,
+                },
             }
         if method == "resources/read":
             return await self._read_resource(params, headers)
@@ -413,6 +507,7 @@ class StatelessMcpApplication:
         }
         if self.config.enable_conformance_diagnostics:
             capabilities["prompts"] = {}
+            capabilities["completions"] = {}
         if any(
             item.exposure == "task" and self._enabled(item)
             for item in self._catalog
@@ -507,6 +602,8 @@ class StatelessMcpApplication:
                     }
                 )
             tools.extend(_conformance_task_descriptors())
+            tools.extend(_core_conformance_tool_descriptors())
+            tools.extend(_mrtr_conformance_tool_descriptors())
         for item in sorted(
             self._catalog, key=lambda entry: entry.mcp_id
         ):
@@ -552,6 +649,8 @@ class StatelessMcpApplication:
 
     def _list_resources(self) -> dict[str, JSONValue]:
         resources: list[JSONValue] = []
+        if self.config.enable_conformance_diagnostics:
+            resources.extend(_conformance_resource_descriptors())
         for item in sorted(
             self._catalog, key=lambda entry: entry.mcp_id
         ):
@@ -565,12 +664,141 @@ class StatelessMcpApplication:
             "cacheScope": "private",
         }
 
+    def _list_resource_templates(self) -> dict[str, JSONValue]:
+        templates: list[JSONValue] = []
+        if self.config.enable_conformance_diagnostics:
+            templates.append(
+                {
+                    "uriTemplate": "test://template/{id}/data",
+                    "name": "Resource Template",
+                    "description": (
+                        "MCP conformance diagnostic; never enabled "
+                        "in ordinary Vyral deployments."
+                    ),
+                    "mimeType": "application/json",
+                }
+            )
+        return {
+            "resultType": "complete",
+            "resourceTemplates": templates,
+            "ttlMs": self.config.list_ttl_ms,
+            "cacheScope": (
+                "private"
+                if self.config.enable_conformance_diagnostics
+                else "public"
+            ),
+        }
+
+    def _list_conformance_prompts(self) -> dict[str, JSONValue]:
+        return {
+            "resultType": "complete",
+            "prompts": _conformance_prompt_descriptors(),
+            "ttlMs": self.config.list_ttl_ms,
+            "cacheScope": "private",
+        }
+
+    def _get_conformance_prompt(
+        self, params: Mapping[str, Any]
+    ) -> dict[str, JSONValue]:
+        name = _required_text(params, "name")
+        if name not in _CONFORMANCE_PROMPTS:
+            raise LookupError(f"Prompt {name!r} was not found.")
+        arguments_value = params.get("arguments", {})
+        if not isinstance(arguments_value, Mapping):
+            raise TypeError("Prompt arguments must be an object.")
+        arguments = cast(Mapping[str, Any], arguments_value)
+        if name == "test_input_required_result_prompt":
+            input_responses = params.get("inputResponses")
+            if not isinstance(input_responses, Mapping):
+                return {
+                    "resultType": "input_required",
+                    "inputRequests": {
+                        "user_context": _elicitation_input(
+                            "What context should the prompt use?",
+                            "context",
+                        )
+                    },
+                }
+            context = _elicited_value(
+                input_responses, "user_context", "context"
+            )
+            return {
+                "resultType": "complete",
+                "description": (
+                    "Prompt customized with elicited user context."
+                ),
+                "messages": [
+                    _prompt_text(
+                        f"Please continue using context: {context}"
+                    )
+                ],
+            }
+        messages: list[JSONValue]
+        if name == "test_simple_prompt":
+            messages = [
+                _prompt_text(
+                    "This is a simple prompt for testing."
+                )
+            ]
+        elif name == "test_prompt_with_arguments":
+            arg1 = _required_text(arguments, "arg1")
+            arg2 = _required_text(arguments, "arg2")
+            messages = [
+                _prompt_text(
+                    f"Prompt with arguments: arg1={arg1}, arg2={arg2}"
+                )
+            ]
+        elif name == "test_prompt_with_embedded_resource":
+            resource_uri = _required_text(arguments, "resourceUri")
+            messages = [
+                {
+                    "role": "user",
+                    "content": {
+                        "type": "resource",
+                        "resource": {
+                            "uri": resource_uri,
+                            "mimeType": "text/plain",
+                            "text": (
+                                "Embedded resource content for testing."
+                            ),
+                        },
+                    },
+                },
+                _prompt_text(
+                    "Please process the embedded resource above."
+                ),
+            ]
+        else:
+            messages = [
+                {
+                    "role": "user",
+                    "content": {
+                        "type": "image",
+                        "data": _CONFORMANCE_IMAGE_BASE64,
+                        "mimeType": "image/png",
+                    },
+                },
+                _prompt_text("Please analyze the image above."),
+            ]
+        return {
+            "resultType": "complete",
+            "messages": messages,
+        }
+
     async def _read_resource(
         self,
         params: Mapping[str, Any],
         headers: Mapping[str, str],
     ) -> dict[str, JSONValue]:
         uri = _required_text(params, "uri")
+        if (
+            self.config.enable_conformance_diagnostics
+            and _is_conformance_resource(uri)
+        ):
+            await self._authorize_catalog("resources/read", headers)
+            return _read_conformance_resource(
+                uri, self.config.resource_ttl_ms
+            )
         item = self._entry(uri, "resource")
         await self._authorize(item, headers, {"uri": uri})
         if uri == "vyral://health/v1":
@@ -623,6 +851,23 @@ class StatelessMcpApplication:
         if not isinstance(arguments_value, Mapping):
             raise TypeError("Tool arguments must be an object.")
         arguments = cast(Mapping[str, Any], arguments_value)
+        if (
+            self.config.enable_conformance_diagnostics
+            and name in _CONFORMANCE_TOOL_NAMES
+        ):
+            await self._authorize_catalog("tools/call", headers)
+        if (
+            self.config.enable_conformance_diagnostics
+            and name in _CORE_CONFORMANCE_TOOLS
+        ):
+            return _call_core_conformance_tool(name, meta)
+        if (
+            self.config.enable_conformance_diagnostics
+            and name in _MRTR_CONFORMANCE_TOOLS
+        ):
+            return _call_mrtr_conformance_tool(
+                name, params, meta
+            )
         if (
             self.config.enable_conformance_diagnostics
             and name
@@ -1658,6 +1903,24 @@ def _validate_conformance_headers(
         )
 
 
+def _conformance_progress_token(
+    method: str,
+    params: Mapping[str, Any],
+    meta: Mapping[str, Any],
+    enabled: bool,
+) -> JSONValue | None:
+    if (
+        not enabled
+        or method != "tools/call"
+        or params.get("name") != "test_tool_with_progress"
+    ):
+        return None
+    token = meta.get("progressToken")
+    if isinstance(token, (str, int)) and not isinstance(token, bool):
+        return cast(JSONValue, token)
+    return None
+
+
 def _request_origin_allowed(
     headers: Mapping[str, str],
     allowed_origins: frozenset[str],
@@ -1821,6 +2084,550 @@ def _conformance_task_descriptors() -> list[JSONValue]:
             },
         },
     ]
+
+
+def _conformance_tool_descriptor(
+    name: str,
+    description: str,
+    schema: Mapping[str, JSONValue] | None = None,
+) -> dict[str, JSONValue]:
+    return {
+        "name": name,
+        "description": description,
+        "inputSchema": dict(schema or _schema()),
+    }
+
+
+def _core_conformance_tool_descriptors() -> list[JSONValue]:
+    descriptions = {
+        "test_simple_text": "Returns the MCP text fixture.",
+        "test_image_content": "Returns the MCP image fixture.",
+        "test_audio_content": "Returns the MCP audio fixture.",
+        "test_embedded_resource": (
+            "Returns the MCP embedded-resource fixture."
+        ),
+        "test_multiple_content_types": (
+            "Returns the MCP mixed-content fixture."
+        ),
+        "test_error_handling": "Returns the MCP tool-error fixture.",
+        "test_tool_with_progress": (
+            "Emits the bounded MCP progress fixture."
+        ),
+    }
+    result: list[JSONValue] = [
+        _conformance_tool_descriptor(name, description)
+        for name, description in descriptions.items()
+    ]
+    result.append(
+        _conformance_tool_descriptor(
+            "json_schema_2020_12_tool",
+            "Tool with JSON Schema 2020-12 features.",
+            {
+                "$schema": (
+                    "https://json-schema.org/draft/2020-12/schema"
+                ),
+                "type": "object",
+                "$defs": {
+                    "address": {
+                        "$anchor": "addressDef",
+                        "type": "object",
+                        "properties": {
+                            "street": {"type": "string"},
+                            "city": {"type": "string"},
+                        },
+                    }
+                },
+                "properties": {
+                    "name": {"type": "string"},
+                    "address": {"$ref": "#/$defs/address"},
+                    "contactMethod": {
+                        "type": "string",
+                        "enum": ["phone", "email"],
+                    },
+                    "phone": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+                "allOf": [
+                    {
+                        "anyOf": [
+                            {"required": ["phone"]},
+                            {"required": ["email"]},
+                        ]
+                    }
+                ],
+                "if": {
+                    "properties": {
+                        "contactMethod": {"const": "phone"}
+                    },
+                    "required": ["contactMethod"],
+                },
+                "then": {"required": ["phone"]},
+                "else": {"required": ["email"]},
+                "additionalProperties": False,
+            },
+        )
+    )
+    return result
+
+
+def _mrtr_conformance_tool_descriptors() -> list[JSONValue]:
+    return [
+        _conformance_tool_descriptor(
+            name,
+            "MCP MRTR conformance diagnostic; never enabled in "
+            "ordinary Vyral deployments.",
+        )
+        for name in sorted(_MRTR_CONFORMANCE_TOOLS)
+    ]
+
+
+def _conformance_resource_descriptors() -> list[JSONValue]:
+    return [
+        {
+            "uri": "test://static-text",
+            "name": "Static Text Resource",
+            "description": "MCP conformance text fixture.",
+            "mimeType": "text/plain",
+        },
+        {
+            "uri": "test://static-binary",
+            "name": "Static Binary Resource",
+            "description": "MCP conformance binary fixture.",
+            "mimeType": "image/png",
+        },
+    ]
+
+
+def _conformance_prompt_descriptors() -> list[JSONValue]:
+    return [
+        {
+            "name": "test_simple_prompt",
+            "description": "MCP conformance prompt fixture.",
+        },
+        {
+            "name": "test_prompt_with_arguments",
+            "description": "MCP conformance argument prompt fixture.",
+            "arguments": [
+                {
+                    "name": "arg1",
+                    "description": "First test argument.",
+                    "required": True,
+                },
+                {
+                    "name": "arg2",
+                    "description": "Second test argument.",
+                    "required": True,
+                },
+            ],
+        },
+        {
+            "name": "test_prompt_with_embedded_resource",
+            "description": "MCP conformance resource prompt fixture.",
+            "arguments": [
+                {
+                    "name": "resourceUri",
+                    "description": "Resource URI to embed.",
+                    "required": True,
+                }
+            ],
+        },
+        {
+            "name": "test_prompt_with_image",
+            "description": "MCP conformance image prompt fixture.",
+        },
+        {
+            "name": "test_input_required_result_prompt",
+            "description": "MCP MRTR prompt fixture.",
+        },
+    ]
+
+
+def _is_conformance_resource(uri: str) -> bool:
+    return uri in _CONFORMANCE_STATIC_RESOURCES or (
+        uri.startswith("test://template/") and uri.endswith("/data")
+    )
+
+
+def _read_conformance_resource(
+    uri: str, ttl_ms: int
+) -> dict[str, JSONValue]:
+    if uri == "test://static-text":
+        content: dict[str, JSONValue] = {
+            "uri": uri,
+            "mimeType": "text/plain",
+            "text": "This is the content of the static text resource.",
+        }
+    elif uri == "test://static-binary":
+        content = {
+            "uri": uri,
+            "mimeType": "image/png",
+            "blob": _CONFORMANCE_IMAGE_BASE64,
+        }
+    else:
+        identifier = uri[len("test://template/") : -len("/data")]
+        if not identifier:
+            raise LookupError(f"Resource {uri!r} was not found.")
+        content = {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(
+                {
+                    "id": identifier,
+                    "templateTest": True,
+                    "data": f"Data for ID: {identifier}",
+                },
+                separators=(",", ":"),
+            ),
+        }
+    return {
+        "resultType": "complete",
+        "contents": [content],
+        "ttlMs": ttl_ms,
+        "cacheScope": "private",
+    }
+
+
+def _prompt_text(text: str) -> dict[str, JSONValue]:
+    return {
+        "role": "user",
+        "content": {"type": "text", "text": text},
+    }
+
+
+def _complete_text(text: str) -> dict[str, JSONValue]:
+    return {
+        "resultType": "complete",
+        "content": [{"type": "text", "text": text}],
+        "isError": False,
+    }
+
+
+def _call_core_conformance_tool(
+    name: str, meta: Mapping[str, Any]
+) -> dict[str, JSONValue]:
+    del meta
+    if name == "test_simple_text":
+        return _complete_text(
+            "This is a simple text response for testing."
+        )
+    if name == "test_image_content":
+        content: list[JSONValue] = [
+            {
+                "type": "image",
+                "data": _CONFORMANCE_IMAGE_BASE64,
+                "mimeType": "image/png",
+            }
+        ]
+    elif name == "test_audio_content":
+        content = [
+            {
+                "type": "audio",
+                "data": _CONFORMANCE_AUDIO_BASE64,
+                "mimeType": "audio/wav",
+            }
+        ]
+    elif name == "test_embedded_resource":
+        content = [
+            {
+                "type": "resource",
+                "resource": {
+                    "uri": "test://embedded-resource",
+                    "mimeType": "text/plain",
+                    "text": "This is an embedded resource content.",
+                },
+            }
+        ]
+    elif name == "test_multiple_content_types":
+        content = [
+            {
+                "type": "text",
+                "text": "Multiple content types test:",
+            },
+            {
+                "type": "image",
+                "data": _CONFORMANCE_IMAGE_BASE64,
+                "mimeType": "image/png",
+            },
+            {
+                "type": "resource",
+                "resource": {
+                    "uri": "test://mixed-content-resource",
+                    "mimeType": "application/json",
+                    "text": '{"test":"data","value":123}',
+                },
+            },
+        ]
+    elif name == "test_error_handling":
+        return {
+            "resultType": "complete",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "This tool intentionally returns an error "
+                        "for testing."
+                    ),
+                }
+            ],
+            "isError": True,
+        }
+    else:
+        return _complete_text("conformance diagnostic complete")
+    return {
+        "resultType": "complete",
+        "content": content,
+        "isError": False,
+    }
+
+
+def _elicitation_input(
+    message: str,
+    property_name: str,
+    type_name: str = "string",
+) -> dict[str, JSONValue]:
+    return {
+        "method": "elicitation/create",
+        "params": {
+            "message": message,
+            "mode": "form",
+            "requestedSchema": {
+                "type": "object",
+                "properties": {
+                    property_name: {"type": type_name}
+                },
+                "required": [property_name],
+            },
+        },
+    }
+
+
+def _sampling_input(prompt: str) -> dict[str, JSONValue]:
+    return {
+        "method": "sampling/createMessage",
+        "params": {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": {"type": "text", "text": prompt},
+                }
+            ],
+            "maxTokens": 100,
+        },
+    }
+
+
+def _roots_input() -> dict[str, JSONValue]:
+    return {"method": "roots/list", "params": {}}
+
+
+def _input_required(
+    requests: Mapping[str, JSONValue],
+    request_state: str | None = None,
+) -> dict[str, JSONValue]:
+    result: dict[str, JSONValue] = {
+        "resultType": "input_required",
+        "inputRequests": dict(requests),
+    }
+    if request_state is not None:
+        result["requestState"] = request_state
+    return result
+
+
+def _input_responses(
+    params: Mapping[str, Any]
+) -> Mapping[str, Any] | None:
+    value = params.get("inputResponses")
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise TypeError("inputResponses must be an object.")
+    return cast(Mapping[str, Any], value)
+
+
+def _elicited_value(
+    responses: Mapping[str, Any], key: str, property_name: str
+) -> str:
+    response = responses.get(key)
+    if not isinstance(response, Mapping):
+        raise TypeError(f"Input response {key!r} must be an object.")
+    content = response.get("content")
+    if not isinstance(content, Mapping):
+        raise TypeError(f"Input response {key!r} requires content.")
+    value = content.get(property_name)
+    return str(value) if value is not None else "(unknown)"
+
+
+def _sampling_text(
+    responses: Mapping[str, Any], key: str
+) -> str:
+    response = responses.get(key)
+    if not isinstance(response, Mapping):
+        raise TypeError(f"Input response {key!r} must be an object.")
+    content = response.get("content")
+    if isinstance(content, Mapping):
+        text = content.get("text")
+        return str(text) if text is not None else "(no text)"
+    if isinstance(content, list):
+        for item in content:
+            if isinstance(item, Mapping) and item.get("type") == "text":
+                text = item.get("text")
+                return str(text) if text is not None else "(no text)"
+    return "(no text)"
+
+
+def _signed_request_state() -> str:
+    nonce = uuid.uuid4().hex
+    digest = hashlib.sha256(
+        f"mrtr-conformance-state-v1:{nonce}".encode("utf-8")
+    ).hexdigest().upper()
+    return f"{nonce}.{digest}"
+
+
+def _valid_request_state(state: str) -> bool:
+    nonce, separator, received = state.rpartition(".")
+    if not separator or not nonce or not received:
+        return False
+    expected = hashlib.sha256(
+        f"mrtr-conformance-state-v1:{nonce}".encode("utf-8")
+    ).hexdigest().upper()
+    return hmac.compare_digest(received, expected)
+
+
+def _call_mrtr_conformance_tool(
+    name: str,
+    params: Mapping[str, Any],
+    meta: Mapping[str, Any],
+) -> dict[str, JSONValue]:
+    responses = _input_responses(params)
+    state_value = params.get("requestState")
+    state = state_value if isinstance(state_value, str) else None
+    if name in {
+        "test_input_required_result_elicitation",
+        "test_incomplete_result_elicitation",
+    }:
+        if responses is None or "user_name" not in responses:
+            return _input_required(
+                {
+                    "user_name": _elicitation_input(
+                        "What is your name?", "name"
+                    )
+                }
+            )
+        return _complete_text(
+            f"Hello, {_elicited_value(responses, 'user_name', 'name')}!"
+        )
+    if name == "test_input_required_result_sampling":
+        if responses is None or "capital_question" not in responses:
+            return _input_required(
+                {
+                    "capital_question": _sampling_input(
+                        "What is the capital of France?"
+                    )
+                }
+            )
+        return _complete_text(
+            "Sampling said: "
+            + _sampling_text(responses, "capital_question")
+        )
+    if name == "test_input_required_result_list_roots":
+        if responses is None or "client_roots" not in responses:
+            return _input_required({"client_roots": _roots_input()})
+        response = responses.get("client_roots")
+        roots = (
+            response.get("roots")
+            if isinstance(response, Mapping)
+            else None
+        )
+        count = len(roots) if isinstance(roots, list) else 0
+        return _complete_text(f"Got {count} root(s) from the client.")
+    if name == "test_input_required_result_request_state":
+        if state is not None:
+            return _complete_text(
+                "state-ok"
+                if state == "mrtr-conformance-state-v1"
+                else "state-mismatch"
+            )
+        return _input_required(
+            {
+                "confirm": _elicitation_input(
+                    "Please confirm", "ok", "boolean"
+                )
+            },
+            "mrtr-conformance-state-v1",
+        )
+    if name == "test_input_required_result_multiple_inputs":
+        if responses is not None and len(responses) >= 3:
+            return _complete_text("multiple-inputs-ok")
+        return _input_required(
+            {
+                "user_name": _elicitation_input(
+                    "What is your name?", "name"
+                ),
+                "greeting": _sampling_input("Generate a greeting"),
+                "client_roots": _roots_input(),
+            },
+            "multi-input-state",
+        )
+    if name == "test_input_required_result_multi_round":
+        if state is None:
+            return _input_required(
+                {
+                    "step1": _elicitation_input(
+                        "Step 1: What is your name?", "name"
+                    )
+                },
+                "round-1",
+            )
+        if state == "round-1":
+            return _input_required(
+                {
+                    "step2": _elicitation_input(
+                        "Step 2: What is your favorite color?",
+                        "color",
+                    )
+                },
+                "round-2",
+            )
+        return _complete_text("multi-round-ok")
+    if name == "test_input_required_result_tampered_state":
+        if state is not None:
+            if not _valid_request_state(state):
+                raise _McpError(
+                    400,
+                    _INVALID_PARAMS,
+                    "requestState failed integrity verification.",
+                )
+            return _complete_text("tampered-state-ok")
+        return _input_required(
+            {
+                "confirm": _elicitation_input(
+                    "Please confirm", "ok", "boolean"
+                )
+            },
+            _signed_request_state(),
+        )
+    if responses is not None and responses:
+        return _complete_text("capability-check-ok")
+    capabilities = meta.get(
+        "io.modelcontextprotocol/clientCapabilities"
+    )
+    requests: dict[str, JSONValue] = {}
+    if isinstance(capabilities, Mapping):
+        if isinstance(capabilities.get("sampling"), Mapping):
+            requests["capital_question"] = _sampling_input(
+                "What is the capital of France?"
+            )
+        if isinstance(capabilities.get("elicitation"), Mapping):
+            requests["user_name"] = _elicitation_input(
+                "What is your name?", "name"
+            )
+        if isinstance(capabilities.get("roots"), Mapping):
+            requests["client_roots"] = _roots_input()
+    if not requests:
+        return _complete_text(
+            "capability-check-ok: no MRTR capabilities"
+        )
+    return _input_required(requests)
 
 
 async def _conformance_slow_compute(
@@ -2118,6 +2925,36 @@ async def _send_json(
     await send(
         {"type": "http.response.body", "body": body}
     )
+
+
+async def _send_sse_json_rpc(
+    send: Callable[[Mapping[str, Any]], Awaitable[None]],
+    messages: list[dict[str, JSONValue]],
+) -> None:
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", b"text/event-stream"),
+                (b"cache-control", b"no-cache"),
+            ],
+        }
+    )
+    for index, message in enumerate(messages):
+        payload = json.dumps(
+            message,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b"event: message\ndata: " + payload + b"\n\n",
+                "more_body": index < len(messages) - 1,
+            }
+        )
 
 
 async def _send_empty(

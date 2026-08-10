@@ -213,7 +213,6 @@ class HostCliTests(unittest.TestCase):
                     "runtime.example",
                     "--allowed-origin",
                     "https://console.example",
-                    "--mcp-conformance-diagnostics",
                 ]
             )
 
@@ -240,13 +239,31 @@ class HostCliTests(unittest.TestCase):
             rest_config.allowed_origins,
             mcp_config.allowed_origins,
         )
-        self.assertTrue(mcp_config.enable_conformance_diagnostics)
+        self.assertFalse(mcp_config.enable_conformance_diagnostics)
         run.assert_called_once_with(
             application,
             host="0.0.0.0",
             port=8443,
             log_level="warning",
         )
+
+    def test_conformance_diagnostics_require_loopback_bind(self) -> None:
+        with tempfile.TemporaryDirectory() as root, patch.dict(
+            os.environ, {"VYRAL_API_KEY": "shared-secret"}, clear=True
+        ), self.assertRaises(SystemExit) as raised:
+            main(
+                [
+                    "--root",
+                    root,
+                    "--host",
+                    "0.0.0.0",
+                    "--allowed-host",
+                    "runtime.example",
+                    "--mcp-conformance-diagnostics",
+                ]
+            )
+
+        self.assertEqual(2, raised.exception.code)
 
 
 if __name__ == "__main__":
