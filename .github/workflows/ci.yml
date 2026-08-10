@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: Build and test .NET
+    runs-on: ubuntu-24.04
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up supported .NET SDKs
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore Vyral.sln
+
+      - name: Build
+        run: dotnet build Vyral.sln --configuration Release --no-restore
+
+      - name: Run deterministic tests
+        run: dotnet test Vyral.sln --configuration Release --no-build --logger 'console;verbosity=minimal'
+
+      - name: Prove core contract TFMs
+        run: |
+          dotnet build src/Vyral.Abstractions/Vyral.Abstractions.csproj --configuration Release --framework net8.0 --no-restore
+          dotnet build src/Vyral.Execution/Vyral.Execution.csproj --configuration Release --framework net8.0 --no-restore
+          dotnet build src/Vyral.Providers.Abstractions/Vyral.Providers.Abstractions.csproj --configuration Release --framework net8.0 --no-restore
+
+  clients:
+    name: Test language clients
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: clients/javascript/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            clients/python/pyproject.toml
+            runtimes/python/pyproject.toml
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.5"
+          # This module intentionally has no go.sum yet; setup-go's cache lookup warns on it.
+          cache: false
+
+      - name: Test JavaScript client
+        working-directory: clients/javascript
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+          npm run typecheck
+          npm test
+
+      - name: Test and type-check Python client
+        run: |
+          python -m pip install --disable-pip-version-check --editable 'clients/python[typecheck]' --editable 'runtimes/python[dev]'
+          python -m unittest discover -s clients/python/tests -p 'test_*.py'
+          python -m mypy --config-file clients/python/pyproject.toml clients/python/tests/typecheck_consumer.py
+          scripts/verify-python-runtime.sh
+
+      - name: Test Go worker client
+        working-directory: clients/go
+        run: go test ./...
+
+  contracts-and-export:
+    name: Verify contracts and public export
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Verify public contracts and generated SDK types
+        run: |
+          python3 scripts/verify-version-policy.py
+          python3 scripts/verify-public-sdk-surface.py
+          python3 scripts/verify-public-contract-schemas.py
+          python3 scripts/verify-markdown-links.py
+          python3 scripts/verify-publication-policy.py
+          python3 scripts/generate-sdk-types.py
+          python3 scripts/sync-python-runtime-contracts.py
+          git diff --exit-code
+
+      - name: Check scripts and JSON
+        run: |
+          python3 scripts/test-audit-github-launch-controls.py
+          python3 scripts/test-export-public-tree.py
+          python3 scripts/test-python-runtime-platform-matrix.py
+          while IFS= read -r -d '' script; do bash -n "$script"; done < <(find scripts deploy -type f -name '*.sh' -print0)
+          find conformance contracts qualification -type f -name '*.json' -print0 | xargs -0 jq empty
+
+      - name: Build and scan deterministic public tree
+        run: scripts/verify-public-export.sh

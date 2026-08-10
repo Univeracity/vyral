@@ -1,0 +1,58 @@
+{
+  "schema": "vyral.evidence-brief.v1",
+  "id": "brief-rates-2026-07-21",
+  "question": "What rate was published as of 2026-07-21?",
+  "asOfUtc": "2026-07-21T12:00:00Z",
+  "factAnchors": [
+    {
+      "id": "rate-published",
+      "statement": "The official schedule lists the rate as 4.25 percent.",
+      "sourceSnapshotIds": ["official-schedule"],
+      "citationIds": ["official-schedule-page-4"]
+    }
+  ],
+  "sourceSnapshots": [
+    {
+      "id": "official-schedule",
+      "kind": "web",
+      "uri": "https://example.test/rates/schedule",
+      "contentHash": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "capturedAtUtc": "2026-07-21T11:59:00Z",
+      "publishedAtUtc": "2026-07-20T00:00:00Z"
+    }
+  ],
+  "citations": [
+    {
+      "id": "official-schedule-page-4",
+      "sourceSnapshotId": "official-schedule",
+      "factAnchorIds": ["rate-published"],
+      "counterEvidenceIds": [],
+      "displayText": "Official rate schedule, page 4",
+      "locator": "p. 4"
+    }
+  ],
+  "counterEvidence": [],
+  "uncertainties": [
+    {
+      "id": "publication-scope",
+      "statement": "The schedule states a published rate and does not establish an individual applicant's final rate.",
+      "level": "medium",
+      "factAnchorIds": ["rate-published"]
+    }
+  ],
+  "retrievalTraces": [
+    {
+      "traceId": "trace-rates-2026-07-21",
+      "retrievedAtUtc": "2026-07-21T11:58:00Z",
+      "queryHash": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "matches": [
+        {
+          "collection": "rates-public",
+          "recordId": "schedule-2026-07-page-4",
+          "rank": 1,
+          "sourceSnapshotIds": ["official-schedule"]
+        }
+      ]
+    }
+  ]
+}

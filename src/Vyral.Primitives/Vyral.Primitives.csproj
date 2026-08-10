@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
+    <PackageId>Vyral.Primitives</PackageId>
+    <Title>Vyral Primitives</Title>
+    <Authors>Vyral</Authors>
+    <Company>Vyral</Company>
+    <Copyright>Copyright © 2026 Jeremy Dixon</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Shared low-level primitives for Vyral, including sortable ordered identifiers with parsing, decomposition, jittered creation, and fallback creation helpers.</Description>
+    <PackageTags>vyral;primitives;ordered-id;identifiers</PackageTags>
+    <PackageProjectUrl>https://github.com/univeracity/vyral</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/univeracity/vyral</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

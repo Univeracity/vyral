@@ -1,0 +1,86 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "external-workers.handler-lifecycle.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.external-worker.v1",
+  "kind": "stateful",
+  "description": "Portable Python/.NET handler execution, durable wait replay, progress, events, artifacts, checkpoints, and bounded handler failure.",
+  "steps": [
+    {
+      "id": "handler-success-side-effects",
+      "operation": "external-worker.handler-success",
+      "arguments": {
+        "pluginId": "portable.success.plugin",
+        "handlerId": "portable.success.handler",
+        "payload": {
+          "value": 42
+        }
+      },
+      "expect": {
+        "value": {
+          "status": "succeeded",
+          "result": {
+            "value": 42
+          },
+          "progress": 1,
+          "currentStep": null,
+          "artifactNames": [
+            "summary"
+          ],
+          "checkpointKeys": [
+            "state"
+          ],
+          "eventTypes": [
+            "step.completed"
+          ],
+          "completionCount": 1
+        }
+      }
+    },
+    {
+      "id": "durable-wait-replay",
+      "operation": "external-worker.durable-wait-replay",
+      "arguments": {
+        "pluginId": "portable.wait.plugin",
+        "handlerId": "portable.wait.handler",
+        "eventName": "approval",
+        "eventPayload": {
+          "approved": true
+        }
+      },
+      "expect": {
+        "value": {
+          "waitingStatus": "waiting",
+          "status": "succeeded",
+          "result": {
+            "approved": true
+          },
+          "artifactNames": [
+            "approval-summary"
+          ],
+          "checkpointKeys": [
+            "before-wait"
+          ],
+          "completionCount": 1
+        }
+      }
+    },
+    {
+      "id": "handler-failure-redacted",
+      "operation": "external-worker.handler-failure",
+      "arguments": {
+        "pluginId": "portable.failure.plugin",
+        "handlerId": "portable.failure.handler",
+        "secretMessage": "dependency-secret-must-not-escape"
+      },
+      "expect": {
+        "value": {
+          "status": "failed",
+          "failureClass": "unknown",
+          "error": "External plugin handler failed.",
+          "completionCount": 1
+        }
+      }
+    }
+  ]
+}

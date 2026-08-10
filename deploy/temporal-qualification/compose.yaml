@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: vyral_gate
+      POSTGRES_PASSWORD: ${VYRAL_TEMPORAL_GATE_DATABASE_PASSWORD:?gate database password is required}
+    ports:
+      - "127.0.0.1:${VYRAL_TEMPORAL_GATE_POSTGRES_PORT:-35432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vyral_gate"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  temporal-schema:
+    image: temporalio/admin-tools:1.31.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: vyral_gate
+      SQL_PASSWORD: ${VYRAL_TEMPORAL_GATE_DATABASE_PASSWORD:?gate database password is required}
+    entrypoint: ["/bin/sh", "/qualification/setup-postgres.sh"]
+    volumes:
+      - ./scripts:/qualification:ro
+    restart: "no"
+
+  temporal:
+    image: temporalio/server:1.31.0
+    depends_on:
+      temporal-schema:
+        condition: service_completed_successfully
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: vyral_gate
+      POSTGRES_PWD: ${VYRAL_TEMPORAL_GATE_DATABASE_PASSWORD:?gate database password is required}
+      BIND_ON_IP: 0.0.0.0
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    ports:
+      - "127.0.0.1:${VYRAL_TEMPORAL_GATE_PORT:-37233}:7233"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "7233"]
+      interval: 2s
+      timeout: 3s
+      retries: 90
+      start_period: 10s
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+
+  temporal-namespace:
+    image: temporalio/admin-tools:1.31.0
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_NAMESPACE: vyral-qualification
+    entrypoint: ["/bin/sh", "/qualification/create-namespace.sh"]
+    volumes:
+      - ./scripts:/qualification:ro
+    restart: "no"
+
+volumes:
+  postgres-data:

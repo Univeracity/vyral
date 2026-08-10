@@ -1,0 +1,467 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "canonical.strong-profile.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.canonical.v1",
+  "kind": "stateful",
+  "description": "Portable strong CanonicalStore transactions, fences, revisions, outbox leases, restore, migrations, ordering, and tenant isolation.",
+  "steps": [
+    {
+      "id": "atomic-commit-and-idempotent-replay",
+      "operation": "canonical.commit-replay",
+      "arguments": {
+        "request": {
+          "tenantId": "tenant-a",
+          "idempotencyKey": "create-1",
+          "correlationId": "correlation-1",
+          "actor": "fixture",
+          "mutations": [
+            {
+              "operation": "upsert",
+              "document": {
+                "tenantId": "tenant-a",
+                "documentType": "author",
+                "id": "a-1",
+                "schemaVersion": "v1",
+                "data": {
+                  "name": "Ada",
+                  "profile": {
+                    "last": "Lovelace",
+                    "first": "Ada"
+                  }
+                },
+                "indexes": {
+                  "email": "ada@example.test",
+                  "rank": "020"
+                },
+                "revision": 0,
+                "etag": "",
+                "deleted": false,
+                "createdAtUtc": "0001-01-01T00:00:00Z",
+                "updatedAtUtc": "0001-01-01T00:00:00Z"
+              }
+            }
+          ],
+          "fences": [
+            {
+              "operation": "claim",
+              "name": "author-email",
+              "value": "ada@example.test",
+              "ownerDocumentType": "author",
+              "ownerDocumentId": "a-1"
+            }
+          ],
+          "outbox": [
+            {
+              "topic": "author.changed",
+              "key": "a-1",
+              "payload": {
+                "id": "a-1"
+              },
+              "headers": {
+                "kind": "created"
+              },
+              "maxDeliveryAttempts": 3
+            }
+          ]
+        }
+      },
+      "expect": {
+        "value": {
+          "transactionId": "ctx_d32d9f9570b2363c78c925aff7e8f70e",
+          "firstReplayed": false,
+          "replayReplayed": true,
+          "revision": 1,
+          "etag": "rev:1",
+          "outboxId": "ctx_d32d9f9570b2363c78c925aff7e8f70e:000",
+          "queryIds": [
+            "a-1"
+          ],
+          "snapshotCounts": {
+            "documents": 1,
+            "revisions": 1,
+            "fences": 1,
+            "outbox": 1,
+            "transactions": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "atomic-fence-and-revision-conflicts",
+      "operation": "canonical.conflicts-and-tombstone",
+      "arguments": {
+        "conflictingFenceRequest": {
+          "tenantId": "tenant-a",
+          "idempotencyKey": "conflict-1",
+          "mutations": [
+            {
+              "operation": "upsert",
+              "document": {
+                "tenantId": "tenant-a",
+                "documentType": "author",
+                "id": "a-2",
+                "schemaVersion": "v1",
+                "data": {
+                  "name": "Grace"
+                },
+                "indexes": {
+                  "email": "ada@example.test"
+                },
+                "revision": 0,
+                "etag": "",
+                "deleted": false,
+                "createdAtUtc": "0001-01-01T00:00:00Z",
+                "updatedAtUtc": "0001-01-01T00:00:00Z"
+              }
+            }
+          ],
+          "fences": [
+            {
+              "operation": "claim",
+              "name": "author-email",
+              "value": "ada@example.test",
+              "ownerDocumentType": "author",
+              "ownerDocumentId": "a-2"
+            }
+          ],
+          "outbox": []
+        },
+        "updateRequest": {
+          "tenantId": "tenant-a",
+          "idempotencyKey": "update-1",
+          "mutations": [
+            {
+              "operation": "upsert",
+              "document": {
+                "tenantId": "tenant-a",
+                "documentType": "author",
+                "id": "a-1",
+                "schemaVersion": "v1",
+                "data": {
+                  "name": "Ada Lovelace"
+                },
+                "indexes": {
+                  "email": "ada@example.test",
+                  "rank": "020"
+                },
+                "revision": 0,
+                "etag": "",
+                "deleted": false,
+                "createdAtUtc": "0001-01-01T00:00:00Z",
+                "updatedAtUtc": "0001-01-01T00:00:00Z"
+              },
+              "precondition": {
+                "expectedRevision": 1,
+                "mustExist": true
+              }
+            }
+          ],
+          "fences": [],
+          "outbox": []
+        },
+        "staleRequest": {
+          "tenantId": "tenant-a",
+          "idempotencyKey": "stale-1",
+          "mutations": [
+            {
+              "operation": "delete",
+              "documentType": "author",
+              "id": "a-1",
+              "precondition": {
+                "expectedRevision": 1,
+                "mustExist": true
+              }
+            }
+          ],
+          "fences": [],
+          "outbox": []
+        },
+        "deleteRequest": {
+          "tenantId": "tenant-a",
+          "idempotencyKey": "delete-1",
+          "mutations": [
+            {
+              "operation": "delete",
+              "documentType": "author",
+              "id": "a-1",
+              "precondition": {
+                "expectedRevision": 2,
+                "mustExist": true
+              }
+            }
+          ],
+          "fences": [],
+          "outbox": []
+        }
+      },
+      "expect": {
+        "value": {
+          "fenceConflictRejected": true,
+          "conflictingDocumentAbsent": true,
+          "updatedRevision": 2,
+          "staleRevisionRejected": true,
+          "deletedRevision": 3,
+          "normalReadMissing": true,
+          "tombstoneDeleted": true,
+          "revisionOrder": [
+            3,
+            2,
+            1
+          ],
+          "revisionOperations": [
+            "delete",
+            "upsert",
+            "upsert"
+          ]
+        }
+      }
+    },
+    {
+      "id": "outbox-release-dead-letter-replay-and-ack",
+      "operation": "canonical.outbox-lifecycle",
+      "arguments": {
+        "tenantId": "tenant-a",
+        "consumerId": "fixture-projector",
+        "releaseNotBeforeUtc": "2000-01-01T00:00:00Z"
+      },
+      "expect": {
+        "value": {
+          "firstDeliveryCount": 1,
+          "secondDeliveryCount": 2,
+          "renewed": true,
+          "deliveredCount": 1,
+          "leaseAfterAckCount": 0
+        }
+      }
+    },
+    {
+      "id": "hash-verified-snapshot-and-chunked-archive-restore",
+      "operation": "canonical.restore-roundtrip",
+      "arguments": {
+        "additionalRequest": {
+          "tenantId": "tenant-a",
+          "idempotencyKey": "after-export",
+          "mutations": [
+            {
+              "operation": "upsert",
+              "document": {
+                "tenantId": "tenant-a",
+                "documentType": "author",
+                "id": "a-2",
+                "schemaVersion": "v1",
+                "data": {
+                  "name": "Temporary"
+                },
+                "indexes": {},
+                "revision": 0,
+                "etag": "",
+                "deleted": false,
+                "createdAtUtc": "0001-01-01T00:00:00Z",
+                "updatedAtUtc": "0001-01-01T00:00:00Z"
+              }
+            }
+          ],
+          "fences": [],
+          "outbox": []
+        },
+        "chunkBytes": 128
+      },
+      "expect": {
+        "value": {
+          "archiveHasMultipleChunks": true,
+          "chunkIndexesContiguous": true,
+          "originalTombstoneRestored": true,
+          "additionalDocumentAbsent": true,
+          "idempotencyReceiptRestored": true,
+          "corruptionRejected": true
+        }
+      }
+    },
+    {
+      "id": "migrations-range-continuation-and-tenant-isolation",
+      "operation": "canonical.migrations-query-isolation",
+      "arguments": {
+        "migration": {
+          "namespace": "portable",
+          "id": "20260730.v1",
+          "checksum": "sha256:one",
+          "description": "portable fixture"
+        }
+      },
+      "expect": {
+        "value": {
+          "migrationCount": 2,
+          "checksumConflictRejected": true,
+          "pageIds": [
+            "e-3",
+            "e-1",
+            "e-2"
+          ],
+          "continuations": [
+            true,
+            true,
+            false
+          ],
+          "tenantValues": [
+            "A",
+            "B"
+          ]
+        }
+      }
+    },
+    {
+      "id": "portable-snapshot-and-archive-codec",
+      "operation": "canonical.snapshot-codec",
+      "arguments": {
+        "snapshot": {
+          "tenantId": "tenant-unicode",
+          "documents": [
+            {
+              "tenantId": "tenant-unicode",
+              "documentType": "note",
+              "id": "n-1",
+              "schemaVersion": "v1",
+              "data": {
+                "text": "Vyral π <&",
+                "score": 1.0,
+                "nested": {
+                  "z": 2,
+                  "a": true
+                }
+              },
+              "indexes": {
+                "title": "α-note"
+              },
+              "revision": 1,
+              "etag": "rev:1",
+              "deleted": false,
+              "createdAtUtc": "2026-07-30T18:00:00.1234567Z",
+              "updatedAtUtc": "2026-07-30T18:00:00.1234567Z"
+            }
+          ],
+          "revisions": [
+            {
+              "tenantId": "tenant-unicode",
+              "documentType": "note",
+              "id": "n-1",
+              "revision": 1,
+              "transactionId": "ctx_fixture",
+              "operation": "upsert",
+              "document": {
+                "tenantId": "tenant-unicode",
+                "documentType": "note",
+                "id": "n-1",
+                "schemaVersion": "v1",
+                "data": {
+                  "nested": {
+                    "a": true,
+                    "z": 2
+                  },
+                  "score": 1.0,
+                  "text": "Vyral π <&"
+                },
+                "indexes": {
+                  "title": "α-note"
+                },
+                "revision": 1,
+                "etag": "rev:1",
+                "deleted": false,
+                "createdAtUtc": "2026-07-30T18:00:00.1234567Z",
+                "updatedAtUtc": "2026-07-30T18:00:00.1234567Z"
+              },
+              "recordedAtUtc": "2026-07-30T18:00:00.1234567Z"
+            }
+          ],
+          "fences": [
+            {
+              "tenantId": "tenant-unicode",
+              "name": "note-slug",
+              "value": "π-note",
+              "ownerDocumentType": "note",
+              "ownerDocumentId": "n-1",
+              "createdAtUtc": "2026-07-30T18:00:00.1234567Z",
+              "updatedAtUtc": "2026-07-30T18:00:00.1234567Z"
+            }
+          ],
+          "outbox": [
+            {
+              "id": "event-π",
+              "tenantId": "tenant-unicode",
+              "transactionId": "ctx_fixture",
+              "topic": "note.changed",
+              "key": "n-1",
+              "payload": {
+                "score": 1.0,
+                "text": "Vyral π <&"
+              },
+              "headers": {
+                "trace": "fixture",
+                "content-type": "application/json"
+              },
+              "notBeforeUtc": "2026-07-30T18:00:02.1234567Z",
+              "deliveryCount": 2,
+              "deliveredAtUtc": null,
+              "leaseOwner": "worker-π",
+              "leaseExpiresAtUtc": "2026-07-30T18:01:02.1234567Z",
+              "maxDeliveryAttempts": 5,
+              "deadLetteredAtUtc": null,
+              "lastError": "retry <later>"
+            }
+          ],
+          "transactions": [
+            {
+              "transactionId": "ctx_fixture",
+              "tenantId": "tenant-unicode",
+              "idempotencyKey": "fixture-π",
+              "requestHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "result": {
+                "transactionId": "ctx_fixture",
+                "tenantId": "tenant-unicode",
+                "idempotencyKey": "fixture-π",
+                "correlationId": "corr-π",
+                "actor": "sdk-python",
+                "replayed": false,
+                "committedAtUtc": "2026-07-30T18:00:00.1234567Z",
+                "documents": [],
+                "outbox": []
+              },
+              "committedAtUtc": "2026-07-30T18:00:00.1234567Z"
+            }
+          ],
+          "exportedAtUtc": "2026-07-30T18:00:01.1234567Z",
+          "contentHash": ""
+        },
+        "chunkBytes": 128
+      },
+      "expect": {
+        "value": {
+          "snapshotHash": "sha256:47a390558aaeec9525931952d7e5c089e8cfb499962da058240dc71da5334e20",
+          "archiveHash": "sha256:7cdf14a6676b87cf707919b4748ed8118c3013f92918c22ecd3c1c32c54a7cee",
+          "chunkCount": 18,
+          "chunkHashes": [
+            "sha256:73443e99efee3b9d16391036139a43385d4ff69baa5f4c89a3df386148a94053",
+            "sha256:16964ba08311cf4f5fb01ed99a009760d28a3e4b9255007bd05f140b795326c9",
+            "sha256:1c727067db8a98f18d50ed3c8f906c4350fbf32ad298f9199529169614b945d6",
+            "sha256:e67f5920ff0063540377e0c9dc0ba657a8cbad8f89ace41192facd458a9e8581",
+            "sha256:bc2ebbb20f162c2c2fae9eff9d8cf8cebffb77068ed9ec87f75a86b712012104",
+            "sha256:e0ad22eaf1650ba5a1e0b91d24c0985121da745f4f4e288a9d20efd0dd2927a3",
+            "sha256:e82044bc4057667711ee6cb3df315e2bd71e885d8dc4317aa3f0a01687318432",
+            "sha256:f54201fb808ab56896a38f2b27609ae2d635b21ea1780ad0cbb24cf088ffbca7",
+            "sha256:42f57b9155be21cd9525e2b9b061aa7e8731576e576b6742075337bf01b89d5f",
+            "sha256:3c132aa6cbc906068fd6960f2e06b77d3e0705e9b1f04db69a224a26ae3163c1",
+            "sha256:798f9e5f6e99bf1ffb46df43a87f8b0036e1207ea61f7365ff29d44c8640c970",
+            "sha256:9c9210e11636d05090ea20921c89ec58a4c7b36a8a711a3d2b6fbc798dbb9d81",
+            "sha256:06726cbe91a74a49a4343da5e52d54243fcc088245b45f831ac4af486df5cbea",
+            "sha256:b82150d8638da0958fe0b17bff4753a4bfae1830e2d524871cd9a636cf34caed",
+            "sha256:eb6358eb63e1cfc3b839a927c531914cfa96e447d3a22cee60b72e8365bbf119",
+            "sha256:84738196ced1c961715b3b119bcabbef2562a71018f086fb33205d8f22c50135",
+            "sha256:8ed3d3201ebab09866148a41ce8f9bee40f84208fb6efd95f6d7e9eae39f63e0",
+            "sha256:0c53a57e0a431a9e2152d95b85609c741cc3d7fbd43ff246a26f0bdae43a0fb4"
+          ],
+          "roundTripHash": "sha256:47a390558aaeec9525931952d7e5c089e8cfb499962da058240dc71da5334e20"
+        }
+      }
+    }
+  ]
+}

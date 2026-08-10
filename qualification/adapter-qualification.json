@@ -1,0 +1,320 @@
+{
+  "$schema": "./adapter-qualification.schema.json",
+  "schemaVersion": "1.0",
+  "coreContractVersion": "0.2.0",
+  "generatedAtUtc": "2026-07-28T12:58:18Z",
+  "releaseCommit": "769e52f727063c80599b13c2bff5f037a5c9bcac",
+  "qualificationExpiresAfterDays": 90,
+  "summary": {
+    "adapterCount": 5,
+    "currentAdapterCount": 5,
+    "staleAdapterCount": 0,
+    "prototypeAdapterCount": 3,
+    "localConformantAdapterCount": 2,
+    "liveQualifiedAdapterCount": 0,
+    "consumerValidatedAdapterCount": 0,
+    "advertisedCapabilityClaims": 64,
+    "currentLiveQualifiedCapabilityClaims": 0,
+    "currentLiveQualifiedCapabilityPercentage": 0.0
+  },
+  "adapters": [
+    {
+      "adapterId": "aws-dynamodb-sqs",
+      "runtimeKind": "aws.dynamodb-sqs",
+      "displayName": "AWS DynamoDB and SQS execution runtime",
+      "adapterVersion": "0.2.0",
+      "package": "Vyral.Execution.Aws",
+      "advertisedCapabilities": [
+        "remote.orchestration",
+        "external.workers",
+        "durable.runs",
+        "durable.timers",
+        "external.events",
+        "durable.waits",
+        "cancellation",
+        "retries",
+        "leases",
+        "artifacts",
+        "trace.history",
+        "idempotency"
+      ],
+      "qualification": {
+        "level": "prototype",
+        "status": "current",
+        "environmentClass": "deterministic_fixture",
+        "testedAtUtc": "2026-07-28T09:21:29Z",
+        "expiresAtUtc": "2026-10-26T09:21:29Z",
+        "testCommit": "12ad291c3702b2b38485bbc844c371750d2a6e83",
+        "adapterVersion": "0.2.0",
+        "coreContractVersion": "0.2.0",
+        "capabilities": [
+          "remote.orchestration",
+          "external.workers",
+          "durable.runs",
+          "durable.timers",
+          "external.events",
+          "durable.waits",
+          "cancellation",
+          "retries",
+          "leases",
+          "artifacts",
+          "trace.history",
+          "idempotency"
+        ],
+        "evidence": [
+          {
+            "kind": "unit_gate",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Aws/AwsDynamoExecutionRuntimeAdapterConformanceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Aws/Vyral.Tests.Aws.csproj --filter FullyQualifiedName~AwsDynamoExecutionRuntimeAdapterConformanceTests"
+          }
+        ]
+      }
+    },
+    {
+      "adapterId": "azure-durable",
+      "runtimeKind": "azure.durable_functions",
+      "displayName": "Azure Durable Functions execution runtime",
+      "adapterVersion": "0.2.0",
+      "package": "Vyral.Execution.AzureDurable",
+      "advertisedCapabilities": [
+        "remote.orchestration",
+        "in_process.handlers",
+        "durable.runs",
+        "durable.timers",
+        "external.events",
+        "durable.waits",
+        "cancellation",
+        "retries",
+        "restart.resume",
+        "leases",
+        "artifacts",
+        "trace.history",
+        "idempotency"
+      ],
+      "qualification": {
+        "level": "local_conformant",
+        "status": "current",
+        "environmentClass": "deterministic_fixture",
+        "testedAtUtc": "2026-07-28T09:21:29Z",
+        "expiresAtUtc": "2026-10-26T09:21:29Z",
+        "testCommit": "12ad291c3702b2b38485bbc844c371750d2a6e83",
+        "adapterVersion": "0.2.0",
+        "coreContractVersion": "0.2.0",
+        "capabilities": [
+          "remote.orchestration",
+          "in_process.handlers",
+          "durable.runs",
+          "durable.timers",
+          "external.events",
+          "durable.waits",
+          "cancellation",
+          "retries",
+          "restart.resume",
+          "leases",
+          "artifacts",
+          "trace.history",
+          "idempotency"
+        ],
+        "evidence": [
+          {
+            "kind": "shared_conformance",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Azure/AzureDurableExecutionHostConformanceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Azure/Vyral.Tests.Azure.csproj --filter FullyQualifiedName~AzureDurableExecutionHostConformanceTests"
+          },
+          {
+            "kind": "fault_restart",
+            "result": "passed",
+            "reference": "AzureDurableExecutionHostConformanceTests.AzureDurableExecution_ResumesPersistedScheduledWorkFromNewAdapter",
+            "command": "dotnet test tests/Vyral.Tests.Azure/Vyral.Tests.Azure.csproj --filter FullyQualifiedName~AzureDurableExecutionHostConformanceTests"
+          },
+          {
+            "kind": "public_surface",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Conformance/ExecutionPublicSurfaceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj --filter FullyQualifiedName~ExecutionPublicSurfaceTests"
+          }
+        ]
+      }
+    },
+    {
+      "adapterId": "google-firestore-cloud-tasks",
+      "runtimeKind": "google.firestore-cloud-tasks",
+      "displayName": "Google Firestore and Cloud Tasks execution runtime",
+      "adapterVersion": "0.2.0",
+      "package": "Vyral.Google",
+      "advertisedCapabilities": [
+        "remote.orchestration",
+        "external.workers",
+        "durable.runs",
+        "durable.timers",
+        "external.events",
+        "durable.waits",
+        "cancellation",
+        "retries",
+        "leases",
+        "artifacts",
+        "trace.history",
+        "idempotency"
+      ],
+      "qualification": {
+        "level": "prototype",
+        "status": "current",
+        "environmentClass": "deterministic_fixture",
+        "testedAtUtc": "2026-07-28T09:21:29Z",
+        "expiresAtUtc": "2026-10-26T09:21:29Z",
+        "testCommit": "12ad291c3702b2b38485bbc844c371750d2a6e83",
+        "adapterVersion": "0.2.0",
+        "coreContractVersion": "0.2.0",
+        "capabilities": [
+          "remote.orchestration",
+          "external.workers",
+          "durable.runs",
+          "durable.timers",
+          "external.events",
+          "durable.waits",
+          "cancellation",
+          "retries",
+          "leases",
+          "artifacts",
+          "trace.history",
+          "idempotency"
+        ],
+        "evidence": [
+          {
+            "kind": "unit_gate",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Google/GoogleCloudExecutionRuntimeAdapterConformanceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Google/Vyral.Tests.Google.csproj --filter FullyQualifiedName~GoogleCloudExecutionRuntimeAdapterConformanceTests"
+          }
+        ]
+      }
+    },
+    {
+      "adapterId": "local-sqlite",
+      "runtimeKind": "local.sqlite",
+      "displayName": "Local SQLite execution runtime",
+      "adapterVersion": "0.2.0",
+      "package": "Vyral.Execution.Local",
+      "advertisedCapabilities": [
+        "local.dispatch",
+        "in_process.handlers",
+        "durable.runs",
+        "durable.timers",
+        "external.events",
+        "durable.waits",
+        "cancellation",
+        "retries",
+        "restart.resume",
+        "leases",
+        "artifacts",
+        "trace.history",
+        "idempotency",
+        "external.workers"
+      ],
+      "qualification": {
+        "level": "local_conformant",
+        "status": "current",
+        "environmentClass": "local_dependency",
+        "providerVersion": "Microsoft.Data.Sqlite 10.0.9",
+        "testedAtUtc": "2026-07-28T09:21:29Z",
+        "expiresAtUtc": "2026-10-26T09:21:29Z",
+        "testCommit": "12ad291c3702b2b38485bbc844c371750d2a6e83",
+        "adapterVersion": "0.2.0",
+        "coreContractVersion": "0.2.0",
+        "capabilities": [
+          "local.dispatch",
+          "in_process.handlers",
+          "durable.runs",
+          "durable.timers",
+          "external.events",
+          "durable.waits",
+          "cancellation",
+          "retries",
+          "restart.resume",
+          "leases",
+          "artifacts",
+          "trace.history",
+          "idempotency",
+          "external.workers"
+        ],
+        "evidence": [
+          {
+            "kind": "shared_conformance",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Local/LocalExecutionRuntimeAdapterConformanceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Local/Vyral.Tests.Local.csproj --filter FullyQualifiedName~LocalExecutionRuntimeAdapterConformanceTests"
+          },
+          {
+            "kind": "fault_restart",
+            "result": "passed",
+            "reference": "LocalExecutionRuntimeAdapterConformanceTests.LocalExecutionRuntime_ResumesPersistedScheduledWorkFromNewAdapter",
+            "command": "dotnet test tests/Vyral.Tests.Local/Vyral.Tests.Local.csproj --filter FullyQualifiedName~LocalExecutionRuntimeAdapterConformanceTests"
+          },
+          {
+            "kind": "public_surface",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Conformance/ExecutionPublicSurfaceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj --filter FullyQualifiedName~ExecutionPublicSurfaceTests"
+          }
+        ]
+      }
+    },
+    {
+      "adapterId": "temporal",
+      "runtimeKind": "temporal.workflow",
+      "displayName": "Temporal execution runtime",
+      "adapterVersion": "0.2.0",
+      "package": "Vyral.Execution.Temporal",
+      "advertisedCapabilities": [
+        "remote.orchestration",
+        "in_process.handlers",
+        "durable.runs",
+        "durable.timers",
+        "external.events",
+        "durable.waits",
+        "cancellation",
+        "retries",
+        "restart.resume",
+        "leases",
+        "artifacts",
+        "trace.history",
+        "idempotency"
+      ],
+      "qualification": {
+        "level": "prototype",
+        "status": "current",
+        "environmentClass": "deterministic_fixture",
+        "testedAtUtc": "2026-07-28T12:58:18Z",
+        "expiresAtUtc": "2026-10-26T12:58:18Z",
+        "testCommit": "769e52f727063c80599b13c2bff5f037a5c9bcac",
+        "adapterVersion": "0.2.0",
+        "coreContractVersion": "0.2.0",
+        "capabilities": [
+          "remote.orchestration",
+          "in_process.handlers",
+          "durable.runs",
+          "durable.timers",
+          "external.events",
+          "durable.waits",
+          "cancellation",
+          "retries",
+          "restart.resume",
+          "leases",
+          "artifacts",
+          "trace.history",
+          "idempotency"
+        ],
+        "evidence": [
+          {
+            "kind": "unit_gate",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Temporal/TemporalExecutionFoundationTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Temporal/Vyral.Tests.Temporal.csproj --filter FullyQualifiedName~TemporalExecutionFoundationTests"
+          }
+        ]
+      }
+    }
+  ]
+}

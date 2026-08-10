@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vyral.Abstractions\Vyral.Abstractions.csproj" />
+    <ProjectReference Include="..\Vyral.Local\Vyral.Local.csproj" />
+    <ProjectReference Include="..\Vyral.Azure\Vyral.Azure.csproj" />
+    <ProjectReference Include="..\Vyral.Embeddings.Onnx\Vyral.Embeddings.Onnx.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

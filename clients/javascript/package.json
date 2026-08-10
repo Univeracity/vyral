@@ -1,0 +1,49 @@
+{
+  "name": "@vyral/client",
+  "version": "0.3.0",
+  "description": "JavaScript HTTP client for the Vyral local server",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "check": "node --check src/index.js",
+    "test": "node --test test/index.test.js",
+    "typecheck": "tsc --noEmit --project test/types/tsconfig.json"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "README.md",
+    "src"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "vyral",
+    "rag",
+    "retrieval",
+    "vector-search",
+    "local-development"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/univeracity/vyral.git",
+    "directory": "clients/javascript"
+  },
+  "bugs": {
+    "url": "https://github.com/univeracity/vyral/issues"
+  },
+  "homepage": "https://github.com/univeracity/vyral#readme",
+  "author": "Jeremy Dixon",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

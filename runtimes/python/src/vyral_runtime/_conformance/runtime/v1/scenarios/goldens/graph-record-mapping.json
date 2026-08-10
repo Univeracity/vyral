@@ -1,0 +1,308 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "graph.record-mapping.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.data-rag.v1",
+  "kind": "golden",
+  "description": "Stable graph collection record identities, metadata, text, partitioning, and source-span mapping shared by Python and .NET.",
+  "steps": [
+    {
+      "id": "graph-envelope-to-records",
+      "operation": "graph.record-map",
+      "arguments": {
+        "envelope": {
+          "schema": "roman.graph.v1",
+          "scope": {
+            "graphId": "runtime π",
+            "namespace": "docs",
+            "collection": "knowledge",
+            "tenantId": "tenant-a",
+            "partitionKey": ""
+          },
+          "metadata": {
+            "title": "Portable runtime graph"
+          },
+          "nodes": [
+            {
+              "id": "gateway/α",
+              "type": "component",
+              "label": "Gateway",
+              "properties": {
+                "score": 0.9
+              },
+              "sourceSpans": [
+                {
+                  "sourceRef": "vyral://guide/runtime",
+                  "charStart": 2,
+                  "charEnd": 8,
+                  "unit": "utf16",
+                  "locator": "section-1",
+                  "textHash": "sha256:abc",
+                  "metadata": null
+                }
+              ],
+              "assertionIds": [
+                "assert:route"
+              ],
+              "createdAt": null,
+              "updatedAt": null
+            },
+            {
+              "id": "worker",
+              "type": "component",
+              "label": "Worker",
+              "properties": null,
+              "sourceSpans": [],
+              "assertionIds": [],
+              "createdAt": null,
+              "updatedAt": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "route:1",
+              "sourceId": "gateway/α",
+              "targetId": "worker",
+              "predicate": "routes_to",
+              "label": "routes",
+              "properties": null,
+              "sourceSpans": [],
+              "assertionIds": [
+                "assert:route"
+              ],
+              "createdAt": null,
+              "updatedAt": null
+            }
+          ],
+          "assertions": [
+            {
+              "id": "assert:route",
+              "subjectId": "route:1",
+              "subjectKind": "edge",
+              "status": "accepted",
+              "method": "fixture",
+              "actor": "conformance",
+              "confidence": 1.0,
+              "sourceSpans": [],
+              "properties": null,
+              "createdAt": null
+            }
+          ],
+          "reviews": [
+            {
+              "id": "review:route",
+              "subjectId": "assert:route",
+              "subjectKind": "assertion",
+              "status": "verified",
+              "reviewer": "conformance",
+              "notes": "portable",
+              "properties": null,
+              "createdAt": null
+            }
+          ],
+          "projections": [
+            {
+              "id": "projection:fixture",
+              "profile": {
+                "id": "depth-1",
+                "direction": "outgoing",
+                "maxDepth": 1,
+                "predicates": [
+                  "routes_to"
+                ],
+                "nodeTypes": [],
+                "limit": 10,
+                "edgeLimit": 10,
+                "includeStart": true,
+                "reviewStatuses": [],
+                "assertionStatuses": [],
+                "requireSourceGrounding": false,
+                "minScore": null,
+                "includePathExplanations": true
+              },
+              "startNodeIds": [
+                "gateway/α"
+              ],
+              "nodes": [],
+              "edges": [],
+              "diagnostics": {
+                "fixture": true
+              },
+              "createdAt": null
+            }
+          ]
+        }
+      },
+      "expect": {
+        "value": {
+          "partitionKey": "tenant:tenant-a",
+          "recordCount": 7,
+          "records": [
+            {
+              "id": "g:envelope:cnVudGltZSDPgHxkb2NzfGtub3dsZWRnZXx0ZW5hbnQtYXx0ZW5hbnQ6dGVuYW50LWE",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.envelope",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "envelope",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "runtime π|docs|knowledge|tenant-a|tenant:tenant-a"
+              },
+              "contentKind": "envelope",
+              "contentText": "graph envelope runtime π",
+              "entityId": null,
+              "sources": []
+            },
+            {
+              "id": "g:node:Z2F0ZXdheS_OsQ",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.node",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "node",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "gateway/α",
+                "nodeId": "gateway/α",
+                "nodeType": "component"
+              },
+              "contentKind": "node",
+              "contentText": "gateway/α component Gateway",
+              "entityId": "gateway/α",
+              "sources": [
+                {
+                  "id": "vyral://guide/runtime",
+                  "kind": "graphSourceSpan",
+                  "uri": "vyral://guide/runtime",
+                  "label": "section-1",
+                  "span": {
+                    "charStart": 2,
+                    "charEnd": 8,
+                    "anchor": "section-1",
+                    "unit": "utf16",
+                    "textHash": "sha256:abc"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "g:node:d29ya2Vy",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.node",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "node",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "worker",
+                "nodeId": "worker",
+                "nodeType": "component"
+              },
+              "contentKind": "node",
+              "contentText": "worker component Worker",
+              "entityId": "worker",
+              "sources": []
+            },
+            {
+              "id": "g:edge:cm91dGU6MQ",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.edge",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "edge",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "route:1",
+                "edgeId": "route:1",
+                "sourceId": "gateway/α",
+                "targetId": "worker",
+                "predicate": "routes_to"
+              },
+              "contentKind": "edge",
+              "contentText": "route:1 gateway/α routes_to worker routes",
+              "entityId": "route:1",
+              "sources": []
+            },
+            {
+              "id": "g:assertion:YXNzZXJ0OnJvdXRl",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.assertion",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "assertion",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "route:1",
+                "assertionId": "assert:route",
+                "subjectKind": "edge",
+                "assertionStatus": "accepted"
+              },
+              "contentKind": "assertion",
+              "contentText": "assert:route edge route:1 accepted fixture conformance",
+              "entityId": "assert:route",
+              "sources": []
+            },
+            {
+              "id": "g:review:cmV2aWV3OnJvdXRl",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.review",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "review",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "assert:route",
+                "reviewId": "review:route",
+                "subjectKind": "assertion",
+                "reviewStatus": "verified"
+              },
+              "contentKind": "review",
+              "contentText": "review:route assertion assert:route verified conformance portable",
+              "entityId": "review:route",
+              "sources": []
+            },
+            {
+              "id": "g:projection:cHJvamVjdGlvbjpmaXh0dXJl",
+              "partitionKey": "tenant:tenant-a",
+              "type": "graph.projection",
+              "schemaVersion": "roman.graph.v1",
+              "metadata": {
+                "graphKind": "projection",
+                "graphId": "runtime π",
+                "namespace": "docs",
+                "scopeCollection": "knowledge",
+                "tenantId": "tenant-a",
+                "graphPartitionKey": "tenant:tenant-a",
+                "subjectId": "projection:fixture",
+                "projectionId": "projection:fixture"
+              },
+              "contentKind": "projection",
+              "contentText": "projection:fixture depth-1",
+              "entityId": "projection:fixture",
+              "sources": []
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

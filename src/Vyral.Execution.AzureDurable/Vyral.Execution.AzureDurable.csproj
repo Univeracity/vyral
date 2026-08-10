@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vyral.Execution\Vyral.Execution.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
+    <PackageId>Vyral.Execution.AzureDurable</PackageId>
+    <Title>Vyral Execution Azure Durable</Title>
+    <Authors>Vyral</Authors>
+    <Company>Vyral</Company>
+    <Copyright>Copyright © 2026 Jeremy Dixon</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Azure Durable Functions adapter boundary for provider-neutral Vyral execution runtime plugins, runs, activities, external events, cancellation, artifacts, traces, and status surfaces.</Description>
+    <PackageTags>vyral;execution;orchestration;jobs;runs;plugins;azure;durable-functions</PackageTags>
+    <PackageProjectUrl>https://github.com/univeracity/vyral</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/univeracity/vyral</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

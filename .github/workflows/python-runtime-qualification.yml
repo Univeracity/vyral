@@ -1,0 +1,195 @@
+name: Python Runtime Qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_runtime_wheel_url:
+        description: HTTPS URL for the previously qualified 0.1.x runtime wheel
+        required: true
+        type: string
+      baseline_runtime_wheel_sha256:
+        description: Expected SHA-256 for the baseline runtime wheel
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  portable-matrix:
+    name: Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: runtimes/python/pyproject.toml
+
+      - name: Install qualification tooling
+        run: >-
+          python -m pip install
+          --disable-pip-version-check
+          --editable "runtimes/python[dev]"
+
+      - name: Verify contracts, implementation, and typing
+        run: |
+          python scripts/sync-python-runtime-contracts.py
+          python scripts/verify-runtime-conformance.py
+          python -m coverage run --branch --source=runtimes/python/src/vyral_runtime -m unittest discover -s runtimes/python/tests -p "test_*.py"
+          python -m coverage report --fail-under=77.5 --precision=1
+          python -m mypy --config-file runtimes/python/pyproject.toml runtimes/python/src/vyral_runtime runtimes/python/tests/typecheck_consumer.py runtimes/python/tests/test_record_store.py
+
+      - name: Build and consume clean artifacts
+        run: |
+          python -m build --sdist --wheel --outdir artifacts/python-runtime runtimes/python
+          python scripts/verify-python-runtime-install.py --server artifacts/python-runtime
+          python scripts/write-python-runtime-platform-receipt.py artifacts/python-runtime --output artifacts/qualification/platform.json
+
+      - name: Upload platform qualification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-runtime-${{ matrix.python }}-${{ matrix.os }}-${{ github.sha }}
+          path: artifacts
+          if-no-files-found: error
+
+  host-protocol:
+    name: Packaged host, SDKs, workers, and MCP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            clients/python/pyproject.toml
+            runtimes/python/pyproject.toml
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: clients/javascript/package-lock.json
+
+      - name: Build Python and JavaScript packages
+        run: |
+          python -m pip install --disable-pip-version-check build==1.3.0
+          mkdir -p artifacts/runtime artifacts/python-client artifacts/javascript artifacts/qualification
+          python -m build --sdist --wheel --outdir artifacts/runtime runtimes/python
+          python -m build --sdist --wheel --outdir artifacts/python-client clients/python
+          npm ci --ignore-scripts --prefix clients/javascript
+          (cd clients/javascript && npm pack --json --pack-destination ../../artifacts/javascript)
+
+      - name: Fetch verified upgrade baseline
+        env:
+          BASELINE_RUNTIME_WHEEL_URL: ${{ inputs.baseline_runtime_wheel_url }}
+          BASELINE_RUNTIME_WHEEL_SHA256: ${{ inputs.baseline_runtime_wheel_sha256 }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import re
+          from urllib.parse import urlsplit
+          from urllib.request import urlopen
+
+          url = os.environ["BASELINE_RUNTIME_WHEEL_URL"].strip()
+          expected = os.environ["BASELINE_RUNTIME_WHEEL_SHA256"].strip().lower()
+          if expected.startswith("sha256:"):
+              expected = expected.removeprefix("sha256:")
+          if urlsplit(url).scheme != "https":
+              raise SystemExit("The baseline runtime wheel URL must use HTTPS.")
+          if not re.fullmatch(r"[0-9a-f]{64}", expected):
+              raise SystemExit("The baseline runtime wheel SHA-256 is invalid.")
+          name = Path(urlsplit(url).path).name
+          if not re.fullmatch(
+              r"vyral_runtime-0\.1\.\d+-py3-none-any\.whl",
+              name,
+          ):
+              raise SystemExit(
+                  "The baseline URL must name a portable 0.1.x runtime wheel."
+              )
+          with urlopen(url, timeout=60) as response:
+              content = response.read(64 * 1024 * 1024 + 1)
+          if len(content) > 64 * 1024 * 1024:
+              raise SystemExit("The baseline runtime wheel exceeds 64 MiB.")
+          actual = hashlib.sha256(content).hexdigest()
+          if actual != expected:
+              raise SystemExit(
+                  f"Baseline SHA-256 mismatch: expected {expected}, found {actual}."
+              )
+          destination = Path("artifacts/baseline") / name
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_bytes(content)
+          print(f"baseline-runtime-wheel=ok sha256:{actual}")
+          PY
+
+      - name: Run packaged host qualifications
+        run: |
+          scripts/test-built-sdk-python-runtime.sh artifacts/runtime/*.whl artifacts/python-client/*.whl artifacts/javascript/*.tgz
+          scripts/verify-python-runtime-external-worker.sh artifacts/runtime/*.whl
+          scripts/verify-python-runtime-mcp-conformance.sh artifacts/runtime/*.whl
+          python scripts/verify-python-runtime-security.py artifacts/runtime/*.whl --output artifacts/qualification/python-runtime-security.json
+          python scripts/verify-python-runtime-upgrade.py artifacts/baseline/*.whl artifacts/runtime/*.whl --output artifacts/qualification/python-runtime-upgrade.json
+          python scripts/benchmark-python-runtime.py --output artifacts/qualification/python-runtime-performance.json
+
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-runtime-qualification-${{ github.sha }}
+          path: artifacts
+          if-no-files-found: error
+
+  aggregate-platform-matrix:
+    name: Verify complete platform matrix
+    needs: portable-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Download platform receipts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: python-runtime-*-${{ github.sha }}
+          path: artifacts/platform-receipts
+
+      - name: Verify one consistent nine-cell matrix
+        run: |
+          python scripts/test-python-runtime-platform-matrix.py
+          python scripts/verify-python-runtime-platform-matrix.py \
+            artifacts/platform-receipts \
+            --output artifacts/qualification/python-runtime-platform-matrix.json
+
+      - name: Upload aggregate platform evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-runtime-platform-matrix-${{ github.sha }}
+          path: artifacts/qualification/python-runtime-platform-matrix.json
+          if-no-files-found: error

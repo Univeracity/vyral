@@ -1,0 +1,62 @@
+[project]
+name = "vyral-client"
+version = "0.3.0"
+description = "Python HTTP client for the Vyral local server"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "Jeremy Dixon" }
+]
+keywords = [
+  "vyral",
+  "rag",
+  "retrieval",
+  "vector-search",
+  "local-development"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries"
+]
+dependencies = []
+
+[project.optional-dependencies]
+async = [
+  "httpx>=0.28,<1"
+]
+typecheck = [
+  "mypy>=1.18,<3"
+]
+
+[project.urls]
+Homepage = "https://github.com/univeracity/vyral"
+Repository = "https://github.com/univeracity/vyral"
+Issues = "https://github.com/univeracity/vyral/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vyral_client"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "LICENSE",
+  "README.md",
+  "pyproject.toml",
+  "src/vyral_client"
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true

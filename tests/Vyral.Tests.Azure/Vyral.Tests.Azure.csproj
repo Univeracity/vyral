@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <PackageReference Include="Microsoft.DurableTask.Abstractions" Version="1.24.1" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Vyral.Azure\Vyral.Azure.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Abstractions\Vyral.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution\Vyral.Execution.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.Local\Vyral.Execution.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.AzureDurable\Vyral.Execution.AzureDurable.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.AzureDurable.Functions\Vyral.Execution.AzureDurable.Functions.csproj" />
+    <ProjectReference Include="..\Vyral.Tests.Conformance\Vyral.Tests.Conformance.csproj" />
+  </ItemGroup>
+
+</Project>

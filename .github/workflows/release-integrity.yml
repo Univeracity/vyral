@@ -1,0 +1,218 @@
+name: Release Integrity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify releasable artifacts
+    # Keep automatic runs fail-closed while CI failures are being resolved.
+    # Manual dispatch remains available for controlled diagnostics.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
+    # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor. The workspace-agent
+    # security gate must exercise Bubblewrap's real namespace boundary, never an unsandboxed
+    # fallback, so keep this job on the supported 22.04 runner until a reviewed AppArmor profile
+    # can be installed by the deployment topology.
+    runs-on: ubuntu-22.04
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      VYRAL_RELEASE_ARTIFACT_DIR: artifacts/release
+      VYRAL_BUILDX_BUILDER: vyral-release-${{ github.run_id }}
+      VYRAL_SKOPEO_IMAGE: quay.io/skopeo/stable@sha256:c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615
+      VYRAL_TEST_BUBBLEWRAP: /usr/local/bin/bwrap
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+
+      - name: Install Python release tooling
+        run: >-
+          python -m pip install
+          --disable-pip-version-check
+          build==1.3.0
+          --editable "runtimes/python[dev]"
+
+      - name: Install release gate tooling
+        run: >-
+          sudo apt-get update &&
+          sudo apt-get install --yes --no-install-recommends
+          build-essential ca-certificates curl jq libcap-dev meson ninja-build
+          pkg-config ripgrep xz-utils
+
+      - name: Build the pinned Bubblewrap security boundary
+        env:
+          BUBBLEWRAP_VERSION: "0.11.2"
+          BUBBLEWRAP_SHA256: 69abc30005d2186baf7737feacd8da35633b93cf5af38838ecff17c5f8e924f6
+        run: |
+          archive="$RUNNER_TEMP/bubblewrap-$BUBBLEWRAP_VERSION.tar.xz"
+          source="$RUNNER_TEMP/bubblewrap-$BUBBLEWRAP_VERSION"
+          build="$RUNNER_TEMP/bubblewrap-build"
+          curl --fail --location --retry 3 --retry-all-errors \
+            --proto '=https' --tlsv1.2 \
+            --output "$archive" \
+            "https://github.com/containers/bubblewrap/releases/download/v$BUBBLEWRAP_VERSION/bubblewrap-$BUBBLEWRAP_VERSION.tar.xz"
+          printf '%s  %s\n' "$BUBBLEWRAP_SHA256" "$archive" | sha256sum --check
+          tar --extract --xz --file "$archive" --directory "$RUNNER_TEMP"
+          meson setup "$build" "$source" \
+            -Dbash_completion=disabled \
+            -Dman=disabled \
+            -Dselinux=disabled \
+            -Dsupport_setuid=false \
+            -Dtests=false \
+            -Dzsh_completion=disabled
+          meson compile --verbose -C "$build"
+          sudo install --mode 0755 "$build/bwrap" "$VYRAL_TEST_BUBBLEWRAP"
+          test "$("$VYRAL_TEST_BUBBLEWRAP" --version)" = "bubblewrap $BUBBLEWRAP_VERSION"
+          "$VYRAL_TEST_BUBBLEWRAP" --help | grep --fixed-strings -- '--disable-userns'
+
+      - name: Verify package layouts, metadata, SBOM, and clean consumers
+        run: scripts/verify-release-artifacts.sh
+
+      - name: Run deterministic conformance and adapter tests
+        run: dotnet test Vyral.sln --no-restore --logger 'console;verbosity=minimal'
+
+      - name: Set up an attestation-capable BuildKit builder
+        run: |
+          docker buildx create \
+            --driver docker-container \
+            --name "$VYRAL_BUILDX_BUILDER" \
+            --use
+          docker buildx inspect --bootstrap "$VYRAL_BUILDX_BUILDER"
+
+      - name: Build container images with SBOM and provenance attestations
+        run: |
+          mkdir -p artifacts/release/images
+          docker buildx build \
+            --file Dockerfile \
+            --tag "vyral-server-mcp-qualification:${{ github.sha }}" \
+            --build-arg VYRAL_IMAGE_VERSION=0.3.0 \
+            --build-arg VYRAL_IMAGE_REVISION="${{ github.sha }}" \
+            --sbom=true \
+            --provenance=mode=max \
+            --metadata-file artifacts/release/images/vyral-server-build-metadata.json \
+            --output type=oci,dest=artifacts/release/images/vyral-server.oci \
+            .
+          docker buildx build \
+            --file workers/execution-smoke-go/Dockerfile \
+            --tag "vyral-execution-smoke-qualification:${{ github.sha }}" \
+            --build-arg VYRAL_IMAGE_VERSION=0.3.0 \
+            --build-arg VYRAL_IMAGE_REVISION="${{ github.sha }}" \
+            --sbom=true \
+            --provenance=mode=max \
+            --metadata-file artifacts/release/images/execution-smoke-worker-build-metadata.json \
+            --output type=oci,dest=artifacts/release/images/execution-smoke-worker.oci \
+            .
+
+      - name: Import and qualify the packaged containers
+        run: |
+          import_oci() {
+            local archive="$1"
+            local image="$2"
+            docker run --rm \
+              --read-only \
+              --network none \
+              --tmpfs /var/tmp:rw,noexec,nosuid,size=512m \
+              --volume /var/run/docker.sock:/var/run/docker.sock \
+              --mount "type=bind,source=$PWD/artifacts/release/images,target=/evidence,readonly" \
+              "$VYRAL_SKOPEO_IMAGE" \
+              copy \
+              "oci-archive:/evidence/$archive:${{ github.sha }}" \
+              "docker-daemon:$image"
+          }
+          import_oci \
+            vyral-server.oci \
+            "vyral-server-mcp-qualification:${{ github.sha }}"
+          import_oci \
+            execution-smoke-worker.oci \
+            "vyral-execution-smoke-qualification:${{ github.sha }}"
+          scripts/verify-mcp-container.sh \
+            "vyral-server-mcp-qualification:${{ github.sha }}" \
+            artifacts/release/qualification/mcp-container.json \
+            artifacts/release/images/vyral-server.oci \
+            artifacts/release/images/vyral-server-build-metadata.json
+          scripts/verify-execution-smoke-container.sh \
+            "vyral-execution-smoke-qualification:${{ github.sha }}" \
+            artifacts/release/qualification/execution-smoke-container.json \
+            artifacts/release/images/execution-smoke-worker.oci \
+            artifacts/release/images/execution-smoke-worker-build-metadata.json
+
+      - name: Reject high or critical container vulnerabilities and embedded secrets
+        run: |
+          mkdir -p "$RUNNER_TEMP/vyral-trivy-cache"
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --mount "type=bind,source=$RUNNER_TEMP/vyral-trivy-cache,target=/root/.cache/trivy" \
+            --mount "type=bind,source=$PWD/artifacts/release/qualification,target=/evidence" \
+            aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c \
+            image --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /evidence/vyral-server-trivy.json \
+            "vyral-server-mcp-qualification:${{ github.sha }}"
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --mount "type=bind,source=$RUNNER_TEMP/vyral-trivy-cache,target=/root/.cache/trivy" \
+            --mount "type=bind,source=$PWD/artifacts/release/qualification,target=/evidence" \
+            aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c \
+            image --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /evidence/execution-smoke-worker-trivy.json \
+            "vyral-execution-smoke-qualification:${{ github.sha }}"
+
+      - name: Remove the qualification BuildKit builder
+        if: always()
+        run: |
+          if docker buildx inspect "$VYRAL_BUILDX_BUILDER" >/dev/null 2>&1; then
+            docker buildx rm "$VYRAL_BUILDX_BUILDER"
+          fi
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-integrity-${{ github.sha }}
+          path: |
+            artifacts/release
+            !artifacts/release/images
+          if-no-files-found: error
+
+      - name: Upload container evidence
+        if: ${{ always() && hashFiles('artifacts/release/images/**', 'artifacts/release/qualification/*container.json', 'artifacts/release/qualification/*trivy.json') != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-integrity-${{ github.sha }}
+          path: |
+            artifacts/release/images
+            artifacts/release/qualification/*container.json
+            artifacts/release/qualification/*trivy.json
+          if-no-files-found: error

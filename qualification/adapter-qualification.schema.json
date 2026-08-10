@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvyral.com/qualification/adapter-qualification.schema.json",
+  "title": "Vyral execution adapter qualification artifact",
+  "description": "Release evidence for advertised Vyral execution adapter capabilities. Qualification records describe verification maturity and never replace capability disclosure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "coreContractVersion",
+    "generatedAtUtc",
+    "releaseCommit",
+    "qualificationExpiresAfterDays",
+    "summary",
+    "adapters"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "coreContractVersion": {
+      "$ref": "#/$defs/version"
+    },
+    "generatedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "releaseCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "qualificationExpiresAfterDays": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "adapters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/adapter"
+      }
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "capability": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterCount",
+        "currentAdapterCount",
+        "staleAdapterCount",
+        "prototypeAdapterCount",
+        "localConformantAdapterCount",
+        "liveQualifiedAdapterCount",
+        "consumerValidatedAdapterCount",
+        "advertisedCapabilityClaims",
+        "currentLiveQualifiedCapabilityClaims",
+        "currentLiveQualifiedCapabilityPercentage"
+      ],
+      "properties": {
+        "adapterCount": { "type": "integer", "minimum": 0 },
+        "currentAdapterCount": { "type": "integer", "minimum": 0 },
+        "staleAdapterCount": { "type": "integer", "minimum": 0 },
+        "prototypeAdapterCount": { "type": "integer", "minimum": 0 },
+        "localConformantAdapterCount": { "type": "integer", "minimum": 0 },
+        "liveQualifiedAdapterCount": { "type": "integer", "minimum": 0 },
+        "consumerValidatedAdapterCount": { "type": "integer", "minimum": 0 },
+        "advertisedCapabilityClaims": { "type": "integer", "minimum": 0 },
+        "currentLiveQualifiedCapabilityClaims": { "type": "integer", "minimum": 0 },
+        "currentLiveQualifiedCapabilityPercentage": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterId",
+        "runtimeKind",
+        "displayName",
+        "adapterVersion",
+        "package",
+        "advertisedCapabilities",
+        "qualification"
+      ],
+      "properties": {
+        "adapterId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "maxLength": 100
+        },
+        "runtimeKind": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "maxLength": 100
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "package": {
+          "type": "string",
+          "pattern": "^Vyral(?:\\.[A-Za-z0-9]+)+$",
+          "maxLength": 160
+        },
+        "advertisedCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/capability"
+          }
+        },
+        "qualification": {
+          "$ref": "#/$defs/qualification"
+        }
+      }
+    },
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "status",
+        "environmentClass",
+        "testedAtUtc",
+        "expiresAtUtc",
+        "testCommit",
+        "adapterVersion",
+        "coreContractVersion",
+        "capabilities",
+        "evidence"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "prototype",
+            "local_conformant",
+            "live_qualified",
+            "consumer_validated"
+          ]
+        },
+        "status": {
+          "enum": [
+            "current",
+            "stale"
+          ]
+        },
+        "environmentClass": {
+          "enum": [
+            "unit_fixture",
+            "deterministic_fixture",
+            "local_dependency",
+            "live_self_hosted",
+            "live_managed",
+            "consumer_environment"
+          ]
+        },
+        "providerVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "testedAtUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAtUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "testCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "coreContractVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/capability"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "result",
+        "reference",
+        "command"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "unit_gate",
+            "shared_conformance",
+            "fault_restart",
+            "public_surface",
+            "live_gate",
+            "cleanup",
+            "consumer_validation"
+          ]
+        },
+        "result": {
+          "const": "passed"
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "resultArtifact": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._/-]+$",
+          "maxLength": 300
+        }
+      }
+    }
+  }
+}

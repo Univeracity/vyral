@@ -1,0 +1,31 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: vyral-cutover-test
+      MYSQL_DATABASE: vyral_cutover
+    ports:
+      - "${VYRAL_CUTOVER_MYSQL_PORT:-33306}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -pvyral-cutover-test --silent"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    tmpfs:
+      - /var/lib/mysql
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: vyral_cutover
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: vyral-cutover-test
+    ports:
+      - "${VYRAL_CUTOVER_POSTGRES_PORT:-35432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vyral_cutover"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    tmpfs:
+      - /var/lib/postgresql/data

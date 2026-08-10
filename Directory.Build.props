@@ -1,0 +1,37 @@
+<Project>
+  <PropertyGroup>
+    <!-- Product/API packages default to the current pre-1.0 line. Projects on a separately
+         qualified line, such as the 0.2 execution runtime, override these properties locally. -->
+    <VyralReleaseVersion Condition="'$(VyralReleaseVersion)' == ''">0.3.0</VyralReleaseVersion>
+    <Version Condition="'$(Version)' == ''">$(VyralReleaseVersion)</Version>
+    <PackageVersion Condition="'$(PackageVersion)' == ''">$(VyralReleaseVersion)</PackageVersion>
+    <Authors Condition="'$(Authors)' == ''">Jeremy Dixon</Authors>
+    <Copyright Condition="'$(Copyright)' == ''">Copyright © 2026 Jeremy Dixon</Copyright>
+    <PackageLicenseExpression Condition="'$(PackageLicenseExpression)' == ''">Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl Condition="'$(PackageProjectUrl)' == ''">https://github.com/univeracity/vyral</PackageProjectUrl>
+    <RepositoryUrl Condition="'$(RepositoryUrl)' == ''">https://github.com/univeracity/vyral</RepositoryUrl>
+    <RepositoryType Condition="'$(RepositoryType)' == ''">git</RepositoryType>
+    <PublishRepositoryUrl Condition="'$(PublishRepositoryUrl)' == ''">true</PublishRepositoryUrl>
+    <!-- A release must be reproducible from tracked source only. In particular, do not embed a
+         developer's untracked work in a symbol package merely because it happened to compile. -->
+    <EmbedUntrackedSources Condition="'$(EmbedUntrackedSources)' == ''">false</EmbedUntrackedSources>
+    <IncludeSymbols Condition="'$(IncludeSymbols)' == ''">true</IncludeSymbols>
+    <SymbolPackageFormat Condition="'$(SymbolPackageFormat)' == ''">snupkg</SymbolPackageFormat>
+    <PackageRequireLicenseAcceptance Condition="'$(PackageRequireLicenseAcceptance)' == ''">false</PackageRequireLicenseAcceptance>
+    <Description Condition="'$(Description)' == ''">Provider-neutral contracts and adapters for portable application data, retrieval, and durable execution.</Description>
+    <PackageTags Condition="'$(PackageTags)' == ''">vyral;provider-neutral;contracts;retrieval;execution</PackageTags>
+    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == '' and '$(IsPackable)' != 'false'">README.md</PackageReadmeFile>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Packages without a package-specific README receive a compact package landing page rather
+       than the repository overview, whose relative links and server setup do not belong in every
+       library package. -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)docs/reference/execution-runtime-limitations.md" Link="EXECUTION-RUNTIME-LIMITATIONS.md" Pack="true" PackagePath="EXECUTION-RUNTIME-LIMITATIONS.md" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false' and !Exists('$(MSBuildProjectDirectory)/README.md')">
+    <None Include="$(MSBuildThisFileDirectory)packaging/nuget/README.md" Link="README.md" Pack="true" PackagePath="README.md" Visible="false" />
+  </ItemGroup>
+</Project>

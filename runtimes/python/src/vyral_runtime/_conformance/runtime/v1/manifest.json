@@ -1,0 +1,100 @@
+{
+  "$schema": "manifest.schema.json",
+  "fixtureVersion": "1.0.0",
+  "contractVersion": "0.3.0",
+  "minimumRunnerVersion": "0.1.0",
+  "scenarioSchema": {
+    "path": "scenario.schema.json",
+    "sha256": "sha256:3c2fb8b7bdb05cc0003e77b772597db3a3b9dad249f0ad6e80b6f180a996df9e"
+  },
+  "profiles": [
+    "vyral.runtime.contracts.v1",
+    "vyral.runtime.data-rag.v1",
+    "vyral.runtime.external-worker.v1",
+    "vyral.runtime.providers.v1",
+    "vyral.runtime.canonical.v1",
+    "vyral.runtime.execution.local.v1",
+    "vyral.runtime.rest.v1",
+    "vyral.runtime.mcp.stateless-2026-07-28.v1",
+    "vyral.runtime.full-local.v1"
+  ],
+  "scenarios": [
+    {
+      "id": "primitives.hashing.v1",
+      "path": "scenarios/goldens/primitives-hashing.json",
+      "sha256": "sha256:946be99fbf8880c11e979da30eb3c5429b82dbf0d697db5f861af1cce00fe83b",
+      "profile": "vyral.runtime.contracts.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "admission.receipts.v1",
+      "path": "scenarios/goldens/admission-receipts.json",
+      "sha256": "sha256:b9e24981e61afbfc821480902f83005b2b20c1ce8611b206716cdb354e4c6bc7",
+      "profile": "vyral.runtime.contracts.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "records.core-crud.v1",
+      "path": "scenarios/records/core-crud.json",
+      "sha256": "sha256:70378834d63cbf1870e60f6a46d32cec02ecfca5126c689832ff8030522b9428",
+      "profile": "vyral.runtime.data-rag.v1",
+      "kind": "stateful"
+    },
+    {
+      "id": "records.query-semantics.v1",
+      "path": "scenarios/records/query-semantics.json",
+      "sha256": "sha256:08fcbb848f1738c5404c2ceae926a753b6ed28a5c943d7394224818eaa34be7b",
+      "profile": "vyral.runtime.data-rag.v1",
+      "kind": "stateful"
+    },
+    {
+      "id": "records.snapshot-hash.v1",
+      "path": "scenarios/goldens/collection-snapshot-hash.json",
+      "sha256": "sha256:26412edeb2795af7fba53c49eaa650d6e7abbd48e1c7cfbabc82e663f63f27fc",
+      "profile": "vyral.runtime.data-rag.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "embeddings.vectors.v1",
+      "path": "scenarios/goldens/embedding-vectors.json",
+      "sha256": "sha256:b5fc18aff7ae2ba1cbc3a9422d07511e6803dcdfd8473939c639bcd5d4779aab",
+      "profile": "vyral.runtime.data-rag.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "rag.ingestion-plan.v1",
+      "path": "scenarios/goldens/rag-ingestion-plan.json",
+      "sha256": "sha256:50c1dbc3427cd44b95c5a3c64c6c81d5136e4d9bce8efd2ef5adcad967603f56",
+      "profile": "vyral.runtime.data-rag.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "graph.record-mapping.v1",
+      "path": "scenarios/goldens/graph-record-mapping.json",
+      "sha256": "sha256:839bc82351eca3d2ecc178b80cd64c54e6a334c0279f42be6b116a1da9f766b9",
+      "profile": "vyral.runtime.data-rag.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "external-workers.handler-lifecycle.v1",
+      "path": "scenarios/external-workers/handler-lifecycle.json",
+      "sha256": "sha256:8aab23d95109c7143db07b15788a1517eeba21cc0b3b82391b16b806a37b7d88",
+      "profile": "vyral.runtime.external-worker.v1",
+      "kind": "stateful"
+    },
+    {
+      "id": "canonical.strong-profile.v1",
+      "path": "scenarios/canonical/strong-profile.json",
+      "sha256": "sha256:34b40772e8d745c38025e532d745cb531485a671ad0c3ad8868cbbb9272793b7",
+      "profile": "vyral.runtime.canonical.v1",
+      "kind": "stateful"
+    },
+    {
+      "id": "execution.native-lifecycle.v1",
+      "path": "scenarios/execution/native-lifecycle.json",
+      "sha256": "sha256:b19ee9c6c109581a2743b7e67aaba4ed49f2d156fc63d32ad4fd4278e247fb18",
+      "profile": "vyral.runtime.execution.local.v1",
+      "kind": "stateful"
+    }
+  ]
+}

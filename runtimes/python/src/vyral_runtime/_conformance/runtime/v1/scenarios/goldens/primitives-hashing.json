@@ -1,0 +1,51 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "primitives.hashing.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.contracts.v1",
+  "kind": "golden",
+  "description": "UTF-8 hashing and CanonicalStore opaque identifier primitives shared by every runtime.",
+  "steps": [
+    {
+      "id": "sha256-empty",
+      "operation": "hash.sha256-utf8",
+      "arguments": {
+        "text": ""
+      },
+      "expect": {
+        "value": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "id": "sha256-unicode",
+      "operation": "hash.sha256-utf8",
+      "arguments": {
+        "text": "Vyral π"
+      },
+      "expect": {
+        "value": "sha256:6f570dd20728d6fe3d804ca68460a2fd1973342cdbe809367b3834ddbff6e1b8"
+      }
+    },
+    {
+      "id": "canonical-transaction-id-trims",
+      "operation": "canonical.transaction-id",
+      "arguments": {
+        "tenantId": " tenant-a ",
+        "idempotencyKey": " request-1 "
+      },
+      "expect": {
+        "value": "ctx_37411805606427a1048f336af169102f"
+      }
+    },
+    {
+      "id": "canonical-lease-token-hash",
+      "operation": "canonical.lease-token-hash",
+      "arguments": {
+        "token": "lease-token"
+      },
+      "expect": {
+        "value": "sha256:2c80af130e7c29586a8e40b306691fd9726d60daa488ff3580121f95a823fc38"
+      }
+    }
+  ]
+}

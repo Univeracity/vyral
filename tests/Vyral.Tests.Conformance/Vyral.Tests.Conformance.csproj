@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Vyral.Abstractions\Vyral.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution\Vyral.Execution.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.Local\Vyral.Execution.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.WorkerClient\Vyral.Execution.WorkerClient.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Primitives\Vyral.Primitives.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Local\Vyral.Local.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\qualification\adapter-qualification.json"
+                      LogicalName="Vyral.Tests.Conformance.adapter-qualification.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\manifest.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-manifest.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\primitives-hashing.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-primitives-hashing.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\admission-receipts.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-admission-receipts.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\collection-snapshot-hash.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-collection-snapshot-hash.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\embedding-vectors.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-embedding-vectors.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\rag-ingestion-plan.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-rag-ingestion-plan.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\graph-record-mapping.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-graph-record-mapping.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\external-workers\handler-lifecycle.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-external-worker-lifecycle.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\canonical\strong-profile.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-canonical-strong-profile.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\execution\native-lifecycle.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-native-execution-lifecycle.json" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "canonical-mysql-contention/v1",
+  "generatedAtUtc": "2026-07-28T16:25:39.4403835Z",
+  "sourceCommit": "f289a8752af298a90a7eb48e521835f7ba3f70d5",
+  "databaseProduct": "mysql",
+  "databaseVersion": "8.0.46-0ubuntu0.24.04.3",
+  "serverDefaultTransactionIsolation": "REPEATABLE-READ",
+  "mutationTransactionIsolation": "READ-COMMITTED",
+  "durability": {
+    "innoDbFlushLogAtTransactionCommit": 1,
+    "syncBinlog": 1,
+    "binaryLogEnabled": false
+  },
+  "runtimeVersion": ".NET 10.0.10",
+  "operatingSystem": "Ubuntu 24.04.4 LTS",
+  "logicalProcessorCount": 16,
+  "workload": {
+    "workers": 8,
+    "operationsPerWorker": 25,
+    "warmupOperations": 8,
+    "seedDocumentsPerTenant": 25,
+    "payloadBytes": 256,
+    "mutationShape": "one_document_plus_one_outbox_event",
+    "durabilityShape": "provider_default_transaction_commit"
+  },
+  "budgets": {
+    "maxSameTenantP95Ms": 100,
+    "minSameTenantOperationsPerSecond": 50,
+    "maxWriteContentionRatio": 4
+  },
+  "sameTenantWrites": {
+    "scenario": "same_tenant_writes",
+    "tenantCount": 1,
+    "operationsRequested": 200,
+    "operationsCompleted": 200,
+    "operationsFailed": 0,
+    "wallClockMs": 4460.902,
+    "operationsPerSecond": 44.834,
+    "meanMs": 165.758,
+    "p50Ms": 142.919,
+    "p95Ms": 346.782,
+    "p99Ms": 439.089,
+    "maxMs": 539.592,
+    "initialMaxTenantStateBytes": 50697,
+    "finalMaxTenantStateBytes": 746173,
+    "finalTotalTenantStateBytes": 746173,
+    "failureClasses": {}
+  },
+  "distinctTenantWrites": {
+    "scenario": "distinct_tenant_writes",
+    "tenantCount": 8,
+    "operationsRequested": 200,
+    "operationsCompleted": 200,
+    "operationsFailed": 0,
+    "wallClockMs": 2698.399,
+    "operationsPerSecond": 74.118,
+    "meanMs": 104.633,
+    "p50Ms": 70.049,
+    "p95Ms": 280.041,
+    "p99Ms": 409.962,
+    "maxMs": 446.253,
+    "initialMaxTenantStateBytes": 51411,
+    "finalMaxTenantStateBytes": 139764,
+    "finalTotalTenantStateBytes": 1117692,
+    "failureClasses": {}
+  },
+  "sameTenantReplays": {
+    "scenario": "same_tenant_idempotent_replays",
+    "tenantCount": 1,
+    "operationsRequested": 200,
+    "operationsCompleted": 200,
+    "operationsFailed": 0,
+    "wallClockMs": 1814.243,
+    "operationsPerSecond": 110.239,
+    "meanMs": 71.618,
+    "p50Ms": 58.646,
+    "p95Ms": 164.157,
+    "p99Ms": 206.186,
+    "maxMs": 230.838,
+    "initialMaxTenantStateBytes": 53000,
+    "finalMaxTenantStateBytes": 53000,
+    "finalTotalTenantStateBytes": 53000,
+    "failureClasses": {}
+  },
+  "distinctTenantReplays": {
+    "scenario": "distinct_tenant_idempotent_replays",
+    "tenantCount": 8,
+    "operationsRequested": 200,
+    "operationsCompleted": 200,
+    "operationsFailed": 0,
+    "wallClockMs": 725.683,
+    "operationsPerSecond": 275.602,
+    "meanMs": 28.874,
+    "p50Ms": 19.066,
+    "p95Ms": 63.947,
+    "p99Ms": 68.388,
+    "maxMs": 68.505,
+    "initialMaxTenantStateBytes": 54110,
+    "finalMaxTenantStateBytes": 54110,
+    "finalTotalTenantStateBytes": 432703,
+    "failureClasses": {}
+  },
+  "decision": {
+    "withinBudget": false,
+    "writeContentionRatio": 1.238,
+    "replayContentionRatio": 2.567,
+    "recommendedProfile": "postgresql_granular_or_dedicated_projection",
+    "violations": [
+      "same_tenant_p95_exceeds_budget",
+      "same_tenant_throughput_below_budget"
+    ]
+  }
+}

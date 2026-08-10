@@ -1,0 +1,3966 @@
+{
+  "$schema": "./public-sdk-surface.schema.json",
+  "catalogVersion": "0.3.0",
+  "openApi": "../src/Vyral.Server/contracts/vyral.openapi.json",
+  "openApiVersion": "3.1.0",
+  "evidenceProfiles": {
+    "public-sdk": {
+      "server": "tests/Vyral.Tests.Local/ServerWorkflowTests.cs",
+      "pythonWire": "clients/python/tests/test_client.py",
+      "pythonDocs": "clients/python/README.md",
+      "javascriptWire": "clients/javascript/test/index.test.js",
+      "javascriptDocs": "clients/javascript/README.md"
+    }
+  },
+  "excludedRestOperations": [
+    {
+      "operationId": "getServerInfo",
+      "reason": "Human-readable server banner; health and contract discovery are the supported SDK operations."
+    }
+  ],
+  "operations": [
+    {
+      "id": "listCanonicalMigrations",
+      "group": "canonical",
+      "restOperationIds": [
+        "listCanonicalMigrations"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_canonical_migrations",
+        "javascript": "listCanonicalMigrations"
+      },
+      "contractRefs": [
+        "openapi:listCanonicalMigrations"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalMigrationReceipt"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "applyCanonicalMigrations",
+      "group": "canonical",
+      "restOperationIds": [
+        "applyCanonicalMigrations"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "apply_canonical_migrations",
+        "javascript": "applyCanonicalMigrations"
+      },
+      "contractRefs": [
+        "openapi:applyCanonicalMigrations"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalMigration"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "preflightCanonicalStore",
+      "group": "canonical",
+      "restOperationIds": [
+        "preflightCanonicalStore"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_canonical_preflight",
+        "javascript": "getCanonicalPreflight"
+      },
+      "contractRefs": [
+        "openapi:preflightCanonicalStore"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalPreflightReport"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "probeCanonicalStoreDataPlane",
+      "group": "canonical",
+      "restOperationIds": [
+        "probeCanonicalStoreDataPlane"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "maintenance",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "probe_canonical_data_plane",
+        "javascript": "probeCanonicalDataPlane"
+      },
+      "contractRefs": [
+        "openapi:probeCanonicalStoreDataPlane"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalPreflightReport"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "commitCanonicalTransaction",
+      "group": "canonical",
+      "restOperationIds": [
+        "commitCanonicalTransaction"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "required",
+      "sdk": {
+        "python": "commit_canonical_transaction",
+        "javascript": "commitCanonicalTransaction"
+      },
+      "contractRefs": [
+        "openapi:commitCanonicalTransaction"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalTransactionRequest",
+        "#/components/schemas/CanonicalTransactionResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "readCanonicalDocument",
+      "group": "canonical",
+      "restOperationIds": [
+        "readCanonicalDocument",
+        "getCanonicalDocument"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_canonical_document",
+        "javascript": "getCanonicalDocument"
+      },
+      "contractRefs": [
+        "openapi:readCanonicalDocument",
+        "openapi:getCanonicalDocument"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalDocument",
+        "#/components/schemas/CanonicalDocumentReadRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "queryCanonicalDocuments",
+      "group": "canonical",
+      "restOperationIds": [
+        "queryCanonicalDocuments"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "query_canonical_documents",
+        "javascript": "queryCanonicalDocuments"
+      },
+      "contractRefs": [
+        "openapi:queryCanonicalDocuments"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalDocumentQuery",
+        "#/components/schemas/CanonicalDocumentQueryResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "queryCanonicalDocumentRevisions",
+      "group": "canonical",
+      "restOperationIds": [
+        "queryCanonicalDocumentRevisions",
+        "listCanonicalDocumentRevisions"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_canonical_document_revisions",
+        "javascript": "listCanonicalDocumentRevisions"
+      },
+      "contractRefs": [
+        "openapi:queryCanonicalDocumentRevisions",
+        "openapi:listCanonicalDocumentRevisions"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalDocumentRevision",
+        "#/components/schemas/CanonicalDocumentRevisionQuery"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "leaseCanonicalOutbox",
+      "group": "canonical",
+      "restOperationIds": [
+        "leaseCanonicalOutbox"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "lease_canonical_outbox",
+        "javascript": "leaseCanonicalOutbox"
+      },
+      "contractRefs": [
+        "openapi:leaseCanonicalOutbox"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalOutboxLease",
+        "#/components/schemas/CanonicalOutboxLeaseRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "queryCanonicalOutbox",
+      "group": "canonical",
+      "restOperationIds": [
+        "queryCanonicalOutbox"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "query_canonical_outbox",
+        "javascript": "queryCanonicalOutbox"
+      },
+      "contractRefs": [
+        "openapi:queryCanonicalOutbox"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalOutboxQuery",
+        "#/components/schemas/CanonicalOutboxQueryResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "renewCanonicalOutboxLease",
+      "group": "canonical",
+      "restOperationIds": [
+        "renewCanonicalOutboxLease"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "renew_canonical_outbox_lease",
+        "javascript": "renewCanonicalOutboxLease"
+      },
+      "contractRefs": [
+        "openapi:renewCanonicalOutboxLease"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalOutboxLeaseRenewal",
+        "#/components/schemas/CanonicalOutboxLeaseRenewalRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "acknowledgeCanonicalOutbox",
+      "group": "canonical",
+      "restOperationIds": [
+        "acknowledgeCanonicalOutbox"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "acknowledge_canonical_outbox",
+        "javascript": "acknowledgeCanonicalOutbox"
+      },
+      "contractRefs": [
+        "openapi:acknowledgeCanonicalOutbox"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalOutboxAcknowledgement"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "releaseCanonicalOutbox",
+      "group": "canonical",
+      "restOperationIds": [
+        "releaseCanonicalOutbox"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "release_canonical_outbox",
+        "javascript": "releaseCanonicalOutbox"
+      },
+      "contractRefs": [
+        "openapi:releaseCanonicalOutbox"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalOutboxNackRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "replayCanonicalOutbox",
+      "group": "canonical",
+      "restOperationIds": [
+        "replayCanonicalOutbox"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "replay_canonical_outbox",
+        "javascript": "replayCanonicalOutbox"
+      },
+      "contractRefs": [
+        "openapi:replayCanonicalOutbox"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalOutboxReplayRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "exportCanonicalTenant",
+      "group": "canonical",
+      "restOperationIds": [
+        "exportCanonicalTenant"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "export_canonical_tenant",
+        "javascript": "exportCanonicalTenant"
+      },
+      "contractRefs": [
+        "openapi:exportCanonicalTenant"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalTenantSnapshot"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "restoreCanonicalTenant",
+      "group": "canonical",
+      "restOperationIds": [
+        "restoreCanonicalTenant"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "restore_canonical_tenant",
+        "javascript": "restoreCanonicalTenant"
+      },
+      "contractRefs": [
+        "openapi:restoreCanonicalTenant"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/CanonicalRestoreRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getHealth",
+      "group": "server",
+      "restOperationIds": [
+        "getHealth"
+      ],
+      "stability": "public",
+      "authorizationClass": "anonymous",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "health",
+        "javascript": "health"
+      },
+      "contractRefs": [
+        "openapi:getHealth"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ServerHealthStatus"
+      ],
+      "mcp": {
+        "exposure": "resource",
+        "id": "vyral://health/v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getReadiness",
+      "group": "server",
+      "restOperationIds": [
+        "getReadiness"
+      ],
+      "stability": "public",
+      "authorizationClass": "anonymous",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "readiness",
+        "javascript": "readiness"
+      },
+      "contractRefs": [
+        "openapi:getReadiness"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ServerReadinessReport"
+      ],
+      "mcp": {
+        "exposure": "resource",
+        "id": "vyral://readiness/v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "ingestRecordArtifact",
+      "group": "artifacts",
+      "restOperationIds": [
+        "ingestRecordArtifact"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "ingest_record_artifact",
+        "javascript": "ingestRecordArtifact"
+      },
+      "contractRefs": [
+        "openapi:ingestRecordArtifact"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/ArtifactRecordIngestManifest",
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExecutionRuntime",
+      "group": "execution",
+      "restOperationIds": [
+        "getExecutionRuntime"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_execution_runtime",
+        "javascript": "getExecutionRuntime"
+      },
+      "contractRefs": [
+        "openapi:getExecutionRuntime"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/ExecutionRuntimeSurface"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getEffectiveExecutionRuntime",
+      "group": "execution",
+      "restOperationIds": [
+        "getEffectiveExecutionRuntime"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_effective_execution_runtime",
+        "javascript": "getEffectiveExecutionRuntime"
+      },
+      "contractRefs": [
+        "openapi:getEffectiveExecutionRuntime"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/EffectiveExecutionRuntimeSurface"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExecutionRuntimeMaintenance",
+      "group": "execution",
+      "restOperationIds": [
+        "getExecutionRuntimeMaintenance"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-maintenance",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_execution_runtime_maintenance",
+        "javascript": "getExecutionRuntimeMaintenance"
+      },
+      "contractRefs": [
+        "openapi:getExecutionRuntimeMaintenance"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionMaintenanceStatus"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "pruneExecutionRuntimeMaintenance",
+      "group": "execution",
+      "restOperationIds": [
+        "pruneExecutionRuntimeMaintenance"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-maintenance",
+      "mutation": "write",
+      "completionBoundary": "maintenance",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "prune_execution_runtime_maintenance",
+        "javascript": "pruneExecutionRuntimeMaintenance"
+      },
+      "contractRefs": [
+        "openapi:pruneExecutionRuntimeMaintenance"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionMaintenancePruneRequest",
+        "#/components/schemas/ExecutionMaintenancePruneResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "reconcileExecutionRuntimeDispatch",
+      "group": "execution",
+      "restOperationIds": [
+        "reconcileExecutionRuntimeDispatch"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-maintenance",
+      "mutation": "write",
+      "completionBoundary": "maintenance",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "reconcile_execution_runtime_dispatch",
+        "javascript": "reconcileExecutionRuntimeDispatch"
+      },
+      "contractRefs": [
+        "openapi:reconcileExecutionRuntimeDispatch"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionMaintenanceDispatchReconcileRequest",
+        "#/components/schemas/ExecutionMaintenanceDispatchReconcileResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "leaseExternalExecutionRun",
+      "group": "execution",
+      "restOperationIds": [
+        "leaseExternalExecutionRun"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "lease_external_execution_run",
+        "javascript": "leaseExternalExecutionRun"
+      },
+      "contractRefs": [
+        "openapi:leaseExternalExecutionRun"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalWorkerLease",
+        "#/components/schemas/ExecutionExternalWorkerLeaseRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "heartbeatExternalExecutionLease",
+      "group": "execution",
+      "restOperationIds": [
+        "heartbeatExternalExecutionLease"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "heartbeat_external_execution_lease",
+        "javascript": "heartbeatExternalExecutionLease"
+      },
+      "contractRefs": [
+        "openapi:heartbeatExternalExecutionLease"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalWorkerHeartbeatRequest",
+        "#/components/schemas/ExecutionExternalWorkerLease"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "reportExternalExecutionLease",
+      "group": "execution",
+      "restOperationIds": [
+        "reportExternalExecutionLease"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "report_external_execution_lease",
+        "javascript": "reportExternalExecutionLease"
+      },
+      "contractRefs": [
+        "openapi:reportExternalExecutionLease"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalWorkerReportRequest",
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "recordExternalExecutionLeaseEvent",
+      "group": "execution",
+      "restOperationIds": [
+        "recordExternalExecutionLeaseEvent"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "record_external_execution_lease_event",
+        "javascript": "recordExternalExecutionLeaseEvent"
+      },
+      "contractRefs": [
+        "openapi:recordExternalExecutionLeaseEvent"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalWorkerEventRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "putExternalExecutionLeaseArtifact",
+      "group": "execution",
+      "restOperationIds": [
+        "putExternalExecutionLeaseArtifact"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "put_external_execution_lease_artifact",
+        "javascript": "putExternalExecutionLeaseArtifact"
+      },
+      "contractRefs": [
+        "openapi:putExternalExecutionLeaseArtifact"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionArtifact",
+        "#/components/schemas/ExecutionExternalWorkerArtifactRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "putExternalExecutionLeaseCheckpoint",
+      "group": "execution",
+      "restOperationIds": [
+        "putExternalExecutionLeaseCheckpoint"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "put_external_execution_lease_checkpoint",
+        "javascript": "putExternalExecutionLeaseCheckpoint"
+      },
+      "contractRefs": [
+        "openapi:putExternalExecutionLeaseCheckpoint"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionCheckpoint",
+        "#/components/schemas/ExecutionExternalWorkerCheckpointRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExternalExecutionLeaseCheckpoint",
+      "group": "execution",
+      "restOperationIds": [
+        "getExternalExecutionLeaseCheckpoint"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_external_execution_lease_checkpoint",
+        "javascript": "getExternalExecutionLeaseCheckpoint"
+      },
+      "contractRefs": [
+        "openapi:getExternalExecutionLeaseCheckpoint"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionCheckpoint",
+        "#/components/schemas/ExecutionExternalWorkerCheckpointReadRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "waitExternalExecutionLease",
+      "group": "execution",
+      "restOperationIds": [
+        "waitExternalExecutionLease"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "wait_external_execution_lease",
+        "javascript": "waitExternalExecutionLease"
+      },
+      "contractRefs": [
+        "openapi:waitExternalExecutionLease"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalWorkerWaitRequest",
+        "#/components/schemas/ExecutionExternalWorkerWaitResponse"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "completeExternalExecutionLease",
+      "group": "execution",
+      "restOperationIds": [
+        "completeExternalExecutionLease"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-worker",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "complete_external_execution_lease",
+        "javascript": "completeExternalExecutionLease"
+      },
+      "contractRefs": [
+        "openapi:completeExternalExecutionLease"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalWorkerCompletionRequest",
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listExecutionRuns",
+      "group": "execution",
+      "restOperationIds": [
+        "listExecutionRuns"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_execution_runs",
+        "javascript": "listExecutionRuns"
+      },
+      "contractRefs": [
+        "openapi:listExecutionRuns"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startExecutionRun",
+      "group": "execution",
+      "restOperationIds": [
+        "startExecutionRun"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_execution_run",
+        "javascript": "startExecutionRun"
+      },
+      "contractRefs": [
+        "openapi:startExecutionRun"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/schemas/ExecutionRun",
+        "#/components/schemas/ExecutionRunRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_execution_run_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExecutionRun",
+      "group": "execution",
+      "restOperationIds": [
+        "getExecutionRun"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_execution_run",
+        "javascript": "getExecutionRun"
+      },
+      "contractRefs": [
+        "openapi:getExecutionRun"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_get_execution_run_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelExecutionRun",
+      "group": "execution",
+      "restOperationIds": [
+        "cancelExecutionRun"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_execution_run",
+        "javascript": "cancelExecutionRun"
+      },
+      "contractRefs": [
+        "openapi:cancelExecutionRun"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "raiseExecutionEvent",
+      "group": "execution",
+      "restOperationIds": [
+        "raiseExecutionEvent"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "raise_execution_event",
+        "javascript": "raiseExecutionEvent"
+      },
+      "contractRefs": [
+        "openapi:raiseExecutionEvent"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionExternalEvent",
+        "#/components/schemas/ExecutionExternalEventRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExecutionRunHistory",
+      "group": "execution",
+      "restOperationIds": [
+        "getExecutionRunHistory"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_execution_run_history",
+        "javascript": "getExecutionRunHistory"
+      },
+      "contractRefs": [
+        "openapi:getExecutionRunHistory"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionTraceEvent"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_get_execution_run_history_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listExecutionRunArtifacts",
+      "group": "execution",
+      "restOperationIds": [
+        "listExecutionRunArtifacts"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_execution_run_artifacts",
+        "javascript": "listExecutionRunArtifacts"
+      },
+      "contractRefs": [
+        "openapi:listExecutionRunArtifacts"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionArtifact"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExecutionRunArtifact",
+      "group": "execution",
+      "restOperationIds": [
+        "getExecutionRunArtifact"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_execution_run_artifact",
+        "javascript": "getExecutionRunArtifact"
+      },
+      "contractRefs": [
+        "openapi:getExecutionRunArtifact"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionArtifact"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getExecutionRunCheckpoint",
+      "group": "execution",
+      "restOperationIds": [
+        "getExecutionRunCheckpoint"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_execution_run_checkpoint",
+        "javascript": "getExecutionRunCheckpoint"
+      },
+      "contractRefs": [
+        "openapi:getExecutionRunCheckpoint"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ExecutionCheckpoint"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listEmbeddingProviders",
+      "group": "embeddings",
+      "restOperationIds": [
+        "listEmbeddingProviders"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_embedding_providers",
+        "javascript": "listEmbeddingProviders"
+      },
+      "contractRefs": [
+        "openapi:listEmbeddingProviders"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/EmbeddingProviderDescriptor"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listEmbeddingProviderGuidance",
+      "group": "embeddings",
+      "restOperationIds": [
+        "listEmbeddingProviderGuidance"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_embedding_provider_guidance",
+        "javascript": "listEmbeddingProviderGuidance"
+      },
+      "contractRefs": [
+        "openapi:listEmbeddingProviderGuidance"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/EmbeddingProviderGuidance"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getEmbeddingProviderDoctor",
+      "group": "embeddings",
+      "restOperationIds": [
+        "getEmbeddingProviderDoctor"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_embedding_provider_doctor",
+        "javascript": "getEmbeddingProviderDoctor"
+      },
+      "contractRefs": [
+        "openapi:getEmbeddingProviderDoctor"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderDoctorResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "generateEmbeddings",
+      "group": "embeddings",
+      "restOperationIds": [
+        "generateEmbeddings"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "embed_texts",
+        "javascript": "embedTexts"
+      },
+      "contractRefs": [
+        "openapi:generateEmbeddings"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/EmbeddingRequest",
+        "#/components/schemas/EmbeddingResponse"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startEmbeddingJob",
+      "group": "embeddings",
+      "restOperationIds": [
+        "startEmbeddingJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_embedding_job",
+        "javascript": "startEmbeddingJob"
+      },
+      "contractRefs": [
+        "openapi:startEmbeddingJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/EmbeddingJob",
+        "#/components/schemas/EmbeddingRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_embedding_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listEmbeddingJobs",
+      "group": "embeddings",
+      "restOperationIds": [
+        "listEmbeddingJobs"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_embedding_jobs",
+        "javascript": "listEmbeddingJobs"
+      },
+      "contractRefs": [
+        "openapi:listEmbeddingJobs"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/EmbeddingJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getEmbeddingJob",
+      "group": "embeddings",
+      "restOperationIds": [
+        "getEmbeddingJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_embedding_job",
+        "javascript": "getEmbeddingJob"
+      },
+      "contractRefs": [
+        "openapi:getEmbeddingJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/EmbeddingJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelEmbeddingJob",
+      "group": "embeddings",
+      "restOperationIds": [
+        "cancelEmbeddingJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_embedding_job",
+        "javascript": "cancelEmbeddingJob"
+      },
+      "contractRefs": [
+        "openapi:cancelEmbeddingJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/EmbeddingJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviders",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviders"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_providers",
+        "javascript": "listProviders"
+      },
+      "contractRefs": [
+        "openapi:listProviders"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderProfile"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProviderCapabilityMatrix",
+      "group": "providers",
+      "restOperationIds": [
+        "getProviderCapabilityMatrix"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider_capability_matrix",
+        "javascript": "getProviderCapabilityMatrix"
+      },
+      "contractRefs": [
+        "openapi:getProviderCapabilityMatrix"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderCapabilityMatrix"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviderReadiness",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviderReadiness"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_provider_readiness",
+        "javascript": "listProviderReadiness"
+      },
+      "contractRefs": [
+        "openapi:listProviderReadiness"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderReadinessEnvelope"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviderDoctor",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviderDoctor"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_provider_doctor",
+        "javascript": "listProviderDoctor"
+      },
+      "contractRefs": [
+        "openapi:listProviderDoctor"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderDoctorResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviderQuotas",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviderQuotas"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_provider_quotas",
+        "javascript": "listProviderQuotas"
+      },
+      "contractRefs": [
+        "openapi:listProviderQuotas"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderQuotaResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProvider",
+      "group": "providers",
+      "restOperationIds": [
+        "getProvider"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider",
+        "javascript": "getProvider"
+      },
+      "contractRefs": [
+        "openapi:getProvider"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/schemas/ProviderTargetDescriptor"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProviderDoctor",
+      "group": "providers",
+      "restOperationIds": [
+        "getProviderDoctor"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider_doctor",
+        "javascript": "getProviderDoctor"
+      },
+      "contractRefs": [
+        "openapi:getProviderDoctor"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/responses/NotFound",
+        "#/components/schemas/ProviderDoctorResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProviderReadiness",
+      "group": "providers",
+      "restOperationIds": [
+        "getProviderReadiness"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider_readiness",
+        "javascript": "getProviderReadiness"
+      },
+      "contractRefs": [
+        "openapi:getProviderReadiness"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/responses/NotFound",
+        "#/components/schemas/ProviderReadinessEnvelope"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProviderQuota",
+      "group": "providers",
+      "restOperationIds": [
+        "getProviderQuota"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider_quota",
+        "javascript": "getProviderQuota"
+      },
+      "contractRefs": [
+        "openapi:getProviderQuota"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/responses/NotFound",
+        "#/components/schemas/ProviderQuotaResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviderQualifications",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviderQualifications"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_provider_qualifications",
+        "javascript": "listProviderQualifications"
+      },
+      "contractRefs": [
+        "openapi:listProviderQualifications"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/schemas/ProviderQualification"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviderModels",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviderModels"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_provider_models",
+        "javascript": "listProviderModels"
+      },
+      "contractRefs": [
+        "openapi:listProviderModels"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/schemas/ProviderModelListResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "qualifyProvider",
+      "group": "providers",
+      "restOperationIds": [
+        "qualifyProvider"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "write",
+      "completionBoundary": "maintenance",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "qualify_provider",
+        "javascript": "qualifyProvider"
+      },
+      "contractRefs": [
+        "openapi:qualifyProvider"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Provider",
+        "#/components/schemas/ProviderQualification",
+        "#/components/schemas/ProviderQualificationRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "runProviderCapability",
+      "group": "providers",
+      "restOperationIds": [
+        "runProviderCapability"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "run_provider",
+        "javascript": "runProvider"
+      },
+      "contractRefs": [
+        "openapi:runProviderCapability"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/parameters/Provider",
+        "#/components/schemas/ProviderRunJob",
+        "#/components/schemas/ProviderRunRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startProviderRunJob",
+      "group": "providers",
+      "restOperationIds": [
+        "startProviderRunJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_provider_job",
+        "javascript": "startProviderJob"
+      },
+      "contractRefs": [
+        "openapi:startProviderRunJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/parameters/Provider",
+        "#/components/schemas/ProviderRunJob",
+        "#/components/schemas/ProviderRunRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_provider_run_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listProviderRunJobs",
+      "group": "providers",
+      "restOperationIds": [
+        "listProviderRunJobs"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_provider_jobs",
+        "javascript": "listProviderJobs"
+      },
+      "contractRefs": [
+        "openapi:listProviderRunJobs"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderRunJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProviderRunJob",
+      "group": "providers",
+      "restOperationIds": [
+        "getProviderRunJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider_job",
+        "javascript": "getProviderJob"
+      },
+      "contractRefs": [
+        "openapi:getProviderRunJob"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderRunJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelProviderRunJob",
+      "group": "providers",
+      "restOperationIds": [
+        "cancelProviderRunJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_provider_job",
+        "javascript": "cancelProviderJob"
+      },
+      "contractRefs": [
+        "openapi:cancelProviderRunJob"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderRunJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getOpenApiContract",
+      "group": "server",
+      "restOperationIds": [
+        "getOpenApiContract"
+      ],
+      "stability": "public",
+      "authorizationClass": "anonymous",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "openapi_contract",
+        "javascript": "openApiContract"
+      },
+      "contractRefs": [
+        "openapi:getOpenApiContract"
+      ],
+      "schemaRefs": [],
+      "mcp": {
+        "exposure": "resource",
+        "id": "vyral://open_api_contract/v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listGraphProviderShapes",
+      "group": "graph",
+      "restOperationIds": [
+        "listGraphProviderShapes"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_graph_provider_shapes",
+        "javascript": "listGraphProviderShapes"
+      },
+      "contractRefs": [
+        "openapi:listGraphProviderShapes"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/VyralGraphProviderShape"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_list_graph_provider_shapes_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getGraphProviderShape",
+      "group": "graph",
+      "restOperationIds": [
+        "getGraphProviderShape"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_graph_provider_shape",
+        "javascript": "getGraphProviderShape"
+      },
+      "contractRefs": [
+        "openapi:getGraphProviderShape"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/VyralGraphProviderShape"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_get_graph_provider_shape_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listCollections",
+      "group": "collections",
+      "restOperationIds": [
+        "listCollections"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_collections",
+        "javascript": "listCollections"
+      },
+      "contractRefs": [
+        "openapi:listCollections"
+      ],
+      "schemaRefs": [],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_list_collections_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "createCollection",
+      "group": "collections",
+      "restOperationIds": [
+        "createCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "create_collection",
+        "javascript": "createCollection"
+      },
+      "contractRefs": [
+        "openapi:createCollection"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/ExecutionRun",
+        "#/components/schemas/RecordCollectionPolicy"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getCollection",
+      "group": "collections",
+      "restOperationIds": [
+        "getCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_collection_policy",
+        "javascript": "getCollectionPolicy"
+      },
+      "contractRefs": [
+        "openapi:getCollection"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/schemas/RecordCollectionPolicy"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_get_collection_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "deleteCollection",
+      "group": "collections",
+      "restOperationIds": [
+        "deleteCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "delete_collection",
+        "javascript": "deleteCollection"
+      },
+      "contractRefs": [
+        "openapi:deleteCollection"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/ExecutionRun"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "exportCollectionBounded",
+      "group": "collections",
+      "restOperationIds": [
+        "exportCollectionBounded",
+        "exportCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "export_collection",
+        "javascript": "exportCollection"
+      },
+      "contractRefs": [
+        "openapi:exportCollectionBounded",
+        "openapi:exportCollection"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/CollectionExportEnvelope",
+        "#/components/schemas/CollectionExportRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "importCollection",
+      "group": "collections",
+      "restOperationIds": [
+        "importCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "import_collection",
+        "javascript": "importCollection"
+      },
+      "contractRefs": [
+        "openapi:importCollection"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/CollectionImportRequest",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startCollectionImportJob",
+      "group": "collections",
+      "restOperationIds": [
+        "startCollectionImportJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_collection_import_job",
+        "javascript": "startCollectionImportJob"
+      },
+      "contractRefs": [
+        "openapi:startCollectionImportJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/CollectionImportRequest",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_collection_import_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "importGraphEnvelope",
+      "group": "graph",
+      "restOperationIds": [
+        "importGraphEnvelope"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "import_graph_envelope",
+        "javascript": "importGraphEnvelope"
+      },
+      "contractRefs": [
+        "openapi:importGraphEnvelope"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob",
+        "#/components/schemas/VyralGraphCollectionImportRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "exportGraphEnvelope",
+      "group": "graph",
+      "restOperationIds": [
+        "exportGraphEnvelope"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "export_graph_envelope",
+        "javascript": "exportGraphEnvelope"
+      },
+      "contractRefs": [
+        "openapi:exportGraphEnvelope"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/VyralGraphCollectionExportRequest",
+        "#/components/schemas/VyralGraphCollectionExportResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "traverseGraph",
+      "group": "graph",
+      "restOperationIds": [
+        "traverseGraph"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "traverse_graph",
+        "javascript": "traverseGraph"
+      },
+      "contractRefs": [
+        "openapi:traverseGraph"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/VyralGraphTraversalRequest",
+        "#/components/schemas/VyralGraphTraversalResult"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_traverse_graph_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "inspectGraphCollection",
+      "group": "graph",
+      "restOperationIds": [
+        "inspectGraphCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "inspect_graph",
+        "javascript": "inspectGraph"
+      },
+      "contractRefs": [
+        "openapi:inspectGraphCollection"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/VyralGraphCollectionInspectionRequest",
+        "#/components/schemas/VyralGraphCollectionInspectionResult"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_inspect_graph_collection_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "inspectCollection",
+      "group": "collections",
+      "restOperationIds": [
+        "inspectCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "inspect_collection",
+        "javascript": "inspectCollection"
+      },
+      "contractRefs": [
+        "openapi:inspectCollection"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/CollectionInspectionResult"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_inspect_collection_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getRecord",
+      "group": "records",
+      "restOperationIds": [
+        "getRecord"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_record",
+        "javascript": "getRecord"
+      },
+      "contractRefs": [
+        "openapi:getRecord"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/parameters/PartitionKey",
+        "#/components/parameters/RecordId",
+        "#/components/schemas/VyralRecord"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_get_record_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "deleteRecord",
+      "group": "records",
+      "restOperationIds": [
+        "deleteRecord"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "delete_record",
+        "javascript": "deleteRecord"
+      },
+      "contractRefs": [
+        "openapi:deleteRecord"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/parameters/PartitionKey",
+        "#/components/parameters/RecordId"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "upsertRecord",
+      "group": "records",
+      "restOperationIds": [
+        "upsertRecord"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "upsert_record",
+        "javascript": "upsertRecord"
+      },
+      "contractRefs": [
+        "openapi:upsertRecord"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/VyralRecord"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "upsertRecords",
+      "group": "records",
+      "restOperationIds": [
+        "upsertRecords"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "upsert_records",
+        "javascript": "upsertRecords"
+      },
+      "contractRefs": [
+        "openapi:upsertRecords"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RecordBatchUpsertRequest",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startRecordBatchUpsertJob",
+      "group": "records",
+      "restOperationIds": [
+        "startRecordBatchUpsertJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_record_batch_upsert_job",
+        "javascript": "startRecordBatchUpsertJob"
+      },
+      "contractRefs": [
+        "openapi:startRecordBatchUpsertJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RecordBatchUpsertRequest",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_record_batch_upsert_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "ingestRagText",
+      "group": "rag",
+      "restOperationIds": [
+        "ingestRagText"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "ingest_rag_text",
+        "javascript": "ingestRagText"
+      },
+      "contractRefs": [
+        "openapi:ingestRagText"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestTextRequest",
+        "#/components/schemas/RagIngestTextResult",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "ingestRagTextBatch",
+      "group": "rag",
+      "restOperationIds": [
+        "ingestRagTextBatch"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "ingest_rag_texts",
+        "javascript": "ingestRagTexts"
+      },
+      "contractRefs": [
+        "openapi:ingestRagTextBatch"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestTextBatchRequest",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startRagIngestionTextJob",
+      "group": "rag",
+      "restOperationIds": [
+        "startRagIngestionTextJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_rag_text_ingestion_job",
+        "javascript": "startRagTextIngestionJob"
+      },
+      "contractRefs": [
+        "openapi:startRagIngestionTextJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestTextRequest",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_rag_ingestion_text_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startRagIngestionBatchJob",
+      "group": "rag",
+      "restOperationIds": [
+        "startRagIngestionBatchJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_rag_text_batch_ingestion_job",
+        "javascript": "startRagTextBatchIngestionJob"
+      },
+      "contractRefs": [
+        "openapi:startRagIngestionBatchJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestTextBatchRequest",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_rag_ingestion_batch_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listRagIngestionJobs",
+      "group": "rag",
+      "restOperationIds": [
+        "listRagIngestionJobs"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_rag_ingestion_jobs",
+        "javascript": "listRagIngestionJobs"
+      },
+      "contractRefs": [
+        "openapi:listRagIngestionJobs"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getRagIngestionJob",
+      "group": "rag",
+      "restOperationIds": [
+        "getRagIngestionJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_rag_ingestion_job",
+        "javascript": "getRagIngestionJob"
+      },
+      "contractRefs": [
+        "openapi:getRagIngestionJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelRagIngestionJob",
+      "group": "rag",
+      "restOperationIds": [
+        "cancelRagIngestionJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_rag_ingestion_job",
+        "javascript": "cancelRagIngestionJob"
+      },
+      "contractRefs": [
+        "openapi:cancelRagIngestionJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RagIngestionJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "queryRecords",
+      "group": "records",
+      "restOperationIds": [
+        "queryRecords"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "query_records",
+        "javascript": "queryRecords"
+      },
+      "contractRefs": [
+        "openapi:queryRecords"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/QueryEnvelope",
+        "#/components/schemas/RecordQueryResult"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_query_records_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "searchRecords",
+      "group": "records",
+      "restOperationIds": [
+        "searchRecords"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "search_records",
+        "javascript": "searchRecords"
+      },
+      "contractRefs": [
+        "openapi:searchRecords"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/QueryEnvelope",
+        "#/components/schemas/RecordSearchResult"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_search_records_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listObjects",
+      "group": "objects",
+      "restOperationIds": [
+        "listObjects"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_objects",
+        "javascript": "listObjects"
+      },
+      "contractRefs": [
+        "openapi:listObjects"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Container",
+        "#/components/responses/Problem",
+        "#/components/schemas/ObjectListResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "putObject",
+      "group": "objects",
+      "restOperationIds": [
+        "putObject"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "put_object",
+        "javascript": "putObject"
+      },
+      "contractRefs": [
+        "openapi:putObject"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Container",
+        "#/components/parameters/ObjectKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/ObjectInfo"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getObject",
+      "group": "objects",
+      "restOperationIds": [
+        "getObject"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_object",
+        "javascript": "getObject"
+      },
+      "contractRefs": [
+        "openapi:getObject"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Container",
+        "#/components/parameters/ObjectKey"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "deleteObject",
+      "group": "objects",
+      "restOperationIds": [
+        "deleteObject"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "delete_object",
+        "javascript": "deleteObject"
+      },
+      "contractRefs": [
+        "openapi:deleteObject"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Container",
+        "#/components/parameters/ObjectKey",
+        "#/components/responses/Problem"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listRetrievalProfiles",
+      "group": "retrieval",
+      "restOperationIds": [
+        "listRetrievalProfiles"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_retrieval_profiles",
+        "javascript": "listRetrievalProfiles"
+      },
+      "contractRefs": [
+        "openapi:listRetrievalProfiles"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/RetrievalProfileDescriptor"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_list_retrieval_profiles_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "retrieve",
+      "group": "retrieval",
+      "restOperationIds": [
+        "retrieve"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "retrieve",
+        "javascript": "retrieve"
+      },
+      "contractRefs": [
+        "openapi:retrieve"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalRequest",
+        "#/components/schemas/RetrievalResultEnvelope"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_retrieve_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "evaluateRetrieval",
+      "group": "retrieval",
+      "restOperationIds": [
+        "evaluateRetrieval"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "evaluate_retrieval",
+        "javascript": "evaluateRetrieval"
+      },
+      "contractRefs": [
+        "openapi:evaluateRetrieval"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationRequest",
+        "#/components/schemas/RetrievalEvaluationResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "compareRetrievalEvaluations",
+      "group": "retrieval",
+      "restOperationIds": [
+        "compareRetrievalEvaluations"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "compare_retrieval_evaluations",
+        "javascript": "compareRetrievalEvaluations"
+      },
+      "contractRefs": [
+        "openapi:compareRetrievalEvaluations"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationComparisonRequest",
+        "#/components/schemas/RetrievalEvaluationComparisonResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startRetrievalEvaluationComparisonJob",
+      "group": "retrieval",
+      "restOperationIds": [
+        "startRetrievalEvaluationComparisonJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_retrieval_evaluation_comparison_job",
+        "javascript": "startRetrievalEvaluationComparisonJob"
+      },
+      "contractRefs": [
+        "openapi:startRetrievalEvaluationComparisonJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationComparisonRequest",
+        "#/components/schemas/RetrievalEvaluationJob"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_retrieval_evaluation_comparison_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startRetrievalEvaluationJob",
+      "group": "retrieval",
+      "restOperationIds": [
+        "startRetrievalEvaluationJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_retrieval_evaluation_job",
+        "javascript": "startRetrievalEvaluationJob"
+      },
+      "contractRefs": [
+        "openapi:startRetrievalEvaluationJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationJob",
+        "#/components/schemas/RetrievalEvaluationRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_retrieval_evaluation_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listRetrievalEvaluationJobs",
+      "group": "retrieval",
+      "restOperationIds": [
+        "listRetrievalEvaluationJobs"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_retrieval_evaluation_jobs",
+        "javascript": "listRetrievalEvaluationJobs"
+      },
+      "contractRefs": [
+        "openapi:listRetrievalEvaluationJobs"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getRetrievalEvaluationJob",
+      "group": "retrieval",
+      "restOperationIds": [
+        "getRetrievalEvaluationJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_retrieval_evaluation_job",
+        "javascript": "getRetrievalEvaluationJob"
+      },
+      "contractRefs": [
+        "openapi:getRetrievalEvaluationJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelRetrievalEvaluationJob",
+      "group": "retrieval",
+      "restOperationIds": [
+        "cancelRetrievalEvaluationJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_retrieval_evaluation_job",
+        "javascript": "cancelRetrievalEvaluationJob"
+      },
+      "contractRefs": [
+        "openapi:cancelRetrievalEvaluationJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RetrievalEvaluationJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "buildRagContext",
+      "group": "rag",
+      "restOperationIds": [
+        "buildRagContext"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "build_rag_context",
+        "javascript": "buildRagContext"
+      },
+      "contractRefs": [
+        "openapi:buildRagContext"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RagContextEnvelope",
+        "#/components/schemas/RagContextRequest"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_build_rag_context_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "evaluateRagContext",
+      "group": "rag",
+      "restOperationIds": [
+        "evaluateRagContext"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "evaluate_rag_context",
+        "javascript": "evaluateRagContext"
+      },
+      "contractRefs": [
+        "openapi:evaluateRagContext"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RagContextEvaluationRequest",
+        "#/components/schemas/RagContextEvaluationResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "buildRagPrompt",
+      "group": "rag",
+      "restOperationIds": [
+        "buildRagPrompt"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "build_rag_prompt",
+        "javascript": "buildRagPrompt"
+      },
+      "contractRefs": [
+        "openapi:buildRagPrompt"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RagPromptEnvelope",
+        "#/components/schemas/RagPromptRequest"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_build_rag_prompt_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listTraces",
+      "group": "traces",
+      "restOperationIds": [
+        "listTraces"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_traces",
+        "javascript": "listTraces"
+      },
+      "contractRefs": [
+        "openapi:listTraces"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/TraceRecord"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "summarizeTraces",
+      "group": "traces",
+      "restOperationIds": [
+        "summarizeTraces"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "summarize_traces",
+        "javascript": "summarizeTraces"
+      },
+      "contractRefs": [
+        "openapi:summarizeTraces"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/TraceSummary"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "pruneTraces",
+      "group": "traces",
+      "restOperationIds": [
+        "pruneTraces"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "maintenance",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "prune_traces",
+        "javascript": "pruneTraces"
+      },
+      "contractRefs": [
+        "openapi:pruneTraces"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/TracePruneRequest",
+        "#/components/schemas/TracePruneResult"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "exportTraces",
+      "group": "traces",
+      "restOperationIds": [
+        "exportTraces"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "export_traces",
+        "javascript": "exportTraces"
+      },
+      "contractRefs": [
+        "openapi:exportTraces"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/TraceExportBundle",
+        "#/components/schemas/TraceExportRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getTrace",
+      "group": "traces",
+      "restOperationIds": [
+        "getTrace"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_trace",
+        "javascript": "getTrace"
+      },
+      "contractRefs": [
+        "openapi:getTrace"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/TraceRecord"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "preflightGraphImport",
+      "group": "graph",
+      "restOperationIds": [
+        "preflightGraphImport"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "preflight_graph_import",
+        "javascript": "preflightGraphImport"
+      },
+      "contractRefs": [
+        "openapi:preflightGraphImport"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/VyralGraphCollectionImportPreflightResult",
+        "#/components/schemas/VyralGraphCollectionImportRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "doctorGraphCollection",
+      "group": "graph",
+      "restOperationIds": [
+        "doctorGraphCollection"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "doctor_graph",
+        "javascript": "doctorGraph"
+      },
+      "contractRefs": [
+        "openapi:doctorGraphCollection"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/Collection",
+        "#/components/responses/Problem",
+        "#/components/schemas/VyralGraphDoctorRequest",
+        "#/components/schemas/VyralGraphDoctorResult"
+      ],
+      "mcp": {
+        "exposure": "tool",
+        "id": "vyral_doctor_graph_collection_v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startGraphImportJob",
+      "group": "graph",
+      "restOperationIds": [
+        "startGraphImportJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_graph_import_job",
+        "javascript": "startGraphImportJob"
+      },
+      "contractRefs": [
+        "openapi:startGraphImportJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob",
+        "#/components/schemas/VyralGraphCollectionImportRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_graph_import_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startGraphInspectionJob",
+      "group": "graph",
+      "restOperationIds": [
+        "startGraphInspectionJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_graph_inspection_job",
+        "javascript": "startGraphInspectionJob"
+      },
+      "contractRefs": [
+        "openapi:startGraphInspectionJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob",
+        "#/components/schemas/VyralGraphCollectionInspectionRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_graph_inspection_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "startGraphDoctorJob",
+      "group": "graph",
+      "restOperationIds": [
+        "startGraphDoctorJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "write",
+      "completionBoundary": "receipt-bound",
+      "idempotency": "supported",
+      "sdk": {
+        "python": "start_graph_doctor_job",
+        "javascript": "startGraphDoctorJob"
+      },
+      "contractRefs": [
+        "openapi:startGraphDoctorJob"
+      ],
+      "schemaRefs": [
+        "#/components/headers/AdmissionLocation",
+        "#/components/parameters/Collection",
+        "#/components/parameters/IdempotencyKey",
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob",
+        "#/components/schemas/VyralGraphDoctorRequest"
+      ],
+      "mcp": {
+        "exposure": "task",
+        "id": "vyral_start_graph_doctor_job_v1",
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listGraphJobs",
+      "group": "graph",
+      "restOperationIds": [
+        "listGraphJobs"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_graph_jobs",
+        "javascript": "listGraphJobs"
+      },
+      "contractRefs": [
+        "openapi:listGraphJobs"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getGraphJob",
+      "group": "graph",
+      "restOperationIds": [
+        "getGraphJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_graph_job",
+        "javascript": "getGraphJob"
+      },
+      "contractRefs": [
+        "openapi:getGraphJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelGraphJob",
+      "group": "graph",
+      "restOperationIds": [
+        "cancelGraphJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "server-authenticated",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_graph_job",
+        "javascript": "cancelGraphJob"
+      },
+      "contractRefs": [
+        "openapi:cancelGraphJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/GraphJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "listRecordImportJobs",
+      "group": "collections",
+      "restOperationIds": [
+        "listRecordImportJobs"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "list_record_import_jobs",
+        "javascript": "listRecordImportJobs"
+      },
+      "contractRefs": [
+        "openapi:listRecordImportJobs"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getRecordImportJob",
+      "group": "collections",
+      "restOperationIds": [
+        "getRecordImportJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_record_import_job",
+        "javascript": "getRecordImportJob"
+      },
+      "contractRefs": [
+        "openapi:getRecordImportJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "cancelRecordImportJob",
+      "group": "collections",
+      "restOperationIds": [
+        "cancelRecordImportJob"
+      ],
+      "stability": "public",
+      "authorizationClass": "execution-policy",
+      "mutation": "delete",
+      "completionBoundary": "atomic",
+      "idempotency": "unsupported",
+      "sdk": {
+        "python": "cancel_record_import_job",
+        "javascript": "cancelRecordImportJob"
+      },
+      "contractRefs": [
+        "openapi:cancelRecordImportJob"
+      ],
+      "schemaRefs": [
+        "#/components/responses/Problem",
+        "#/components/schemas/RecordImportJob"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getPublicSchemaContract",
+      "group": "server",
+      "restOperationIds": [
+        "getPublicSchemaContract"
+      ],
+      "stability": "public",
+      "authorizationClass": "anonymous",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_public_schema_contract",
+        "javascript": "getPublicSchemaContract"
+      },
+      "contractRefs": [
+        "openapi:getPublicSchemaContract"
+      ],
+      "schemaRefs": [],
+      "mcp": {
+        "exposure": "resource",
+        "id": "vyral://public_schema_contract/v1",
+        "defaultEnabled": true
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    }
+  ]
+}

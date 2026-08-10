@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Vyral AWS execution infrastructure: DynamoDB durable state, encrypted SQS queue and DLQ,
+  and attachable least-privilege policies. Worker hosting and HTTP authorization stay consumer-owned.
+
+Parameters:
+  ExecutionTableName:
+    Type: String
+    Default: vyral-execution
+    AllowedPattern: '[A-Za-z0-9_.-]{3,255}'
+  ExecutionQueueName:
+    Type: String
+    Default: vyral-execution
+    AllowedPattern: '[A-Za-z0-9_-]{1,80}'
+  QueueVisibilityTimeoutSeconds:
+    Type: Number
+    Default: 120
+    MinValue: 1
+    MaxValue: 43200
+  DeadLetterMaxReceiveCount:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 1000
+
+Resources:
+  ExecutionTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref ExecutionTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: gsi1pk
+          AttributeType: S
+        - AttributeName: gsi1sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: vyral_execution_work
+          KeySchema:
+            - AttributeName: gsi1pk
+              KeyType: HASH
+            - AttributeName: gsi1sk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: managed-by
+          Value: vyral
+        - Key: component
+          Value: execution
+
+  ExecutionDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ExecutionQueueName}-dlq'
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+      Tags:
+        - Key: managed-by
+          Value: vyral
+        - Key: component
+          Value: execution
+
+  ExecutionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref ExecutionQueueName
+      VisibilityTimeout: !Ref QueueVisibilityTimeoutSeconds
+      ReceiveMessageWaitTimeSeconds: 20
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ExecutionDeadLetterQueue.Arn
+        maxReceiveCount: !Ref DeadLetterMaxReceiveCount
+      Tags:
+        - Key: managed-by
+          Value: vyral
+        - Key: component
+          Value: execution
+
+  VyralExecutionRuntimePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${AWS::StackName}-vyral-execution-runtime'
+      Description: Allows the Vyral execution host to persist state and send SQS dispatch envelopes.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+              - dynamodb:UpdateItem
+              - dynamodb:Query
+              - dynamodb:BatchWriteItem
+              - dynamodb:TransactWriteItems
+            Resource:
+              - !GetAtt ExecutionTable.Arn
+              - !Sub '${ExecutionTable.Arn}/index/*'
+          - Effect: Allow
+            Action: sqs:SendMessage
+            Resource: !GetAtt ExecutionQueue.Arn
+
+  VyralExecutionQueueConsumerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${AWS::StackName}-vyral-execution-queue-consumer'
+      Description: Allows a queue poller to receive and acknowledge Vyral dispatch envelopes.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:GetQueueAttributes
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:ChangeMessageVisibility
+            Resource: !GetAtt ExecutionQueue.Arn
+
+Outputs:
+  DynamoDbTableName:
+    Value: !Ref ExecutionTable
+  DynamoDbTableArn:
+    Value: !GetAtt ExecutionTable.Arn
+  SqsQueueUrl:
+    Value: !Ref ExecutionQueue
+  SqsQueueArn:
+    Value: !GetAtt ExecutionQueue.Arn
+  DeadLetterQueueUrl:
+    Value: !Ref ExecutionDeadLetterQueue
+  RuntimePolicyArn:
+    Value: !Ref VyralExecutionRuntimePolicy
+  QueueConsumerPolicyArn:
+    Value: !Ref VyralExecutionQueueConsumerPolicy

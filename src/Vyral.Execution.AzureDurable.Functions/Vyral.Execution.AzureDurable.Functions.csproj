@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vyral.Execution.AzureDurable\Vyral.Execution.AzureDurable.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.DurableTask.Client" Version="1.24.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
+    <PackageId>Vyral.Execution.AzureDurable.Functions</PackageId>
+    <Title>Vyral Execution Azure Durable Functions Bridge</Title>
+    <Authors>Vyral</Authors>
+    <Company>Vyral</Company>
+    <Copyright>Copyright © 2026 Jeremy Dixon</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Replay-safe Microsoft Durable Task bridge for the provider-neutral Vyral Azure Durable execution adapter.</Description>
+    <PackageTags>vyral;execution;azure;durable-functions;durable-task</PackageTags>
+    <PackageProjectUrl>https://github.com/univeracity/vyral</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/univeracity/vyral</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

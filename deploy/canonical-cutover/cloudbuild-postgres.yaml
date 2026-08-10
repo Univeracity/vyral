@@ -1,0 +1,25 @@
+timeout: 1200s
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        docker network create canonical-test
+        docker run --detach --rm --name canonical-pg --network canonical-test \
+          --env POSTGRES_DB=vyral_test \
+          --env POSTGRES_USER=postgres \
+          --env POSTGRES_PASSWORD=postgres \
+          postgres:16
+        for attempt in $(seq 1 60); do
+          if docker exec canonical-pg psql --username postgres --dbname vyral_test --command 'SELECT 1' >/dev/null 2>&1; then break; fi
+          sleep 1
+        done
+        docker exec canonical-pg psql --username postgres --dbname vyral_test --command 'SELECT 1'
+        docker run --rm --network canonical-test \
+          --env 'VYRAL_PGVECTOR_CONNECTION_STRING=Host=canonical-pg;Port=5432;Database=vyral_test;Username=postgres;Password=postgres' \
+          --volume /workspace:/workspace \
+          --workdir /workspace \
+          mcr.microsoft.com/dotnet/sdk:10.0 \
+          dotnet test tests/Vyral.Tests.Pgvector/Vyral.Tests.Pgvector.csproj \
+            --filter 'FullyQualifiedName~PostgresCanonicalStoreConformanceTests'

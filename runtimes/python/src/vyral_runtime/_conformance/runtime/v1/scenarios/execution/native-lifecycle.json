@@ -1,0 +1,224 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "execution.native-lifecycle.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.execution.local.v1",
+  "kind": "stateful",
+  "description": "Portable native durable execution, retries, failure classes, cancellation, rejections, owned state, restart-safe waits, coordination, and maintenance.",
+  "steps": [
+    {
+      "id": "native-success-idempotency-and-owned-state",
+      "operation": "execution.native-success",
+      "arguments": {
+        "request": {
+          "handlerId": "portable.success",
+          "pluginId": "portable",
+          "payload": {
+            "items": [
+              1,
+              2,
+              3
+            ]
+          },
+          "idempotencyKey": "portable-success",
+          "correlationId": "portable-correlation",
+          "retryPolicy": {
+            "maxAttempts": 2,
+            "initialDelaySeconds": 0,
+            "maxDelaySeconds": 0,
+            "backoffMultiplier": 1
+          },
+          "tags": {
+            "tenant": "tenant-a"
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "createdStatus": "queued",
+          "replaySame": true,
+          "admissionVersion": "vyral.admission.v1",
+          "admissionStatus": "accepted",
+          "admissionIdStable": true,
+          "replayMarked": true,
+          "idempotencyKeyHash": "6f32bc59514bfa074f91befe98d87a0ae224495a498d798895601490cb6d9c9b",
+          "admissionContainsRawKey": false,
+          "finalStatus": "succeeded",
+          "attempt": 1,
+          "progress": 1.0,
+          "resultTotal": 6,
+          "artifactCount": 1,
+          "checkpointTotal": 6,
+          "requiredHistoryPassed": true
+        }
+      }
+    },
+    {
+      "id": "native-rejections-and-idempotency-conflict",
+      "operation": "execution.native-rejections",
+      "arguments": {
+        "conflictingRequest": {
+          "handlerId": "portable.success",
+          "pluginId": "portable",
+          "payload": {
+            "items": [
+              99
+            ]
+          },
+          "idempotencyKey": "portable-success",
+          "retryPolicy": {
+            "maxAttempts": 1
+          },
+          "tags": {}
+        }
+      },
+      "expect": {
+        "value": {
+          "missingStatus": "rejected",
+          "missingFailureClass": "handler_missing",
+          "pluginStatus": "rejected",
+          "pluginFailureClass": "plugin_mismatch",
+          "idempotencyConflictRejected": true
+        }
+      }
+    },
+    {
+      "id": "native-retry-to-success",
+      "operation": "execution.native-retry",
+      "arguments": {
+        "request": {
+          "handlerId": "portable.retry",
+          "pluginId": "portable",
+          "payload": null,
+          "idempotencyKey": "portable-retry",
+          "retryPolicy": {
+            "maxAttempts": 2,
+            "initialDelaySeconds": 0,
+            "maxDelaySeconds": 0,
+            "backoffMultiplier": 1
+          },
+          "tags": {}
+        }
+      },
+      "expect": {
+        "value": {
+          "finalStatus": "succeeded",
+          "attempt": 2,
+          "handlerAttempts": 2,
+          "retryScheduled": true
+        }
+      }
+    },
+    {
+      "id": "native-durable-wait-restart",
+      "operation": "execution.native-wait-restart",
+      "arguments": {
+        "request": {
+          "handlerId": "portable.wait",
+          "pluginId": "portable",
+          "payload": null,
+          "idempotencyKey": "portable-wait",
+          "retryPolicy": {
+            "maxAttempts": 2,
+            "initialDelaySeconds": 0,
+            "maxDelaySeconds": 0,
+            "backoffMultiplier": 1
+          },
+          "tags": {}
+        },
+        "event": {
+          "name": "approval",
+          "payload": {
+            "approved": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "suspendedStatus": "waiting",
+          "finalStatus": "succeeded",
+          "attempt": 2,
+          "checkpointCalls": 2,
+          "outcome": "external_event",
+          "approved": true,
+          "waitRegistered": true,
+          "waitResumed": true
+        }
+      }
+    },
+    {
+      "id": "native-terminal-failure-class",
+      "operation": "execution.native-failure",
+      "arguments": {
+        "request": {
+          "handlerId": "portable.failure",
+          "pluginId": "portable",
+          "payload": null,
+          "idempotencyKey": "portable-failure",
+          "retryPolicy": {
+            "maxAttempts": 1,
+            "initialDelaySeconds": 0,
+            "maxDelaySeconds": 0,
+            "backoffMultiplier": 1
+          },
+          "tags": {}
+        }
+      },
+      "expect": {
+        "value": {
+          "finalStatus": "failed",
+          "failureClass": "validation",
+          "attempt": 1,
+          "handlerAttempts": 1,
+          "retryScheduled": false
+        }
+      }
+    },
+    {
+      "id": "native-pending-cancellation-is-stable",
+      "operation": "execution.native-cancel",
+      "arguments": {
+        "scheduleDelaySeconds": 60,
+        "request": {
+          "handlerId": "portable.success",
+          "pluginId": "portable",
+          "payload": { "items": [1] },
+          "idempotencyKey": "portable-cancel",
+          "retryPolicy": { "maxAttempts": 1 },
+          "tags": {}
+        }
+      },
+      "expect": {
+        "value": {
+          "createdStatus": "waiting",
+          "finalStatus": "cancelled",
+          "failureClass": "cancelled",
+          "cancellationRequested": true,
+          "terminalCancelStable": true,
+          "cancellationRecorded": true
+        }
+      }
+    },
+    {
+      "id": "native-coordination-and-maintenance",
+      "operation": "execution.native-coordination",
+      "arguments": {
+        "leaseKey": "portable-singleton",
+        "timerName": "portable-reminder",
+        "eventName": "portable-signal"
+      },
+      "expect": {
+        "value": {
+          "firstLeaseAcquired": true,
+          "conflictingLeaseRejected": true,
+          "wrongOwnerRelease": false,
+          "ownerRelease": true,
+          "timerName": "portable-reminder",
+          "eventName": "portable-signal",
+          "maintenanceHealthy": true,
+          "reconcileDryRun": true
+        }
+      }
+    }
+  ]
+}

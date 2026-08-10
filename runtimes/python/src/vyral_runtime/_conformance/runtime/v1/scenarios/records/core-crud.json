@@ -1,0 +1,462 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "records.core-crud.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.data-rag.v1",
+  "kind": "stateful",
+  "description": "Portable collection, record, revision, vector, optimistic-concurrency, batch, and deletion behavior.",
+  "steps": [
+    {
+      "id": "create-collection",
+      "operation": "records.collection.create",
+      "arguments": {
+        "policy": {
+          "name": "items",
+          "partitionKeyPath": "/partitionKey",
+          "vectorPolicies": [
+            {
+              "name": "embedding",
+              "path": "/vectors/embedding/values",
+              "dimensions": 3,
+              "datatype": "float32",
+              "distanceFunction": "cosine",
+              "indexType": "flat"
+            }
+          ],
+          "indexedMetadata": [
+            "/metadata/status",
+            "/metadata/score"
+          ]
+        }
+      },
+      "expect": {
+        "value": null
+      }
+    },
+    {
+      "id": "idempotent-equivalent-policy",
+      "operation": "records.collection.create",
+      "arguments": {
+        "policy": {
+          "name": "items",
+          "partitionKeyPath": "/partitionKey",
+          "vectorPolicies": [
+            {
+              "name": "embedding",
+              "path": "/vectors/embedding/values",
+              "dimensions": 3,
+              "datatype": "FLOAT32",
+              "distanceFunction": "COSINE",
+              "indexType": "FLAT"
+            }
+          ],
+          "indexedMetadata": [
+            "/metadata/score",
+            "/metadata/status"
+          ]
+        }
+      },
+      "expect": {
+        "value": null
+      }
+    },
+    {
+      "id": "list-collections",
+      "operation": "records.collection.list",
+      "arguments": {},
+      "expect": {
+        "value": [
+          "items"
+        ]
+      }
+    },
+    {
+      "id": "create-record",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "items",
+        "record": {
+          "id": "record-1",
+          "partitionKey": "tenant-a",
+          "type": "note",
+          "schemaVersion": "1",
+          "metadata": {
+            "status": "active",
+            "score": 7
+          },
+          "content": {
+            "title": "Portable retrieval",
+            "body": "hello π"
+          },
+          "vectors": {
+            "embedding": {
+              "values": [
+                1,
+                0,
+                -1
+              ],
+              "model": "fixture-embedding"
+            }
+          },
+          "extension": {
+            "enabled": true
+          }
+        },
+        "precondition": {
+          "ifNoneMatch": "*"
+        }
+      },
+      "expect": {
+        "value": {
+          "id": "record-1",
+          "partitionKey": "tenant-a",
+          "etag": "rev:1",
+          "revision": 1,
+          "vectorDimensions": 3
+        }
+      }
+    },
+    {
+      "id": "read-record",
+      "operation": "records.record.get",
+      "arguments": {
+        "collection": "items",
+        "partitionKey": "tenant-a",
+        "id": "record-1"
+      },
+      "expect": {
+        "value": {
+          "id": "record-1",
+          "partitionKey": "tenant-a",
+          "type": "note",
+          "schemaVersion": "1",
+          "metadata": {
+            "status": "active",
+            "score": 7
+          },
+          "content": {
+            "title": "Portable retrieval",
+            "body": "hello π"
+          },
+          "extension": {
+            "enabled": true
+          },
+          "etag": "rev:1",
+          "revision": 1,
+          "vectorDimensions": 3
+        }
+      }
+    },
+    {
+      "id": "reject-stale-revision",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "items",
+        "record": {
+          "id": "record-1",
+          "partitionKey": "tenant-a",
+          "metadata": {
+            "status": "stale"
+          }
+        },
+        "precondition": {
+          "expectedRevision": 0
+        }
+      },
+      "expect": {
+        "error": {
+          "class": "precondition-failed",
+          "messageContains": "current revision does not match"
+        }
+      }
+    },
+    {
+      "id": "guarded-update",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "items",
+        "record": {
+          "id": "record-1",
+          "partitionKey": "tenant-a",
+          "type": "note",
+          "metadata": {
+            "status": "updated",
+            "score": 8
+          }
+        },
+        "precondition": {
+          "ifMatch": " \"rev:1\" ",
+          "expectedRevision": 1
+        }
+      },
+      "expect": {
+        "value": {
+          "id": "record-1",
+          "partitionKey": "tenant-a",
+          "etag": "rev:2",
+          "revision": 2,
+          "vectorDimensions": null
+        }
+      }
+    },
+    {
+      "id": "batch-continues-after-invalid-record",
+      "operation": "records.record.batch-upsert",
+      "arguments": {
+        "collection": "items",
+        "continueOnError": true,
+        "records": [
+          {
+            "id": "batch-1",
+            "partitionKey": "tenant-a"
+          },
+          {
+            "id": "bad/id",
+            "partitionKey": "tenant-a"
+          },
+          {
+            "id": "batch-3",
+            "partitionKey": "tenant-a"
+          }
+        ]
+      },
+      "expect": {
+        "value": {
+          "collection": "items",
+          "requested": 3,
+          "attempted": 3,
+          "succeeded": 2,
+          "failed": 1,
+          "stoppedOnError": false,
+          "statuses": [
+            "succeeded",
+            "failed",
+            "succeeded"
+          ]
+        }
+      }
+    },
+    {
+      "id": "create-search-record-a",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "items",
+        "record": {
+          "id": "search-a",
+          "partitionKey": "tenant-a",
+          "metadata": {
+            "status": "active",
+            "score": 10
+          },
+          "content": {
+            "text": "portable lexical retrieval"
+          },
+          "vectors": {
+            "embedding": {
+              "values": [
+                1,
+                0,
+                0
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "id": "search-a",
+          "partitionKey": "tenant-a",
+          "etag": "rev:1",
+          "revision": 1,
+          "vectorDimensions": 3
+        }
+      }
+    },
+    {
+      "id": "create-search-record-b",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "items",
+        "record": {
+          "id": "search-b",
+          "partitionKey": "tenant-a",
+          "metadata": {
+            "status": "active",
+            "score": 5
+          },
+          "content": {
+            "text": "unrelated scheduling material"
+          },
+          "vectors": {
+            "embedding": {
+              "values": [
+                0,
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "id": "search-b",
+          "partitionKey": "tenant-a",
+          "etag": "rev:1",
+          "revision": 1,
+          "vectorDimensions": 3
+        }
+      }
+    },
+    {
+      "id": "query-first-page",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "items",
+        "query": {
+          "filter": {
+            "path": "/metadata/status",
+            "op": "eq",
+            "value": "active"
+          },
+          "orderBy": [
+            {
+              "path": "/id",
+              "direction": "asc"
+            }
+          ],
+          "limit": 1
+        }
+      },
+      "expect": {
+        "value": {
+          "ids": [
+            "search-a"
+          ],
+          "continuationToken": "MQ=="
+        }
+      }
+    },
+    {
+      "id": "query-second-page",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "items",
+        "query": {
+          "filter": {
+            "path": "/metadata/status",
+            "op": "eq",
+            "value": "active"
+          },
+          "orderBy": [
+            {
+              "path": "/id",
+              "direction": "asc"
+            }
+          ],
+          "limit": 1,
+          "continuationToken": "MQ=="
+        }
+      },
+      "expect": {
+        "value": {
+          "ids": [
+            "search-b"
+          ],
+          "continuationToken": null
+        }
+      }
+    },
+    {
+      "id": "exact-vector-search",
+      "operation": "records.search",
+      "arguments": {
+        "collection": "items",
+        "query": {
+          "filter": {
+            "path": "/metadata/status",
+            "op": "eq",
+            "value": "active"
+          },
+          "vector": {
+            "field": "embedding",
+            "value": [
+              1,
+              0,
+              0
+            ],
+            "top": 2
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "ids": [
+            "search-a",
+            "search-b"
+          ],
+          "scores": [
+            1,
+            0
+          ],
+          "continuationToken": null
+        }
+      }
+    },
+    {
+      "id": "lexical-search",
+      "operation": "records.search",
+      "arguments": {
+        "collection": "items",
+        "query": {
+          "lexical": {
+            "query": "portable retrieval",
+            "fields": [
+              "/content/text"
+            ],
+            "top": 2
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "ids": [
+            "search-a"
+          ],
+          "scores": [
+            1
+          ],
+          "continuationToken": null
+        }
+      }
+    },
+    {
+      "id": "delete-collection",
+      "operation": "records.collection.delete",
+      "arguments": {
+        "collection": "items"
+      },
+      "expect": {
+        "value": null
+      }
+    },
+    {
+      "id": "collection-deletion-is-idempotent",
+      "operation": "records.collection.delete",
+      "arguments": {
+        "collection": "items"
+      },
+      "expect": {
+        "value": null
+      }
+    },
+    {
+      "id": "collection-is-gone",
+      "operation": "records.collection.list",
+      "arguments": {},
+      "expect": {
+        "value": []
+      }
+    }
+  ]
+}

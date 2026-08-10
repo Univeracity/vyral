@@ -1,0 +1,5 @@
+# Keep Cloud Build submission contexts aligned with the repository's local
+# privacy and generated-artifact rules.
+.gcloudignore
+.git
+#!include:.gitignore

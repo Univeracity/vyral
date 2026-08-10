@@ -1,0 +1,200 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "records.query-semantics.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.data-rag.v1",
+  "kind": "stateful",
+  "description": "Portable metadata-filter, partition, ordering, and continuation semantics for collection queries.",
+  "steps": [
+    {
+      "id": "create-query-collection",
+      "operation": "records.collection.create",
+      "arguments": {
+        "policy": {
+          "name": "query-items",
+          "partitionKeyPath": "/partitionKey",
+          "indexedMetadata": [
+            "/metadata/status",
+            "/metadata/score",
+            "/metadata/label"
+          ]
+        }
+      },
+      "expect": { "value": null }
+    },
+    {
+      "id": "create-filter-alpha",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "query-items",
+        "record": {
+          "id": "filter-alpha",
+          "partitionKey": "tenant-a",
+          "metadata": { "status": "active", "score": 7, "label": "alpha" }
+        }
+      },
+      "expect": { "value": { "id": "filter-alpha", "partitionKey": "tenant-a", "etag": "rev:1", "revision": 1, "vectorDimensions": null } }
+    },
+    {
+      "id": "create-filter-beta",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "query-items",
+        "record": {
+          "id": "filter-beta",
+          "partitionKey": "tenant-a",
+          "metadata": { "status": "active", "score": 5, "label": "beta" }
+        }
+      },
+      "expect": { "value": { "id": "filter-beta", "partitionKey": "tenant-a", "etag": "rev:1", "revision": 1, "vectorDimensions": null } }
+    },
+    {
+      "id": "create-filter-gamma",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "query-items",
+        "record": {
+          "id": "filter-gamma",
+          "partitionKey": "tenant-a",
+          "metadata": { "status": "pending", "score": 9, "label": "alphabet" }
+        }
+      },
+      "expect": { "value": { "id": "filter-gamma", "partitionKey": "tenant-a", "etag": "rev:1", "revision": 1, "vectorDimensions": null } }
+    },
+    {
+      "id": "create-filter-missing",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "query-items",
+        "record": {
+          "id": "filter-missing",
+          "partitionKey": "tenant-a",
+          "metadata": { "status": "active" }
+        }
+      },
+      "expect": { "value": { "id": "filter-missing", "partitionKey": "tenant-a", "etag": "rev:1", "revision": 1, "vectorDimensions": null } }
+    },
+    {
+      "id": "create-filter-other-tenant",
+      "operation": "records.record.upsert",
+      "arguments": {
+        "collection": "query-items",
+        "record": {
+          "id": "filter-other",
+          "partitionKey": "tenant-b",
+          "metadata": { "status": "active", "score": 9, "label": "alpha" }
+        }
+      },
+      "expect": { "value": { "id": "filter-other", "partitionKey": "tenant-b", "etag": "rev:1", "revision": 1, "vectorDimensions": null } }
+    },
+    {
+      "id": "compound-filter-is-partition-scoped-and-ordered",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "partitionKeys": ["tenant-a"],
+          "filter": {
+            "combine": "all",
+            "children": [
+              { "path": "/metadata/status", "op": "in", "value": ["active", "pending"] },
+              { "path": "/metadata/score", "op": "gte", "value": 7 }
+            ]
+          },
+          "orderBy": [
+            { "path": "/metadata/score", "direction": "desc" },
+            { "path": "/id", "direction": "asc" }
+          ]
+        }
+      },
+      "expect": { "value": { "ids": ["filter-gamma", "filter-alpha"], "continuationToken": null } }
+    },
+    {
+      "id": "string-prefix-filter-is-deterministic",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "filter": { "path": "/metadata/label", "op": "startsWith", "value": "alp" },
+          "orderBy": [{ "path": "/id", "direction": "asc" }]
+        }
+      },
+      "expect": { "value": { "ids": ["filter-alpha", "filter-gamma", "filter-other"], "continuationToken": null } }
+    },
+    {
+      "id": "missing-indexed-metadata-is-queryable",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "partitionKeys": ["tenant-a"],
+          "filter": {
+            "combine": "all",
+            "children": [
+              { "path": "/metadata/status", "op": "eq", "value": "active" },
+              { "path": "/metadata/label", "op": "exists", "value": false }
+            ]
+          }
+        }
+      },
+      "expect": { "value": { "ids": ["filter-missing"], "continuationToken": null } }
+    },
+    {
+      "id": "compound-any-filter-is-deterministic",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "partitionKeys": ["tenant-a"],
+          "filter": {
+            "combine": "any",
+            "children": [
+              { "path": "/metadata/status", "op": "eq", "value": "pending" },
+              { "path": "/metadata/label", "op": "contains", "value": "beta" }
+            ]
+          },
+          "orderBy": [{ "path": "/id", "direction": "asc" }]
+        }
+      },
+      "expect": { "value": { "ids": ["filter-beta", "filter-gamma"], "continuationToken": null } }
+    },
+    {
+      "id": "first-deterministic-page",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "partitionKeys": ["tenant-a"],
+          "orderBy": [{ "path": "/id", "direction": "asc" }],
+          "limit": 2
+        }
+      },
+      "expect": { "value": { "ids": ["filter-alpha", "filter-beta"], "continuationToken": "Mg==" } }
+    },
+    {
+      "id": "second-deterministic-page",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "partitionKeys": ["tenant-a"],
+          "orderBy": [{ "path": "/id", "direction": "asc" }],
+          "limit": 2,
+          "continuationToken": "Mg=="
+        }
+      },
+      "expect": { "value": { "ids": ["filter-gamma", "filter-missing"], "continuationToken": null } }
+    },
+    {
+      "id": "reject-non-scalar-filter",
+      "operation": "records.query",
+      "arguments": {
+        "collection": "query-items",
+        "query": {
+          "filter": { "path": "/metadata/score", "op": "eq", "value": [7] }
+        }
+      },
+      "expect": { "error": { "class": "validation", "messageContains": "scalar" } }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.8.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageReference Include="ModelContextProtocol.Extensions.Tasks" Version="2.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Vyral.Local\Vyral.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution\Vyral.Execution.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.Local\Vyral.Execution.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Bridge.SemanticKernel\Vyral.Bridge.SemanticKernel.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Server\Vyral.Server.csproj" />
+    <ProjectReference Include="..\..\samples\Vyral.CanonicalProjectionStarter\Vyral.CanonicalProjectionStarter.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Cli\Vyral.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Abstractions\Vyral.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Providers.Local\Vyral.Providers.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Providers.Onnx\Vyral.Providers.Onnx.csproj" />
+    <ProjectReference Include="..\Vyral.Tests.Conformance\Vyral.Tests.Conformance.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Embeddings.Onnx\Vyral.Embeddings.Onnx.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\src\Vyral.Abstractions\contracts\evidence-brief.v1.schema.json"
+          Link="contracts\evidence-brief.v1.schema.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Vyral.Abstractions\contracts\fixtures\evidence-brief.v1.valid.json"
+          Link="Fixtures\evidence-brief.v1.valid.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\manifest.json"
+                      LogicalName="Vyral.Tests.Local.runtime-v1-manifest.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\records\core-crud.json"
+                      LogicalName="Vyral.Tests.Local.runtime-v1-records-core-crud.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\records\query-semantics.json"
+                      LogicalName="Vyral.Tests.Local.runtime-v1-records-query-semantics.json" />
+  </ItemGroup>
+
+</Project>

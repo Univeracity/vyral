@@ -1,0 +1,44 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "embeddings.vectors.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.data-rag.v1",
+  "kind": "golden",
+  "description": "Exact little-endian float32 vectors for the dependency-free local embedding providers.",
+  "steps": [
+    {
+      "id": "deterministic-hash-unicode",
+      "operation": "embeddings.generate",
+      "arguments": {
+        "provider": "deterministic-hash",
+        "dimensions": 8,
+        "text": "Vyral π"
+      },
+      "expect": {
+        "value": {
+          "provider": "deterministic-hash",
+          "modelId": "deterministic-hash-embedding-v1",
+          "dimensions": 8,
+          "float32LittleEndianHex": "702aa1beb59602bc21511dbf50c484bc530d9b3e838bbd3e741974be1673f9be"
+        }
+      }
+    },
+    {
+      "id": "token-hash-lexical",
+      "operation": "embeddings.generate",
+      "arguments": {
+        "provider": "local-token-hash",
+        "dimensions": 8,
+        "text": "portable retrieval"
+      },
+      "expect": {
+        "value": {
+          "provider": "local-token-hash",
+          "modelId": "local-token-hash-embedding-v1",
+          "dimensions": 8,
+          "float32LittleEndianHex": "b45624bf0000000093c5c23d93c5423ef876f3bef876f3be93c5c2bd2f1492be"
+        }
+      }
+    }
+  ]
+}

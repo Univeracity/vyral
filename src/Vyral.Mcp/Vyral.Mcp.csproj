@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.3.0</Version>
+    <PackageVersion>0.3.0</PackageVersion>
+    <PackageId>Vyral.Mcp</PackageId>
+    <Title>Vyral MCP</Title>
+    <Description>Stateless Model Context Protocol adapter for Vyral.</Description>
+    <PackageTags>vyral;mcp;model-context-protocol;stateless;gateway;execution</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.0.0" />
+    <PackageReference Include="ModelContextProtocol.Extensions.Tasks" Version="2.0.0" />
+    <ProjectReference Include="..\Vyral.Abstractions\Vyral.Abstractions.csproj" />
+    <ProjectReference Include="..\Vyral.Execution\Vyral.Execution.csproj" />
+    <ProjectReference Include="..\Vyral.Primitives\Vyral.Primitives.csproj" />
+    <ProjectReference Include="..\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <EmbeddedResource Include="..\Vyral.Server\contracts\vyral.openapi.json"
+                      LogicalName="Vyral.Mcp.contracts.vyral.openapi.json" />
+    <EmbeddedResource Include="..\..\contracts\schemas\vyral-public.schema.json"
+                      LogicalName="Vyral.Mcp.contracts.vyral-public.schema.json" />
+    <EmbeddedResource Include="..\..\contracts\public-sdk-surface.json"
+                      LogicalName="Vyral.Mcp.contracts.public-sdk-surface.json" />
+  </ItemGroup>
+
+</Project>

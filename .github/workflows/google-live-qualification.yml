@@ -1,0 +1,75 @@
+name: Google Live Qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider_version:
+        description: Google managed-service version label for the redacted receipt
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: google-live-qualification
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    name: Firestore and Cloud Tasks live gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: google-live-qualification
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      VYRAL_GOOGLE_EXECUTION_PROJECT_ID: ${{ secrets.GOOGLE_LIVE_PROJECT_ID }}
+      VYRAL_GOOGLE_EXECUTION_DATABASE_ID: ${{ secrets.GOOGLE_LIVE_DATABASE_ID }}
+      VYRAL_GOOGLE_EXECUTION_EXISTING_QUEUE: ${{ secrets.GOOGLE_LIVE_TASKS_QUEUE }}
+      VYRAL_GOOGLE_EXECUTION_TASKS_LOCATION: ${{ secrets.GOOGLE_LIVE_TASKS_LOCATION }}
+      VYRAL_GOOGLE_EXECUTION_WORKER_URL: ${{ secrets.GOOGLE_LIVE_WORKER_URL }}
+      VYRAL_GOOGLE_EXECUTION_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_LIVE_SERVICE_ACCOUNT }}
+      VYRAL_GOOGLE_LIVE_AUTH_MODE: workload_identity_federation
+      VYRAL_GOOGLE_LIVE_PROVIDER_VERSION: ${{ inputs.provider_version }}
+      VYRAL_GOOGLE_EXECUTION_RESULT_PATH: artifacts/qualification/google-live-gate.json
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Authenticate with short-lived workload identity
+        id: google-auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ secrets.GOOGLE_LIVE_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GOOGLE_LIVE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_LIVE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_lifetime: 1800s
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          version: ">= 416.0.0"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Vyral.sln
+
+      - name: Run isolated Google live qualification
+        env:
+          VYRAL_GOOGLE_EXECUTION_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: scripts/validate-google-execution-live.sh
+
+      - name: Upload redacted live evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: google-live-gate-${{ github.sha }}
+          path: artifacts/qualification/google-live-gate.json
+          if-no-files-found: warn

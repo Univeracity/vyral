@@ -1,0 +1,69 @@
+name: Temporal Container Qualification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/temporal-container-qualification.yml"
+      - "deploy/temporal-qualification/**"
+      - "scripts/validate-temporal-container.sh"
+      - "src/Vyral.Execution/**"
+      - "src/Vyral.Execution.Temporal/**"
+      - "src/Vyral.Execution.Temporal.Hosting/**"
+      - "src/Vyral.Execution.Temporal.Postgres/**"
+      - "src/Vyral.Local/**"
+      - "tests/Vyral.Tests.Conformance/**"
+      - "tests/Vyral.Tests.Temporal/**"
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - ".github/workflows/temporal-container-qualification.yml"
+      - "deploy/temporal-qualification/**"
+      - "scripts/validate-temporal-container.sh"
+      - "src/Vyral.Execution/**"
+      - "src/Vyral.Execution.Temporal/**"
+      - "src/Vyral.Execution.Temporal.Hosting/**"
+      - "src/Vyral.Execution.Temporal.Postgres/**"
+      - "src/Vyral.Local/**"
+      - "tests/Vyral.Tests.Conformance/**"
+      - "tests/Vyral.Tests.Temporal/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Disposable Temporal/PostgreSQL gate
+    # Keep automatic runs fail-closed while CI failures are being resolved.
+    # Manual dispatch remains available for controlled diagnostics.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      VYRAL_TEMPORAL_GATE_RESULT_PATH: artifacts/qualification/temporal-container-gate.json
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Vyral.sln
+
+      - name: Run isolated Temporal qualification
+        run: scripts/validate-temporal-container.sh
+
+      - name: Upload redacted gate evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: temporal-container-gate
+          path: artifacts/qualification/temporal-container-gate.json
+          if-no-files-found: warn

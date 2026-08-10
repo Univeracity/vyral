@@ -1,0 +1,105 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "admission.receipts.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.contracts.v1",
+  "kind": "golden",
+  "description": "Deterministic admission identity, replay provenance, idempotency-key redaction, and rejection details across runtime dialects.",
+  "steps": [
+    {
+      "id": "accepted-receipt",
+      "operation": "admission.receipt",
+      "arguments": {
+        "operationId": "importCollection",
+        "resourceId": "run-portable-admission-1",
+        "requestHash": "sha256:9f16b9f8f74873a8c326417267e7dd85d5f24c3c665ab0f856f60adf5b3312d1",
+        "idempotencyKey": "portable-import-secret",
+        "replayed": false,
+        "admittedAtUtc": "2026-08-01T12:00:00Z",
+        "statusUri": "/record-import/jobs/run-portable-admission-1",
+        "status": "accepted"
+      },
+      "expect": {
+        "value": {
+          "version": "vyral.admission.v1",
+          "admissionId": "adm_1de3e4f788d56a2e24bf0803156ed6f7aea5d140f6a041f30b999ee0fd92b29f",
+          "operationId": "importCollection",
+          "status": "accepted",
+          "resourceId": "run-portable-admission-1",
+          "requestHash": "sha256:9f16b9f8f74873a8c326417267e7dd85d5f24c3c665ab0f856f60adf5b3312d1",
+          "idempotencyKeyHash": "2f9c4afff7e0888c3c5e68cdb6a12a69745d2254b54d7888617999c98fa061f8",
+          "replayed": false,
+          "admittedAtUtc": "2026-08-01T12:00:00Z",
+          "statusUri": "/record-import/jobs/run-portable-admission-1",
+          "resultUri": null,
+          "failureClass": null,
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "replayed-receipt-keeps-identity",
+      "operation": "admission.receipt",
+      "arguments": {
+        "operationId": "importCollection",
+        "resourceId": "run-portable-admission-1",
+        "requestHash": "sha256:9f16b9f8f74873a8c326417267e7dd85d5f24c3c665ab0f856f60adf5b3312d1",
+        "idempotencyKey": "portable-import-secret",
+        "replayed": true,
+        "admittedAtUtc": "2026-08-01T12:00:00Z",
+        "statusUri": "/record-import/jobs/run-portable-admission-1",
+        "status": "accepted"
+      },
+      "expect": {
+        "value": {
+          "version": "vyral.admission.v1",
+          "admissionId": "adm_1de3e4f788d56a2e24bf0803156ed6f7aea5d140f6a041f30b999ee0fd92b29f",
+          "operationId": "importCollection",
+          "status": "accepted",
+          "resourceId": "run-portable-admission-1",
+          "requestHash": "sha256:9f16b9f8f74873a8c326417267e7dd85d5f24c3c665ab0f856f60adf5b3312d1",
+          "idempotencyKeyHash": "2f9c4afff7e0888c3c5e68cdb6a12a69745d2254b54d7888617999c98fa061f8",
+          "replayed": true,
+          "admittedAtUtc": "2026-08-01T12:00:00Z",
+          "statusUri": "/record-import/jobs/run-portable-admission-1",
+          "resultUri": null,
+          "failureClass": null,
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "rejected-receipt",
+      "operation": "admission.receipt",
+      "arguments": {
+        "operationId": "startExecutionRun",
+        "resourceId": "run-portable-rejected-1",
+        "requestHash": "sha256:0d8a36f4d25d3dfb56c82bb30e8d50fefecad6dca0d6e9628f70a750522d0f7c",
+        "idempotencyKey": null,
+        "replayed": false,
+        "admittedAtUtc": "2026-08-01T12:05:00Z",
+        "statusUri": "/execution/runs/run-portable-rejected-1",
+        "status": "rejected",
+        "failureClass": "handler_missing",
+        "error": "Execution handler is not registered."
+      },
+      "expect": {
+        "value": {
+          "version": "vyral.admission.v1",
+          "admissionId": "adm_af40477ff295c12d01bfaa1b435a43e8838f76c2987b74bab5045768691be15b",
+          "operationId": "startExecutionRun",
+          "status": "rejected",
+          "resourceId": "run-portable-rejected-1",
+          "requestHash": "sha256:0d8a36f4d25d3dfb56c82bb30e8d50fefecad6dca0d6e9628f70a750522d0f7c",
+          "idempotencyKeyHash": null,
+          "replayed": false,
+          "admittedAtUtc": "2026-08-01T12:05:00Z",
+          "statusUri": "/execution/runs/run-portable-rejected-1",
+          "resultUri": null,
+          "failureClass": "handler_missing",
+          "error": "Execution handler is not registered."
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+timeout: 1200s
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        docker network create canonical-test
+        docker run --detach --rm --name canonical-mysql --network canonical-test \
+          --env MYSQL_DATABASE=vyral_test \
+          --env MYSQL_ROOT_PASSWORD=postgres \
+          mysql:8.4
+        for attempt in $(seq 1 90); do
+          if docker exec canonical-mysql mysqladmin ping --host 127.0.0.1 --user root --password=postgres --silent >/dev/null 2>&1; then break; fi
+          sleep 1
+        done
+        docker exec canonical-mysql mysqladmin ping --host 127.0.0.1 --user root --password=postgres --silent
+        docker run --rm --network canonical-test \
+          --env 'VYRAL_MYSQL_CONNECTION_STRING=Server=canonical-mysql;Port=3306;Database=vyral_test;User ID=root;Password=postgres;SslMode=None' \
+          --volume /workspace:/workspace \
+          --workdir /workspace \
+          mcr.microsoft.com/dotnet/sdk:10.0 \
+          dotnet test tests/Vyral.Tests.MySql/Vyral.Tests.MySql.csproj \
+            --filter 'FullyQualifiedName~MySqlCanonicalStoreConformanceTests'

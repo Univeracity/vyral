@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "VYRAL_AZURE_DURABLE_TASK_HUB": "VyralExecutionSmoke",
+    "VYRAL_AZURE_COSMOS_CONNECTION_STRING": "",
+    "VYRAL_AZURE_COSMOS_DATABASE": "",
+    "VYRAL_AZURE_DURABLE_STATUS_CONTAINER": "vyral-execution-smoke"
+  }
+}

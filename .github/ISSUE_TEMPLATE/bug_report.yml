@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible problem in a portable contract, adapter, client, or release artifact.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, access tokens, connection strings, customer records, or private endpoints.
+        For a vulnerability, use the private reporting path in SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Published package version, container tag, or public commit identifier.
+      placeholder: v1.0.0 or abc1234
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Portable contract or local adapter
+        - AWS adapter
+        - Azure adapter
+        - Google adapter
+        - Cloudflare adapter
+        - CanonicalStore
+        - Execution runtime
+        - Client package
+        - Build, package, or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected portable behavior
+      description: State the behavior that should remain portable, or explain why the problem is provider-specific.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include sanitized errors, logs, and a minimal reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Runtime, operating system, provider/service version, and non-sensitive configuration shape.
+    validations:
+      required: true

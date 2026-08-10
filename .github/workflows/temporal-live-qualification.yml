@@ -1,0 +1,104 @@
+name: Temporal Live Qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_class:
+        description: Operator-provisioned Temporal environment class
+        required: true
+        type: choice
+        options:
+          - live_managed
+          - live_self_hosted
+      auth_mode:
+        description: Namespace client authentication mode
+        required: true
+        type: choice
+        options:
+          - api_key
+          - mtls
+      provider_version:
+        description: Temporal Cloud or self-hosted server version label for the receipt
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporal-live-qualification
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    name: Operator-provisioned Temporal gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: temporal-live-qualification
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      VYRAL_EXECUTION_TEMPORAL_TARGET_HOST: ${{ secrets.TEMPORAL_LIVE_TARGET_HOST }}
+      VYRAL_EXECUTION_TEMPORAL_NAMESPACE: ${{ secrets.TEMPORAL_LIVE_NAMESPACE }}
+      VYRAL_TEMPORAL_POSTGRES_CONNECTION_STRING: ${{ secrets.TEMPORAL_LIVE_POSTGRES_CONNECTION_STRING }}
+      VYRAL_TEMPORAL_API_KEY: ${{ inputs.auth_mode == 'api_key' && secrets.TEMPORAL_LIVE_API_KEY || '' }}
+      VYRAL_TEMPORAL_LIVE_AUTH_MODE: ${{ inputs.auth_mode }}
+      VYRAL_TEMPORAL_LIVE_ENVIRONMENT_CLASS: ${{ inputs.environment_class }}
+      VYRAL_TEMPORAL_LIVE_PROVIDER_VERSION: ${{ inputs.provider_version }}
+      VYRAL_TEMPORAL_LIVE_CONFIRM: dedicated-qualification-namespace
+      VYRAL_TEMPORAL_LIVE_RESULT_PATH: artifacts/qualification/temporal-live-gate.json
+      TEMPORAL_ROOT_CA_B64: ${{ secrets.TEMPORAL_LIVE_ROOT_CA_B64 }}
+      VYRAL_TEMPORAL_TLS_DOMAIN: ${{ secrets.TEMPORAL_LIVE_TLS_DOMAIN }}
+      TEMPORAL_CLIENT_CERT_B64: ${{ inputs.auth_mode == 'mtls' && secrets.TEMPORAL_LIVE_CLIENT_CERT_B64 || '' }}
+      TEMPORAL_CLIENT_KEY_B64: ${{ inputs.auth_mode == 'mtls' && secrets.TEMPORAL_LIVE_CLIENT_KEY_B64 || '' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Vyral.sln
+
+      - name: Prepare optional TLS material
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ -n "$TEMPORAL_ROOT_CA_B64" ]]; then
+            printf '%s' "$TEMPORAL_ROOT_CA_B64" | base64 --decode >"$RUNNER_TEMP/temporal-root-ca.pem"
+            echo "VYRAL_TEMPORAL_TLS_ROOT_CA_PATH=$RUNNER_TEMP/temporal-root-ca.pem" >>"$GITHUB_ENV"
+          fi
+          if [[ "$VYRAL_TEMPORAL_LIVE_AUTH_MODE" == "mtls" ]]; then
+            if [[ -z "$TEMPORAL_CLIENT_CERT_B64" || -z "$TEMPORAL_CLIENT_KEY_B64" ]]; then
+              echo "The temporal-live-qualification environment requires both mTLS client secrets." >&2
+              exit 2
+            fi
+            printf '%s' "$TEMPORAL_CLIENT_CERT_B64" | base64 --decode >"$RUNNER_TEMP/temporal-client-cert.pem"
+            printf '%s' "$TEMPORAL_CLIENT_KEY_B64" | base64 --decode >"$RUNNER_TEMP/temporal-client-key.pem"
+            echo "VYRAL_TEMPORAL_TLS_CLIENT_CERT_PATH=$RUNNER_TEMP/temporal-client-cert.pem" >>"$GITHUB_ENV"
+            echo "VYRAL_TEMPORAL_TLS_CLIENT_KEY_PATH=$RUNNER_TEMP/temporal-client-key.pem" >>"$GITHUB_ENV"
+          fi
+
+      - name: Run live Temporal qualification
+        run: scripts/validate-temporal-live.sh
+
+      - name: Remove staged TLS material
+        if: always()
+        shell: bash
+        run: |
+          rm -f -- \
+            "$RUNNER_TEMP/temporal-root-ca.pem" \
+            "$RUNNER_TEMP/temporal-client-cert.pem" \
+            "$RUNNER_TEMP/temporal-client-key.pem"
+
+      - name: Upload redacted live evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: temporal-live-gate
+          path: artifacts/qualification/temporal-live-gate.json
+          if-no-files-found: warn

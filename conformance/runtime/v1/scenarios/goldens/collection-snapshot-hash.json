@@ -1,0 +1,78 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "records.snapshot-hash.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.data-rag.v1",
+  "kind": "golden",
+  "description": "Collection snapshot hashing shared by Python and .NET, including Unicode, float32 vectors, timestamps, and extension data.",
+  "steps": [
+    {
+      "id": "snapshot-hash-unicode-float32",
+      "operation": "records.snapshot-hash",
+      "arguments": {
+        "snapshot": {
+          "collection": "items",
+          "policy": {
+            "name": "items",
+            "partitionKeyPath": "/partitionKey",
+            "vectorPolicies": [
+              {
+                "name": "embedding",
+                "path": "/vectors/embedding/values",
+                "dimensions": 2,
+                "datatype": "float32",
+                "distanceFunction": "cosine",
+                "indexType": "flat"
+              }
+            ],
+            "indexedMetadata": [
+              "/metadata/status"
+            ]
+          },
+          "records": [
+            {
+              "id": "r1",
+              "partitionKey": "tenant-a",
+              "type": "note",
+              "schemaVersion": "1",
+              "metadata": {
+                "status": "active",
+                "ratio": 0.1
+              },
+              "content": {
+                "text": "hello π"
+              },
+              "sources": null,
+              "vectors": {
+                "embedding": {
+                  "values": [
+                    0.1,
+                    -0.0
+                  ],
+                  "dimensions": 2,
+                  "model": "m",
+                  "datatype": "float32",
+                  "distanceFunction": "cosine",
+                  "generatedAt": "2026-07-30T12:00:00.12Z",
+                  "sourceField": "/content/text"
+                }
+              },
+              "etag": "rev:1",
+              "revision": 1,
+              "createdAt": "2026-07-30T12:00:00.12Z",
+              "updatedAt": "2026-07-30T12:00:01Z",
+              "extension": {
+                "enabled": true
+              }
+            }
+          ],
+          "recordCount": 1,
+          "truncated": false
+        }
+      },
+      "expect": {
+        "value": "sha256:a1ccf1c255253c9c4bb291218471be3cb4c6ec293e95fe67748d5974cc60be53"
+      }
+    }
+  ]
+}

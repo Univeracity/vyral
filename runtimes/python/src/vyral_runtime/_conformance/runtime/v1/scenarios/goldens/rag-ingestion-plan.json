@@ -1,0 +1,94 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "rag.ingestion-plan.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.data-rag.v1",
+  "kind": "golden",
+  "description": "Portable dry-run RAG chunking, identifiers, manifest hashing, and ingestion plan hashing.",
+  "steps": [
+    {
+      "id": "dry-run-plan-hash-and-chunk-boundaries",
+      "operation": "rag.ingestion-plan",
+      "arguments": {
+        "collection": "knowledge",
+        "policy": {
+          "name": "knowledge",
+          "indexedMetadata": [
+            "/metadata/documentId",
+            "/metadata/textHash",
+            "/metadata/embeddingTextHash",
+            "/type"
+          ],
+          "vectorPolicies": [
+            {
+              "name": "contentEmbedding",
+              "path": "/vectors/contentEmbedding/values",
+              "dimensions": 8,
+              "datatype": "float32",
+              "distanceFunction": "cosine",
+              "indexType": "flat"
+            }
+          ]
+        },
+        "provider": {
+          "provider": "deterministic-hash",
+          "dimensions": 8
+        },
+        "request": {
+          "documentId": "portable-rag",
+          "partitionKey": "tenant-a",
+          "text": "Stateless routing keeps requests portable. Durable state remains explicit across runtimes.",
+          "embedding": {
+            "field": "contentEmbedding",
+            "purpose": "passage"
+          },
+          "metadata": {
+            "title": "Portable runtime",
+            "rank": 2
+          },
+          "sourceUri": "https://example.test/portable",
+          "sourceKind": "documentation",
+          "sourceLabel": "Portable guide",
+          "options": {
+            "chunkChars": 48,
+            "chunkOverlapChars": 8,
+            "dryRun": true,
+            "replaceDocumentChunks": true,
+            "persistManifest": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "planHash": "sha256:e5118203a15aef8d45cdf5faa60fc70fbcf85c0ceadc2266db09be1ff9a4e978",
+          "manifestHash": "sha256:c04f7d731a8af0508bcbbf69c7970dbeea22f2c259419a2cbbed926cb4defeb4",
+          "textHash": "sha256:c3a0a9a56131b3fc92511f78b6ed7ac6f20598be0fad8452e3e6c4353f1b0d2c",
+          "chunkCount": 3,
+          "createdCount": 3,
+          "vectorGeneratedCount": 3,
+          "manifestAction": "created",
+          "chunkIds": [
+            "portable-rag-chunk-0000-18c79e81d9e0",
+            "portable-rag-chunk-0001-bfb2aea80f50",
+            "portable-rag-chunk-0002-b8dd87a1c98d"
+          ],
+          "chunkTextHashes": [
+            "sha256:18c79e81d9e0df016596dd8f36f95c74ea6da523ca2bfa950130474ef29d4ffc",
+            "sha256:bfb2aea80f50c07a57076ad88f4f6d0ac8a0f68d3ec4fde9f93e177aad02a724",
+            "sha256:b8dd87a1c98d0bb60d4ab27946571ca440aa4195d792ac9dc0478d1d9c46b5b4"
+          ],
+          "embeddingTextHashes": [
+            "sha256:18c79e81d9e0df016596dd8f36f95c74ea6da523ca2bfa950130474ef29d4ffc",
+            "sha256:bfb2aea80f50c07a57076ad88f4f6d0ac8a0f68d3ec4fde9f93e177aad02a724",
+            "sha256:b8dd87a1c98d0bb60d4ab27946571ca440aa4195d792ac9dc0478d1d9c46b5b4"
+          ],
+          "spans": [
+            [0, 42],
+            [34, 80],
+            [72, 90]
+          ]
+        }
+      }
+    }
+  ]
+}

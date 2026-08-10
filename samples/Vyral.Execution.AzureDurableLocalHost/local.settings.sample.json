@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "AzureFunctionsJobHost__extensions__durableTask__hubName": "VyralExecutionLocal",
+    "VYRAL_EXECUTION_AZURE_LOCAL_HOST_SMOKE": "0"
+  }
+}

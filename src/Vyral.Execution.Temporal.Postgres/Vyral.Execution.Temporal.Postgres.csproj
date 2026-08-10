@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vyral.Execution.Temporal\Vyral.Execution.Temporal.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
+    <PackageId>Vyral.Execution.Temporal.Postgres</PackageId>
+    <Title>Vyral Execution Temporal Postgres</Title>
+    <Authors>Vyral</Authors>
+    <Company>Vyral</Company>
+    <Copyright>Copyright © 2026 Jeremy Dixon</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Transactional PostgreSQL projection and dispatch-outbox foundation for Vyral's Temporal execution adapter.</Description>
+    <PackageTags>vyral;execution;temporal;postgresql;outbox;durable-workflows</PackageTags>
+    <PackageProjectUrl>https://github.com/univeracity/vyral</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/univeracity/vyral</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

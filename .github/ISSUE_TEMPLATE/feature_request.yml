@@ -1,0 +1,37 @@
+name: Contract or capability proposal
+description: Propose a portable behavior or a clearly bounded provider-specific adapter capability.
+title: "proposal: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user outcome first. Do not include credentials, customer data, or private operational details.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Portable contract shape
+      description: Explain the cross-provider behavior, capability boundary, and explicit unsupported cases.
+    validations:
+      required: true
+  - type: textarea
+    id: providers
+    attributes:
+      label: Provider considerations
+      description: Identify provider-specific behavior that must remain an adapter concern.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Include deterministic conformance and, where relevant, opt-in live qualification.
+    validations:
+      required: true

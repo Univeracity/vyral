@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vyral.Abstractions\Vyral.Abstractions.csproj" />
+    <ProjectReference Include="..\Vyral.Execution.Temporal\Vyral.Execution.Temporal.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Temporalio" Version="1.17.0" />
+    <PackageReference Include="Temporalio.Extensions.Hosting" Version="1.17.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
+    <PackageId>Vyral.Execution.Temporal.Hosting</PackageId>
+    <Title>Vyral Execution Temporal Hosting</Title>
+    <Authors>Vyral</Authors>
+    <Company>Vyral</Company>
+    <Copyright>Copyright © 2026 Jeremy Dixon</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Worker-host composition for Vyral's deterministic Temporal coordinator workflow and ordinary side-effecting handler activities.</Description>
+    <PackageTags>vyral;execution;temporal;worker;hosting;durable-workflows</PackageTags>
+    <PackageProjectUrl>https://github.com/univeracity/vyral</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/univeracity/vyral</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

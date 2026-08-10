@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvyral.com/contracts/public-sdk-surface.schema.json",
+  "title": "Vyral public SDK surface catalog",
+  "type": "object",
+  "required": [
+    "catalogVersion",
+    "openApi",
+    "openApiVersion",
+    "evidenceProfiles",
+    "excludedRestOperations",
+    "operations"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "catalogVersion": { "type": "string", "minLength": 1 },
+    "openApi": { "type": "string", "minLength": 1 },
+    "openApiVersion": { "type": "string", "minLength": 1 },
+    "evidenceProfiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["server", "pythonWire", "pythonDocs", "javascriptWire", "javascriptDocs"],
+        "additionalProperties": { "type": "string", "minLength": 1 }
+      }
+    },
+    "excludedRestOperations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["operationId", "reason"],
+        "properties": {
+          "operationId": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "group",
+          "restOperationIds",
+          "stability",
+          "authorizationClass",
+          "mutation",
+          "completionBoundary",
+          "idempotency",
+          "sdk",
+          "contractRefs",
+          "schemaRefs",
+          "mcp",
+          "headerSafeFields",
+          "evidenceProfile"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "group": { "type": "string", "minLength": 1 },
+          "restOperationIds": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "stability": { "enum": ["public", "preview", "internal", "deprecated"] },
+          "authorizationClass": { "type": "string", "minLength": 1 },
+          "mutation": { "enum": ["read", "write", "delete"] },
+          "completionBoundary": { "enum": ["non-mutating", "atomic", "receipt-bound", "maintenance"] },
+          "idempotency": { "enum": ["not-applicable", "required", "supported", "unsupported"] },
+          "sdk": {
+            "type": "object",
+            "required": ["python", "javascript"],
+            "properties": {
+              "python": { "type": "string", "minLength": 1 },
+              "javascript": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          },
+          "contractRefs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "schemaRefs": { "type": "array", "items": { "type": "string" } },
+          "mcp": {
+            "type": "object",
+            "required": ["exposure", "id", "defaultEnabled"],
+            "properties": {
+              "exposure": { "enum": ["none", "tool", "resource", "task"] },
+              "id": { "type": ["string", "null"] },
+              "defaultEnabled": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          },
+          "headerSafeFields": { "type": "array", "items": { "type": "string" } },
+          "evidenceProfile": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,73 @@
+[project]
+name = "vyral-runtime"
+version = "0.1.1"
+description = "Python-first local runtime for the portable Vyral contract"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Jeremy Dixon" }
+]
+keywords = [
+  "vyral",
+  "rag",
+  "retrieval",
+  "runtime",
+  "local-development"
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries"
+]
+dependencies = []
+
+[project.optional-dependencies]
+server = [
+  "uvicorn>=0.30,<1"
+]
+dev = [
+  "build>=1.2,<2",
+  "coverage==7.15.3",
+  "jsonschema>=4.23,<5",
+  "mypy>=1.18,<3"
+]
+
+[project.scripts]
+vyral-runtime = "vyral_runtime.host.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/univeracity/vyral"
+Repository = "https://github.com/univeracity/vyral"
+Issues = "https://github.com/univeracity/vyral/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vyral_runtime"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "LICENSE",
+  "README.md",
+  "pyproject.toml",
+  "src/vyral_runtime"
+]
+
+[tool.vyral]
+contract-version = "0.3.0"
+fixture-version = "1.0.0"
+runtime-profile = "vyral.runtime.contracts.v1"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
