@@ -10,8 +10,8 @@ permissions:
 jobs:
   review:
     name: Review dependency changes
-    # Dependency Review cannot start on the current private-repository plan. Keep it manually
-    # available and enable it automatically with the other hosted security gates once supported.
+    # The repository variable is the emergency pause switch for hosted gates.
+    # Manual dispatch remains available for controlled diagnostics.
     if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
     permissions:

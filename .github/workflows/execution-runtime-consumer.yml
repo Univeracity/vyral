@@ -69,7 +69,7 @@ on:
 jobs:
   validate:
     name: Validate consumer path
-    # Keep automatic runs fail-closed while CI failures are being resolved.
+    # The repository variable is the emergency pause switch for hosted gates.
     # Manual dispatch remains available for controlled diagnostics.
     if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest

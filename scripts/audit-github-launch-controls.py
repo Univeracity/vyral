@@ -13,13 +13,16 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_CHECK_FRAGMENTS = {
+REQUIRED_CHECK_CONTEXTS = {
     "Build and test .NET",
     "Test language clients",
     "Verify contracts and public export",
-    "CodeQL",
-    "Dependency Review",
-    "Release Integrity",
+    "Analyze (csharp)",
+    "Analyze (javascript-typescript)",
+    "Analyze (python)",
+    "Analyze (go)",
+    "Review dependency changes",
+    "Verify releasable artifacts",
 }
 
 
@@ -109,10 +112,7 @@ def _required_checks(protection: Any) -> set[str]:
 
 
 def _contains_required_checks(actual: set[str]) -> bool:
-    return all(
-        any(fragment in check for check in actual)
-        for fragment in REQUIRED_CHECK_FRAGMENTS
-    )
+    return REQUIRED_CHECK_CONTEXTS.issubset(actual)
 
 
 def audit(repository: str) -> dict[str, Any]:
@@ -171,7 +171,7 @@ def audit(repository: str) -> dict[str, Any]:
             ),
             evidence={
                 "configured": sorted(checks),
-                "requiredFragments": sorted(REQUIRED_CHECK_FRAGMENTS),
+                "requiredContexts": sorted(REQUIRED_CHECK_CONTEXTS),
             },
         )
     )
