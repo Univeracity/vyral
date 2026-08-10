@@ -75,24 +75,57 @@ of truth for recorded evidence.
 
 ## Quick start
 
-The default server uses local SQLite records and traces plus filesystem object
-storage. Start it from the repository root:
+The shortest path is the embedded Python runtime. It needs no .NET SDK,
+container runtime, cloud account, external service, or model download. From a
+source checkout, create an isolated environment and install the runtime:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --editable runtimes/python
+```
+
+Run the connected local quickstart against an explicit durable directory:
+
+```bash
+vyral-runtime quickstart --root ./.vyral/quickstart
+```
+
+It ingests a small corpus, prints citation-ready context and the active
+model-free local embedding shape, admits an idempotent durable handler before
+dispatch, closes the runtime, reopens the same directory, and completes the
+same run identity. Inspect the providers, topology, readiness, and limitations
+without rerunning the quickstart:
+
+```bash
+vyral-runtime inspect --root ./.vyral/quickstart
+```
+
+The quickstart owns only the directory bearing its marker. Its reset command
+refuses foreign, symbolic-link, home, filesystem-root, and working-directory
+targets:
+
+```bash
+vyral-runtime quickstart --root ./.vyral/quickstart --reset
+```
+
+Package publication is still withheld, so the editable source install above is
+the public pre-release path. The deterministic token-hash provider demonstrates
+bounded local mechanics and lexical similarity; it is not presented as a
+semantic model.
+
+### Local REST and client examples
+
+To exercise the server boundary instead, start the .NET host from the
+repository root:
 
 ```bash
 scripts/start-local-server.sh
 ```
 
 It listens on `http://127.0.0.1:5220` and writes local state beneath `.vyral/`.
-Confirm the host is ready:
-
-```bash
-curl http://127.0.0.1:5220/health
-curl http://127.0.0.1:5220/readiness
-curl http://127.0.0.1:5220/openapi/vyral.json
-```
-
-Run either source-tree client example to create a collection, ingest three
-documents, retrieve context, and print citations:
+Run either HTTP client example to create a collection, ingest three documents,
+retrieve context, and print citations:
 
 ```bash
 python3 examples/python/rag_quickstart.py

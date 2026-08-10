@@ -1,5 +1,5 @@
 {
-  "fileCount": 811,
+  "fileCount": 814,
   "files": [
     {
       "mode": "644",
@@ -124,7 +124,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "09fcd91ad1bcf4cc635c43adba22246b2aa0d152114e7b669072ecadd4c7a921"
+      "sha256": "49c08cc55f653a1987a7ce9daf93a6a2cf2742af674363c9c479bb7f0622f5a9"
     },
     {
       "mode": "644",
@@ -599,7 +599,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "7737bbdf53e8ebced77d1bd6afb9b3f7d375744306097d4b2cbb09c0f3fc0c3b"
+      "sha256": "49bdce0bf1c14f02c4d0b784b74c6c21990a8fd1004c008637b0cdc2846fcc57"
     },
     {
       "mode": "644",
@@ -654,7 +654,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "67961c3a0e9f90a8b954ed92f784758ca4c75483d39c2f4e3c8f39f82d758927"
+      "sha256": "d6f49d16ef0d5c26e262488d6c0a62dbb1edc1653091f216ba410ca39313f8c0"
     },
     {
       "mode": "644",
@@ -680,6 +680,11 @@
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/__init__.py",
       "sha256": "53bee66f10feda8414074d167efbf24657256b722659a3eb0686a04f755b0125"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/__main__.py",
+      "sha256": "306214873973eddf4842d4968ac5d65d748c54c8997e109c7d3ed535ae19362c"
     },
     {
       "mode": "644",
@@ -780,6 +785,11 @@
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/_datetime.py",
       "sha256": "3029cca1e900f0a389e316709a2fa35b73265ed7a8a9dbfee2cbb891bb3892fd"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/_local_experience.py",
+      "sha256": "7ed47623ae40fef2164a6ee94552a402470d33d99b0c3ed5b2ec5d9cc83e467f"
     },
     {
       "mode": "644",
@@ -959,7 +969,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/cli.py",
-      "sha256": "0f156520a4640fe483e968a6476e005e95bcb005239d5b88ee49a87fb24c16b3"
+      "sha256": "2e46667804b58fb10c9c0c6b1dfac7a2b5089be9abc6e2f4f868b6abe6cdb75f"
     },
     {
       "mode": "644",
@@ -1174,7 +1184,12 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_host_cli.py",
-      "sha256": "007821cb0398ed906d669193d2f61f09ee2555f1f9379d4b6d69e8e31a21632b"
+      "sha256": "f561334d308b62eac6e965ef97b7486be6cfcdc77299c2eedf12393c1fcbf3fd"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/tests/test_local_experience.py",
+      "sha256": "ec153cd5f316be04bdeb2d2c38ffbbcda22af771a80478cadeff483d03bbc848"
     },
     {
       "mode": "644",
@@ -1704,7 +1719,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime.sh",
-      "sha256": "aa7537d6a35b78358afc4354ad50b6e6f21f3952e2a435c7aaa0593908d5ceac"
+      "sha256": "3b958588166ac6ad09a4f426203a99c36a104c58fb00a45d92e1aee879f613b2"
     },
     {
       "mode": "755",
@@ -4059,5 +4074,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "d5394a266e50679de75ed2bc87f939c7b9612bdc0e9de88ac960f388bc10d22e"
+  "treeSha256": "8a21a0a511b3acdce8fb6bfa727627d19b46e00a2666f14c036341366aa7100c"
 }

@@ -51,6 +51,47 @@ remaining platform or human-review evidence.
 Unsupported optional providers are disclosed explicitly; the runtime does not
 silently delegate embedded behavior to .NET or to the existing HTTP client.
 
+## Local single-player quickstart
+
+From the repository root, install the package into an isolated environment and
+run one command against an explicit durable directory:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --editable runtimes/python
+vyral-runtime quickstart --root ./.vyral/quickstart
+```
+
+The command creates and ingests a three-document corpus, returns cited hybrid
+retrieval context, admits a decorated handler with a stable idempotency key,
+closes the runtime before dispatch, reopens the same SQLite/filesystem state,
+and completes the preserved run identity. It reports the queued receipt before
+the close/reopen boundary so acceptance is not confused with completion.
+
+The default `local-token-hash` provider is CPU-only, model-free, and requires no
+network or downloaded assets. It provides deterministic lexical-overlap vectors
+for local development; its ranking is not a semantic-model quality claim.
+
+Inspect the state and its material limitations independently:
+
+```bash
+vyral-runtime inspect --root ./.vyral/quickstart
+```
+
+The quickstart records an ownership marker and will reset only a dedicated
+directory bearing that marker:
+
+```bash
+vyral-runtime quickstart --root ./.vyral/quickstart --reset
+```
+
+Use `--json` with either command for machine-readable output. Package
+publication remains withheld, so the editable install is the supported public
+pre-release path. Once a qualified wheel is published, the install command can
+be replaced with `python -m pip install vyral-runtime` without changing the
+quickstart or inspection commands.
+
 ```python
 from vyral_runtime import VyralRuntime
 
