@@ -85,39 +85,37 @@ python3 -m venv .venv
 python -m pip install --editable runtimes/python
 ```
 
-Create and run the smallest user-owned application:
+Run the complete local retrieval-and-durable-execution proof:
 
 ```bash
-vyral-runtime init --path ./vyral_app.py
-python ./vyral_app.py
-```
-
-The generated file uses the concise `@vyral(...)` authoring surface, prints a
-durable receipt before dispatch, closes and reopens its local runtime, and then
-completes the preserved run. Rerunning the file replays the same idempotent run
-instead of dispatching duplicate work. The generator creates one readable
-Python file, never overwrites an existing path, and keeps its state visibly
-beside the file under its own `.vyral/<application-id>` directory (for the
-example above, `.vyral/vyral_app`). Sibling generated applications receive
-distinct state and durable identities. After editing the intended work, the
-developer increments the visible `RUN_VERSION` to admit a new idempotent run.
-
-Run the connected retrieval-and-execution quickstart against a separate,
-explicit durable directory:
-
-```bash
-vyral-runtime quickstart --root ./.vyral/quickstart
+vyral-runtime quickstart
 ```
 
 It ingests a small corpus, prints citation-ready context and the active
 model-free local embedding shape, admits an idempotent durable handler before
 dispatch, closes the runtime, reopens the same directory, and completes the
-same run identity. Inspect the providers, topology, readiness, and limitations
-without rerunning the quickstart:
+same run identity. State stays visible under `./.vyral/quickstart`. Inspect its
+providers, topology, readiness, and limitations without rerunning it:
 
 ```bash
-vyral-runtime inspect --root ./.vyral/quickstart
+vyral-runtime inspect
 ```
+
+When you are ready to own the code, generate the smallest editable application:
+
+```bash
+vyral-runtime init
+python ./vyral_app.py
+```
+
+The generated file uses the concise `@vyral(...)` authoring surface, prints a
+durable receipt before dispatch, closes and reopens its local runtime, and then
+completes the preserved run. Rerunning it replays the same idempotent run
+instead of dispatching duplicate work. The generator never overwrites an
+existing path and keeps state beside the file under `.vyral/vyral_app`.
+After editing the intended work, increment the visible `RUN_VERSION` to admit a
+new idempotent run. `--path` and `--root` remain available when you want
+different code or state locations.
 
 Add `--json` to the quickstart to capture machine-readable first-citation,
 durable-receipt, restart-recovery, and completion timings. Clean wheel and
@@ -131,7 +129,7 @@ refuses foreign, symbolic-link, home, filesystem-root, and working-directory
 targets:
 
 ```bash
-vyral-runtime quickstart --root ./.vyral/quickstart --reset
+vyral-runtime quickstart --reset
 ```
 
 Package publication is still withheld, so the editable source install above is

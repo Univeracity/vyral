@@ -63,28 +63,10 @@ python3 -m venv .venv
 python -m pip install --editable runtimes/python
 ```
 
-Generate one editable application and run it:
+Run the connected retrieval-and-execution proof:
 
 ```bash
-vyral-runtime init --path ./vyral_app.py
-python ./vyral_app.py
-```
-
-The generated file uses `@vyral(...)`, admits work with a stable idempotency
-key, prints the durable receipt, closes the first runtime before dispatch,
-reopens its own `.vyral/<application-id>` directory, and completes the
-preserved run. For `vyral_app.py`, that directory is `.vyral/vyral_app`.
-Running the same file again reports `replayed=true` and dispatches no duplicate
-work. Sibling generated files receive distinct state and durable identities.
-The generator refuses to overwrite an existing path; the result is ordinary
-Python source intended to be edited or absorbed into an application. A visible
-`RUN_VERSION` makes intent explicit: leave it unchanged to prove replay, then
-increment it after changing the work to admit a new run.
-
-For a connected retrieval-and-execution proof, run:
-
-```bash
-vyral-runtime quickstart --root ./.vyral/quickstart
+vyral-runtime quickstart
 ```
 
 The quickstart creates and ingests a three-document corpus, returns cited hybrid
@@ -100,15 +82,32 @@ for local development; its ranking is not a semantic-model quality claim.
 Inspect the state and its material limitations independently:
 
 ```bash
-vyral-runtime inspect --root ./.vyral/quickstart
+vyral-runtime inspect
 ```
 
 The quickstart records an ownership marker and will reset only a dedicated
 directory bearing that marker:
 
 ```bash
-vyral-runtime quickstart --root ./.vyral/quickstart --reset
+vyral-runtime quickstart --reset
 ```
+
+Generate one editable application when you are ready to own the code:
+
+```bash
+vyral-runtime init
+python ./vyral_app.py
+```
+
+The generated file uses `@vyral(...)`, admits work with a stable idempotency
+key, prints the durable receipt, closes the first runtime before dispatch,
+reopens its own `.vyral/vyral_app` directory, and completes the preserved run.
+Running it again reports `replayed=true` and dispatches no duplicate work. The
+generator refuses to overwrite an existing path; the result is ordinary Python
+source intended to be edited or absorbed into an application. Leave the visible
+`RUN_VERSION` unchanged to prove replay, then increment it after changing the
+work to admit a new run. Use `--path` or `--root` when you need non-default code
+or state locations.
 
 Use `--json` with `init`, `quickstart`, or `inspect` for machine-readable
 output. Package publication remains withheld, so the editable install is the

@@ -7,7 +7,7 @@ run its connected retrieval and durable-restart experience:
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --editable runtimes/python
-vyral-runtime quickstart --root ./.vyral/quickstart
+vyral-runtime quickstart
 ```
 
 The remaining examples exercise the local HTTP boundary intended for Python

@@ -129,7 +129,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "855a3bf3b37357fccd71d3a48172a1a84eed6e7ecf2aac74e7b51d248208331a"
+      "sha256": "bbd9eaf054e2b410ab51ba9e044a9bfbccb6a24b6ef1430bd7afb84adb35190a"
     },
     {
       "mode": "644",
@@ -604,7 +604,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "49bdce0bf1c14f02c4d0b784b74c6c21990a8fd1004c008637b0cdc2846fcc57"
+      "sha256": "48b5631d176c0a2102c01201d10144154624672eaf53096373e5335caba18e11"
     },
     {
       "mode": "644",
@@ -659,7 +659,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "8685c30e1e14015d602ed0aa78c037f8c1854262e373182e505a5033448b3ceb"
+      "sha256": "2951f22ee69530a85f486dfd53e32408a0ae5c1cfbfef8fead446f3c47debc0e"
     },
     {
       "mode": "644",
@@ -979,7 +979,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/cli.py",
-      "sha256": "365b4d51890163eabafe06195383dde55f788f7c566c2a934fc79608c3feee62"
+      "sha256": "1040cf0cecdd429197662cf2365047787ebbcf6b3faf532e8849cebdcac1a609"
     },
     {
       "mode": "644",
@@ -1194,7 +1194,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_host_cli.py",
-      "sha256": "8c1e243dcf31966088ebcf4a4943aadefddb4951419b057405607fe88b604e54"
+      "sha256": "c6292c36a7b9c7d5c03f55c4a46b72d7489abee54f3011dad1a93a01b36024e2"
     },
     {
       "mode": "644",
@@ -4089,5 +4089,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "a17bb96f9872e016aaa2b515b5a50ff924c43fd64309de5c0ae63c9bb52dcd12"
+  "treeSha256": "27bea22ce5088757200df47d504dbeb8bca99315e7a69fb6a631085500f9bab8"
 }
