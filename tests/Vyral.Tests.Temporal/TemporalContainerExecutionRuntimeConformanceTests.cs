@@ -528,6 +528,17 @@ public sealed class TemporalContainerExecutionRuntimeConformanceTests :
         string firstRunId,
         CancellationToken ct)
     {
+        // The portable projection can reach a terminal state just before Temporal appends the
+        // coordinator's terminal history event. Wait on Temporal itself before inspecting the
+        // immutable history chain so qualification never races that final append.
+        var handle = client.GetWorkflowHandle<ITemporalRunCoordinatorWorkflow, TemporalCoordinatorResult>(
+            workflowId,
+            firstRunId,
+            firstRunId);
+        _ = await handle.GetResultAsync(
+            followRuns: true,
+            new RpcOptions { CancellationToken = ct });
+
         List<TemporalHistoryRunMeasurement> measurements = [];
         HashSet<string> visitedRunIds = new(StringComparer.Ordinal);
         var currentRunId = firstRunId;
