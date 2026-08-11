@@ -51,6 +51,7 @@ FUNCTION_KEY_AVAILABLE=false
 ENDPOINT_READY=false
 DISCOVERED_FUNCTION_COUNT=0
 READINESS_HTTP_CODE="not-attempted"
+HOST_RESTART_ATTEMPTED=false
 FAILURE_STAGE="publish"
 
 cleanup() {
@@ -123,6 +124,7 @@ cleanup() {
       --argjson functions_discovered "$FUNCTIONS_DISCOVERED" \
       --argjson function_key_available "$FUNCTION_KEY_AVAILABLE" \
       --argjson endpoint_ready "$ENDPOINT_READY" \
+      --argjson host_restart_attempted "$HOST_RESTART_ATTEMPTED" \
       --argjson discovered_function_count "$DISCOVERED_FUNCTION_COUNT" \
       --argjson expected_function_count "$EXPECTED_FUNCTION_COUNT" \
       --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
@@ -146,6 +148,9 @@ cleanup() {
           externalEventWait: $event_wait,
           durableTimer: $timer,
           liveAssertions: $assertions
+        },
+        recovery: {
+          partialInventoryRestartAttempted: $host_restart_attempted
         },
         failure: (
           if $result == "passed" then null
@@ -272,13 +277,17 @@ base_url="https://${FUNCTION}.azurewebsites.net"
 # snapshot while a Flex host is still indexing. Query the authenticated runtime inventory instead;
 # it both wakes the deployed host and proves the exact functions that host can execute.
 FAILURE_STAGE="function-discovery"
-for _ in $(seq 1 72); do
+partial_inventory_observations=0
+for _ in $(seq 1 48); do
   admin_payload="$(curl --config "$ADMIN_CURL_CONFIG" -sS --fail \
-    "$base_url/admin/functions/" 2>/dev/null || true)"
+    --max-time 10 "$base_url/admin/functions/" 2>/dev/null || true)"
   candidate_count="$(jq -r 'if type == "array" then length else 0 end' \
     <<<"$admin_payload" 2>/dev/null || echo 0)"
   if [[ "$candidate_count" =~ ^[0-9]+$ ]]; then
     DISCOVERED_FUNCTION_COUNT="$candidate_count"
+    if (( candidate_count > 0 && candidate_count < EXPECTED_FUNCTION_COUNT )); then
+      partial_inventory_observations=$((partial_inventory_observations + 1))
+    fi
   fi
   inventory_matches="$(jq -r --argjson expected "$EXPECTED_FUNCTION_NAMES_JSON" '
     if type == "array" and all(.[]; (.name? | type) == "string")
@@ -290,6 +299,21 @@ for _ in $(seq 1 72); do
   if [[ "$inventory_matches" == true ]]; then
     FUNCTIONS_DISCOVERED=true
     break
+  fi
+  if [[ "$HOST_RESTART_ATTEMPTED" == false && "$partial_inventory_observations" -ge 6 ]]; then
+    FAILURE_STAGE="function-discovery-restart"
+    HOST_RESTART_ATTEMPTED=true
+    if ! az functionapp restart --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+      --name "$FUNCTION" --only-show-errors --output none \
+      2>"$WORK_ROOT/function-restart.log"; then
+      echo 'azure-durable-functions-live-host-restart=failed' >&2
+      false
+    fi
+    echo 'azure-durable-functions-live-host-restart=issued'
+    DISCOVERED_FUNCTION_COUNT=0
+    partial_inventory_observations=0
+    FAILURE_STAGE="function-discovery"
+    sleep 10
   fi
   sleep 5
 done

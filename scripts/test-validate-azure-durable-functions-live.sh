@@ -61,8 +61,11 @@ case "$command" in
   "functionapp keys list "*)
     printf '%s\n' '{"functionKeys":{"default":"test-function-key-never-log"},"masterKey":"test-master-key-never-log"}'
     ;;
+  "functionapp restart "*)
+    touch "$VYRAL_TEST_STATE/restart-issued"
+    ;;
   "cosmosdb sql container show "*)
-    if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 ]]; then
+    if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 && "${VYRAL_TEST_RECOVER_AFTER_RESTART:-false}" != true ]]; then
       exit 1
     fi
     ;;
@@ -110,7 +113,11 @@ done
 
 case "$url" in
   */admin/functions | */admin/functions/)
-    case "${VYRAL_TEST_FUNCTION_COUNT:-7}" in
+    function_count="${VYRAL_TEST_FUNCTION_COUNT:-7}"
+    if [[ "${VYRAL_TEST_RECOVER_AFTER_RESTART:-false}" == true && -e "$VYRAL_TEST_STATE/restart-issued" ]]; then
+      function_count=7
+    fi
+    case "$function_count" in
       7)
         printf '%s\n' '[{"name":"VyralAzureDurableSmokeCancel"},{"name":"VyralAzureDurableSmokeGet"},{"name":"VyralAzureDurableSmokeRaiseEvent"},{"name":"VyralAzureDurableSmokeStart"},{"name":"VyralExecutionRuntimeOrchestrator"},{"name":"VyralExecutionRuntimeStart"},{"name":"VyralExecutionRuntimeStep"}]'
         ;;
@@ -175,6 +182,8 @@ run_case() {
   local expected_status="$3"
   local expected_result="$4"
   local expected_stage="$5"
+  local expected_restart="$6"
+  local recover_after_restart="${7:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -185,6 +194,7 @@ run_case() {
   TMPDIR="$work/temp" \
   VYRAL_TEST_STATE="$state" \
   VYRAL_TEST_FUNCTION_COUNT="$function_count" \
+  VYRAL_TEST_RECOVER_AFTER_RESTART="$recover_after_restart" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
   VYRAL_AZURE_COSMOS_CONNECTION_STRING='AccountEndpoint=https://fixture.invalid;AccountKey=fixture;' \
@@ -199,6 +209,7 @@ run_case() {
   [[ "$(jq -r '.cleanup.result' "$receipt")" == passed ]]
   [[ "$(jq -r '.cleanup.functionApp' "$receipt")" == deleted ]]
   [[ "$(jq -r '.cleanup.storageAccount' "$receipt")" == deleted ]]
+  [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
   [[ "$(stat -c '%a' "$receipt")" == 600 ]]
   ! grep -Fq 'test-function-key-never-log' "$output"
   ! grep -Fq 'test-master-key-never-log' "$output"
@@ -216,9 +227,10 @@ run_case() {
   fi
 }
 
-run_case success 7 0 passed complete
-run_case discovery-failure 0 1 failed function-discovery
-run_case incomplete-discovery 1 1 failed function-discovery
+run_case success 7 0 passed complete false
+run_case discovery-failure 0 1 failed function-discovery false
+run_case incomplete-discovery 1 1 failed function-discovery true
+run_case restart-recovery 1 0 passed complete true true
 
 if find "$work/temp" -mindepth 1 -print -quit | grep -q .; then
   echo 'Azure live script left temporary residue.' >&2
