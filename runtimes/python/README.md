@@ -350,8 +350,10 @@ affinity.
 
 The baseline qualification corpus is 2,000 records with 384-dimensional exact
 vectors, a roughly 200-chunk RAG document, and 20 durable jobs. This is a
-bounded regression smoke for notebook and small local-service use, not an SLA
-or a maximum supported corpus.
+bounded evidence run for notebook and small local-service use, not an SLA or a
+maximum supported corpus. Hosted wall-clock time is recorded rather than used
+as a release gate; controlled runners can opt into a limit with
+`--max-seconds`.
 
 ## Development checks
 

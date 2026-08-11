@@ -1,5 +1,5 @@
 {
-  "fileCount": 852,
+  "fileCount": 854,
   "files": [
     {
       "mode": "644",
@@ -59,12 +59,12 @@
     {
       "mode": "644",
       "path": ".github/workflows/azure-live-qualification.yml",
-      "sha256": "bb2ef8e209956ea0f65775e728c3f30e2ece7ab97fbb5c2e204800fe8b4da637"
+      "sha256": "fea175a3c59032e87951392d26edfb6875edddca0f542d0ab2cc746f9cf3902b"
     },
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "5110e43067c103576b9a15b3e47fd27e239ca22f7887b9033c2925b81aa6adef"
+      "sha256": "c704295202f416197a5eda9ea4d57ff4ef71946b6a4bb3be289e0f678621f0e3"
     },
     {
       "mode": "644",
@@ -579,7 +579,7 @@
     {
       "mode": "644",
       "path": "design/python-runtime.md",
-      "sha256": "d67fb985b319c8d204bbce48ecf31331c3153239a2f61da1d1395fe5c6ff9c31"
+      "sha256": "4bd7586389342aee0088506029548f77754fd861314605cd34bca063f61c4f03"
     },
     {
       "mode": "644",
@@ -719,7 +719,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "7a092b02573f2b01bfa4ae5b53227db9e0075a5bae7047db8eafe4f8b9a6574e"
+      "sha256": "4b068e93fa063c2fac3e1826cb3a7b3360b0b66743b2e1e0015c46eb8d9d3c00"
     },
     {
       "mode": "644",
@@ -1484,7 +1484,7 @@
     {
       "mode": "755",
       "path": "scripts/benchmark-python-runtime.py",
-      "sha256": "08282add3792153654fbcb6211a974e94e95f693ab7c778f33e6c1e83c6085e2"
+      "sha256": "1cb7a1080ba809a52eedc7bfb3882a5e3e935946094587cf9a46fc7d59336a98"
     },
     {
       "mode": "755",
@@ -1509,7 +1509,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "82ae45ed746f4d272c90801c192430fdaf8a2c66fe8c0d968d2d1d1ae8177fbf"
+      "sha256": "c4da2eb9c3ecdf1cac91a8f7404aede0f6e841a0461745cee917f8f586f33f51"
     },
     {
       "mode": "755",
@@ -1669,7 +1669,7 @@
     {
       "mode": "755",
       "path": "scripts/test-validate-azure-durable-functions-live.sh",
-      "sha256": "3db24b8801a40afdfc0c69a58dee0950f36c78fedc7170bd4101a5900c54fd7a"
+      "sha256": "83a033be6f86fff7feb136900792a53eb3679a3d447cfba5efb17bc6295bceda"
     },
     {
       "mode": "755",
@@ -1714,7 +1714,7 @@
     {
       "mode": "755",
       "path": "scripts/validate-azure-durable-functions-live.sh",
-      "sha256": "e2bc12c20c118fca3c00435b2b805e3513935d355c63eb2508160eee43487f17"
+      "sha256": "12efc233a882bab83ecf8a8b4abb8d1afa4437a901d6556d09bba37f9b1299e1"
     },
     {
       "mode": "755",
@@ -1775,6 +1775,16 @@
       "mode": "755",
       "path": "scripts/validate-temporal-live.sh",
       "sha256": "591bb477bf29195df73ada6de0d70490436e868c48d3b8d83f251f15986715d6"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-azure-durable-functions-host.sh",
+      "sha256": "acc6a62c94cdafb3ef7bd11a3fd5e9dfb77aad580cfa78c7d824bb6274f1ab12"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-azure-durable-package-graph.py",
+      "sha256": "5f0aba62417ed3a46d88dea75cebb98c4eda3755940d2ecbbe2e66e08992d984"
     },
     {
       "mode": "755",
@@ -1899,7 +1909,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "57fb7abccf3d51fdb12d698f03d808c4852444c25716c0aa8f17e20aa2ef2acc"
+      "sha256": "792cf02442f07c75c053bde077cb13ced79172171217f95d558f1f5070f1ca7c"
     },
     {
       "mode": "755",
@@ -2384,7 +2394,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Execution.AzureDurable.Functions/Vyral.Execution.AzureDurable.Functions.csproj",
-      "sha256": "ddcb9e50e26fde2818836b2499bd7eec13b8c9fcb971d92132dc038655ab1edb"
+      "sha256": "1cd55c81b29729d6e471e5414ef2bc488d77e37eb99926494f3e96fb685ba891"
     },
     {
       "mode": "644",
@@ -3634,7 +3644,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Azure/Vyral.Tests.Azure.csproj",
-      "sha256": "e1cd2a92613594aacc27af9df0f48bc4e08de295924086028707a763105e2881"
+      "sha256": "9d9212f0ab30740e5e9ca4e259f56cf1c9ba7fedce857cd24f255b73990ccaea"
     },
     {
       "mode": "644",
@@ -4264,5 +4274,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "c3a77a5f7245dc63518eccdc879cfcc83b140619f1e407df903cbdb3d0cdc25f"
+  "treeSha256": "f36264e7cede74c57674217ffca7673111eb93bee2d39249c8f211b5004cbc54"
 }

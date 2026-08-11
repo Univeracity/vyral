@@ -5,18 +5,53 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: azure-live-qualification
   cancel-in-progress: false
 
 jobs:
+  host-startup:
+    name: Prove the packaged Functions host starts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+
+      - name: Restore dependencies
+        run: dotnet restore Vyral.sln
+
+      - name: Install pinned local host tools
+        run: >-
+          npm install --global --no-audit --no-fund
+          azure-functions-core-tools@4.13.0 azurite@3.36.0
+
+      - name: Verify Azure Durable package coherence
+        run: python3 scripts/verify-azure-durable-package-graph.py
+
+      - name: Prove the Functions worker starts locally
+        run: scripts/verify-azure-durable-functions-host.sh
+
   qualify:
     name: Qualify Azure Blob, Cosmos, and Durable Functions
+    needs: host-startup
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: azure-live-qualification
+    permissions:
+      contents: read
+      id-token: write
     env:
       VYRAL_AZURE_LIVE_RESOURCE_GROUP: ${{ secrets.AZURE_LIVE_RESOURCE_GROUP }}
       VYRAL_AZURE_LIVE_FIXTURE_RESOURCE_GROUP: ${{ secrets.AZURE_LIVE_FIXTURE_RESOURCE_GROUP }}
@@ -30,13 +65,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Authenticate with the environment-bound test identity
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
-        with:
-          client-id: ${{ secrets.AZURE_LIVE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_LIVE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_LIVE_SUBSCRIPTION_ID }}
-
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -44,6 +72,13 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore Vyral.sln
+
+      - name: Authenticate with the environment-bound test identity
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ secrets.AZURE_LIVE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_LIVE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_LIVE_SUBSCRIPTION_ID }}
 
       - name: Run disposable live qualification
         run: scripts/validate-azure-live-qualification.sh

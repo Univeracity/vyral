@@ -187,6 +187,7 @@ print('release-workflow-action-pins=ok')
 PY
 
 dotnet restore Vyral.sln
+python3 scripts/verify-azure-durable-package-graph.py
 dotnet list Vyral.sln package --vulnerable --include-transitive --format json \
   > "$ARTIFACT_ROOT/dotnet-vulnerability-audit.json"
 jq -e '
@@ -523,8 +524,6 @@ VYRAL_PYTHON_MCP_CONFORMANCE_ARTIFACT_DIR="$QUALIFICATION_DIR/python-mcp-conform
 python3 scripts/verify-python-runtime-security.py \
   "${python_runtime_wheels[0]}" \
   --output "$QUALIFICATION_DIR/python-runtime-security.json"
-python3 scripts/benchmark-python-runtime.py \
-  --output "$QUALIFICATION_DIR/python-runtime-performance.json"
 
 scripts/validate-execution-runtime-package-consumer.sh
 (

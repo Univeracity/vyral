@@ -185,6 +185,8 @@ REQUIRED_FILES = {
     "scripts/verify-python-runtime-security.py",
     "scripts/verify-python-runtime.sh",
     "scripts/verify-python-runtime-upgrade.py",
+    "scripts/verify-azure-durable-package-graph.py",
+    "scripts/verify-azure-durable-functions-host.sh",
     "scripts/verify-mcp-conformance.sh",
     "scripts/verify-mcp-container.sh",
     "scripts/verify-mcp-load.py",

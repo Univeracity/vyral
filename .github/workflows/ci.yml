@@ -72,6 +72,10 @@ jobs:
         if: ${{ needs.changes.outputs.dotnet == 'true' }}
         run: dotnet restore Vyral.sln
 
+      - name: Verify Azure Durable package coherence
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
+        run: python3 scripts/verify-azure-durable-package-graph.py
+
       - name: Build
         if: ${{ needs.changes.outputs.dotnet == 'true' }}
         run: dotnet build Vyral.sln --configuration Release --no-restore
