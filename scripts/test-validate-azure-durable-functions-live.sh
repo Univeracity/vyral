@@ -61,11 +61,17 @@ case "$command" in
   "functionapp keys list "*)
     printf '%s\n' '{"functionKeys":{"default":"test-function-key-never-log"},"masterKey":"test-master-key-never-log"}'
     ;;
-  "functionapp restart "*)
-    touch "$VYRAL_TEST_STATE/restart-issued"
+  "account show "*)
+    printf 'test-subscription\n'
+    ;;
+  "rest --method post --url "*"/syncfunctiontriggers?api-version=2016-08-01 "*)
+    if [[ "${VYRAL_TEST_SYNC_FAIL:-false}" == true ]]; then
+      exit 1
+    fi
+    touch "$VYRAL_TEST_STATE/trigger-sync-issued"
     ;;
   "cosmosdb sql container show "*)
-    if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 && "${VYRAL_TEST_RECOVER_AFTER_RESTART:-false}" != true ]]; then
+    if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 && "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" != true ]]; then
       exit 1
     fi
     ;;
@@ -114,7 +120,7 @@ done
 case "$url" in
   */admin/functions | */admin/functions/)
     function_count="${VYRAL_TEST_FUNCTION_COUNT:-7}"
-    if [[ "${VYRAL_TEST_RECOVER_AFTER_RESTART:-false}" == true && -e "$VYRAL_TEST_STATE/restart-issued" ]]; then
+    if [[ "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" == true && -e "$VYRAL_TEST_STATE/trigger-sync-issued" ]]; then
       function_count=7
     fi
     case "$function_count" in
@@ -182,8 +188,9 @@ run_case() {
   local expected_status="$3"
   local expected_result="$4"
   local expected_stage="$5"
-  local expected_restart="$6"
-  local recover_after_restart="${7:-false}"
+  local expected_sync="$6"
+  local recover_after_sync="${7:-false}"
+  local sync_fail="${8:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -194,7 +201,8 @@ run_case() {
   TMPDIR="$work/temp" \
   VYRAL_TEST_STATE="$state" \
   VYRAL_TEST_FUNCTION_COUNT="$function_count" \
-  VYRAL_TEST_RECOVER_AFTER_RESTART="$recover_after_restart" \
+  VYRAL_TEST_RECOVER_AFTER_SYNC="$recover_after_sync" \
+  VYRAL_TEST_SYNC_FAIL="$sync_fail" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
   VYRAL_AZURE_COSMOS_CONNECTION_STRING='AccountEndpoint=https://fixture.invalid;AccountKey=fixture;' \
@@ -209,7 +217,10 @@ run_case() {
   [[ "$(jq -r '.cleanup.result' "$receipt")" == passed ]]
   [[ "$(jq -r '.cleanup.functionApp' "$receipt")" == deleted ]]
   [[ "$(jq -r '.cleanup.storageAccount' "$receipt")" == deleted ]]
-  [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
+  [[ "$(jq -r '.recovery.partialInventoryTriggerSyncAttempted' "$receipt")" == "$expected_sync" ]]
+  [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == false ]]
+  [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == 1 ]]
+  [[ "$(jq -r '.diagnostics.packagedFunctionNames | length' "$receipt")" == 7 ]]
   [[ "$(stat -c '%a' "$receipt")" == 600 ]]
   ! grep -Fq 'test-function-key-never-log' "$output"
   ! grep -Fq 'test-master-key-never-log' "$output"
@@ -223,6 +234,7 @@ run_case() {
     [[ "$(jq -r '.failure.stage' "$receipt")" == "$expected_stage" ]]
     [[ "$(jq -r '.failure.discoveredFunctionCount' "$receipt")" == "$function_count" ]]
     [[ "$(jq -r '.failure.expectedFunctionCount' "$receipt")" == 7 ]]
+    [[ "$(jq -r '.diagnostics.runtimeFunctionNames | length' "$receipt")" == "$function_count" ]]
     [[ "$(jq -r '.cleanup.statusContainer' "$receipt")" == not-created ]]
   fi
 }
@@ -230,7 +242,8 @@ run_case() {
 run_case success 7 0 passed complete false
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
-run_case restart-recovery 1 0 passed complete true true
+run_case trigger-sync-recovery 1 0 passed complete true true
+run_case trigger-sync-failure 1 1 failed function-discovery-trigger-sync true false true
 
 if find "$work/temp" -mindepth 1 -print -quit | grep -q .; then
   echo 'Azure live script left temporary residue.' >&2

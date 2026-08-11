@@ -51,7 +51,11 @@ FUNCTION_KEY_AVAILABLE=false
 ENDPOINT_READY=false
 DISCOVERED_FUNCTION_COUNT=0
 READINESS_HTTP_CODE="not-attempted"
+# Preserve the legacy receipt field so evidence from the earlier restart recovery remains comparable.
 HOST_RESTART_ATTEMPTED=false
+TRIGGER_SYNC_ATTEMPTED=false
+DISCOVERED_FUNCTION_NAMES_JSON='[]'
+DEPLOYMENT_ATTEMPTS=0
 FAILURE_STAGE="publish"
 
 cleanup() {
@@ -125,8 +129,12 @@ cleanup() {
       --argjson function_key_available "$FUNCTION_KEY_AVAILABLE" \
       --argjson endpoint_ready "$ENDPOINT_READY" \
       --argjson host_restart_attempted "$HOST_RESTART_ATTEMPTED" \
+      --argjson trigger_sync_attempted "$TRIGGER_SYNC_ATTEMPTED" \
       --argjson discovered_function_count "$DISCOVERED_FUNCTION_COUNT" \
+      --argjson discovered_function_names "$DISCOVERED_FUNCTION_NAMES_JSON" \
       --argjson expected_function_count "$EXPECTED_FUNCTION_COUNT" \
+      --argjson expected_function_names "$EXPECTED_FUNCTION_NAMES_JSON" \
+      --argjson deployment_attempts "$DEPLOYMENT_ATTEMPTS" \
       --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
       '{
         schemaVersion: 1,
@@ -150,7 +158,13 @@ cleanup() {
           liveAssertions: $assertions
         },
         recovery: {
+          partialInventoryTriggerSyncAttempted: $trigger_sync_attempted,
           partialInventoryRestartAttempted: $host_restart_attempted
+        },
+        diagnostics: {
+          deploymentAttempts: $deployment_attempts,
+          packagedFunctionNames: $expected_function_names,
+          runtimeFunctionNames: $discovered_function_names
         },
         failure: (
           if $result == "passed" then null
@@ -229,10 +243,9 @@ az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOUR
 # ready, so retry the operation instead of paying a fixed delay on every successful run.
 FAILURE_STAGE="deployment"
 deployed=false
-deployment_attempts=0
 deployment_diagnostic="$WORK_ROOT/deployment-attempt.log"
 for _ in $(seq 1 6); do
-  deployment_attempts=$((deployment_attempts + 1))
+  DEPLOYMENT_ATTEMPTS=$((DEPLOYMENT_ATTEMPTS + 1))
   if az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
     --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none \
     2>"$deployment_diagnostic"; then
@@ -242,11 +255,11 @@ for _ in $(seq 1 6); do
   sleep 20
 done
 if [[ "$deployed" != true ]]; then
-  echo "azure-durable-functions-live-deployment=failed attempts:${deployment_attempts}" >&2
+  echo "azure-durable-functions-live-deployment=failed attempts:${DEPLOYMENT_ATTEMPTS}" >&2
   false
 fi
 DEPLOYMENT_PASSED=true
-echo "azure-durable-functions-live-deployment=passed attempts:${deployment_attempts}"
+echo "azure-durable-functions-live-deployment=passed attempts:${DEPLOYMENT_ATTEMPTS}"
 
 FAILURE_STAGE="function-key"
 function_key=""
@@ -289,6 +302,12 @@ for _ in $(seq 1 48); do
       partial_inventory_observations=$((partial_inventory_observations + 1))
     fi
   fi
+  DISCOVERED_FUNCTION_NAMES_JSON="$(jq -cer '
+    if type == "array" and all(.[]; (.name? | type) == "string")
+    then [.[].name] | sort
+    else []
+    end
+  ' <<<"$admin_payload" 2>/dev/null || echo '[]')"
   inventory_matches="$(jq -r --argjson expected "$EXPECTED_FUNCTION_NAMES_JSON" '
     if type == "array" and all(.[]; (.name? | type) == "string")
     then ([.[].name] | sort) == ($expected | sort)
@@ -300,17 +319,22 @@ for _ in $(seq 1 48); do
     FUNCTIONS_DISCOVERED=true
     break
   fi
-  if [[ "$HOST_RESTART_ATTEMPTED" == false && "$partial_inventory_observations" -ge 6 ]]; then
-    FAILURE_STAGE="function-discovery-restart"
-    HOST_RESTART_ATTEMPTED=true
-    if ! az functionapp restart --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
-      --name "$FUNCTION" --only-show-errors --output none \
-      2>"$WORK_ROOT/function-restart.log"; then
-      echo 'azure-durable-functions-live-host-restart=failed' >&2
+  if [[ "$TRIGGER_SYNC_ATTEMPTED" == false && "$partial_inventory_observations" -ge 6 ]]; then
+    FAILURE_STAGE="function-discovery-trigger-sync"
+    TRIGGER_SYNC_ATTEMPTED=true
+    subscription_id="$(az account show --query id --output tsv --only-show-errors)"
+    [[ -n "$subscription_id" ]]
+    if ! az rest --method post \
+      --url "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${VYRAL_AZURE_LIVE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${FUNCTION}/syncfunctiontriggers?api-version=2016-08-01" \
+      --only-show-errors --output none 2>"$WORK_ROOT/function-trigger-sync.log"; then
+      unset subscription_id
+      echo 'azure-durable-functions-live-trigger-sync=failed' >&2
       false
     fi
-    echo 'azure-durable-functions-live-host-restart=issued'
+    unset subscription_id
+    echo 'azure-durable-functions-live-trigger-sync=issued'
     DISCOVERED_FUNCTION_COUNT=0
+    DISCOVERED_FUNCTION_NAMES_JSON='[]'
     partial_inventory_observations=0
     FAILURE_STAGE="function-discovery"
     sleep 10
