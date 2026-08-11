@@ -26,11 +26,8 @@ require VYRAL_AZURE_COSMOS_CONNECTION_STRING
 require VYRAL_AZURE_COSMOS_DATABASE
 
 LOCATION="${VYRAL_AZURE_LIVE_LOCATION:-centralus}"
-EXPECTED_FUNCTION_COUNT="${VYRAL_AZURE_EXPECTED_FUNCTION_COUNT:-7}"
-if [[ ! "$EXPECTED_FUNCTION_COUNT" =~ ^[1-9][0-9]*$ ]]; then
-  echo 'VYRAL_AZURE_EXPECTED_FUNCTION_COUNT must be a positive integer.' >&2
-  exit 2
-fi
+EXPECTED_FUNCTION_NAMES_JSON='[]'
+EXPECTED_FUNCTION_COUNT=0
 COSMOS_RESOURCE_GROUP="${VYRAL_AZURE_LIVE_COSMOS_RESOURCE_GROUP:-$VYRAL_AZURE_LIVE_RESOURCE_GROUP}"
 STAMP="$(date -u +%Y%m%d%H%M%S)"
 FUNCTION="vyral-wait-${STAMP}"
@@ -192,6 +189,13 @@ trap cleanup EXIT
 mkdir -p "$WORK_ROOT/publish"
 dotnet publish samples/Vyral.Execution.AzureDurableFunctionsSmoke/Vyral.Execution.AzureDurableFunctionsSmoke.csproj \
   --no-restore --configuration Release --output "$WORK_ROOT/publish" --nologo
+EXPECTED_FUNCTION_NAMES_JSON="$(jq -cer '
+  if type == "array" and length > 0 and all(.[]; (.name? | type) == "string")
+  then [.[].name] | sort
+  else error("invalid packaged function metadata")
+  end
+' "$WORK_ROOT/publish/functions.metadata")"
+EXPECTED_FUNCTION_COUNT="$(jq -r 'length' <<<"$EXPECTED_FUNCTION_NAMES_JSON")"
 (cd "$WORK_ROOT/publish" && zip -qr "$WORK_ROOT/app.zip" .)
 
 FAILURE_STAGE="storage-provisioning"
@@ -220,47 +224,78 @@ az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOUR
 # ready, so retry the operation instead of paying a fixed delay on every successful run.
 FAILURE_STAGE="deployment"
 deployed=false
+deployment_attempts=0
+deployment_diagnostic="$WORK_ROOT/deployment-attempt.log"
 for _ in $(seq 1 6); do
+  deployment_attempts=$((deployment_attempts + 1))
   if az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
-    --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none; then
+    --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none \
+    2>"$deployment_diagnostic"; then
     deployed=true
     break
   fi
   sleep 20
 done
-[[ "$deployed" == true ]]
+if [[ "$deployed" != true ]]; then
+  echo "azure-durable-functions-live-deployment=failed attempts:${deployment_attempts}" >&2
+  false
+fi
 DEPLOYMENT_PASSED=true
-echo 'azure-durable-functions-live-deployment=passed'
+echo "azure-durable-functions-live-deployment=passed attempts:${deployment_attempts}"
 
+FAILURE_STAGE="function-key"
+function_key=""
+master_key=""
+for _ in $(seq 1 24); do
+  key_payload="$(az functionapp keys list --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+    --name "$FUNCTION" --output json --only-show-errors 2>/dev/null || true)"
+  master_key="$(jq -r '.masterKey // empty' <<<"$key_payload" 2>/dev/null || true)"
+  function_key="$(jq -r '.functionKeys.default // .masterKey // empty' <<<"$key_payload" 2>/dev/null || true)"
+  unset key_payload
+  if [[ -n "$function_key" && -n "$master_key" ]]; then
+    break
+  fi
+  sleep 5
+done
+[[ -n "$function_key" && -n "$master_key" ]]
+FUNCTION_KEY_AVAILABLE=true
+CURL_CONFIG="$WORK_ROOT/function-key.curlrc"
+ADMIN_CURL_CONFIG="$WORK_ROOT/master-key.curlrc"
+printf 'header = "x-functions-key: %s"\nconnect-timeout = 10\nmax-time = 30\n' \
+  "$function_key" > "$CURL_CONFIG"
+printf 'header = "x-functions-key: %s"\nconnect-timeout = 10\nmax-time = 30\n' \
+  "$master_key" > "$ADMIN_CURL_CONFIG"
+unset function_key master_key
+base_url="https://${FUNCTION}.azurewebsites.net"
+
+# The ARM function inventory is eventually consistent and can expose a transient one-function
+# snapshot while a Flex host is still indexing. Query the authenticated runtime inventory instead;
+# it both wakes the deployed host and proves the exact functions that host can execute.
 FAILURE_STAGE="function-discovery"
 for _ in $(seq 1 72); do
-  candidate_count="$(az functionapp function list \
-    --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
-    --name "$FUNCTION" --query 'length(@)' --output tsv --only-show-errors 2>/dev/null || true)"
+  admin_payload="$(curl --config "$ADMIN_CURL_CONFIG" -sS --fail \
+    "$base_url/admin/functions/" 2>/dev/null || true)"
+  candidate_count="$(jq -r 'if type == "array" then length else 0 end' \
+    <<<"$admin_payload" 2>/dev/null || echo 0)"
   if [[ "$candidate_count" =~ ^[0-9]+$ ]]; then
     DISCOVERED_FUNCTION_COUNT="$candidate_count"
   fi
-  if (( DISCOVERED_FUNCTION_COUNT == EXPECTED_FUNCTION_COUNT )); then
+  inventory_matches="$(jq -r --argjson expected "$EXPECTED_FUNCTION_NAMES_JSON" '
+    if type == "array" and all(.[]; (.name? | type) == "string")
+    then ([.[].name] | sort) == ($expected | sort)
+    else false
+    end
+  ' <<<"$admin_payload" 2>/dev/null || echo false)"
+  unset admin_payload
+  if [[ "$inventory_matches" == true ]]; then
+    FUNCTIONS_DISCOVERED=true
     break
   fi
   sleep 5
 done
 echo "azure-durable-functions-live-discovery=count:${DISCOVERED_FUNCTION_COUNT}"
-(( DISCOVERED_FUNCTION_COUNT == EXPECTED_FUNCTION_COUNT ))
-FUNCTIONS_DISCOVERED=true
+[[ "$FUNCTIONS_DISCOVERED" == true ]]
 
-FAILURE_STAGE="function-key"
-key_payload="$(az functionapp keys list --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
-  --name "$FUNCTION" --output json --only-show-errors)"
-function_key="$(jq -r '.functionKeys.default // .masterKey // empty' <<<"$key_payload")"
-unset key_payload
-[[ -n "$function_key" ]]
-FUNCTION_KEY_AVAILABLE=true
-CURL_CONFIG="$WORK_ROOT/function-key.curlrc"
-printf 'header = "x-functions-key: %s"\nconnect-timeout = 10\nmax-time = 30\n' \
-  "$function_key" > "$CURL_CONFIG"
-unset function_key
-base_url="https://${FUNCTION}.azurewebsites.net"
 http_code=""
 FAILURE_STAGE="endpoint-readiness"
 for _ in $(seq 1 72); do
