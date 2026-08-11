@@ -125,8 +125,12 @@ platform failures. Provider error detail is kept out of public results.
 
 - Compatibility is pinned to `extro-sim >=0.5,<0.6`. The SDK and provider are
   new enough that minor contract changes should be expected and reviewed.
-- Extropic functions use cloudpickle and must match the sandbox's Python and
-  cloudpickle versions. Imported packages must already exist in that image.
+- Vyral serializes plain registered Python functions by value so the sandbox
+  does not need the host application's module. Imported packages must already
+  exist in the sandbox image. Callable objects and helpers imported from other
+  application modules still require those modules in the image; keep the
+  registered function self-contained. The local Python and cloudpickle
+  versions must match the sandbox versions selected by Extropic.
 - Vyral accepts only JSON-compatible run payloads and results even though the
   Extropic SDK can transport arbitrary pickled Python values.
 - Serialized workload input is capped at 16 MiB by default. Retained text

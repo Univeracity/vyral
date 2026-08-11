@@ -237,7 +237,10 @@ it never persists Extropic credentials or upload grants. Because Extropic 0.5
 does not accept an idempotency key during job creation, a lost create response
 fails closed and is not resubmitted automatically. Known provider jobs are
 reconnected and retried by id. The integration is a prototype, remains outside
-the adapter qualification matrix, and makes no Z1 support claim. See the
+the adapter qualification matrix, and makes no Z1 support claim. Registered
+workloads should be self-contained plain Python functions; Vyral serializes
+those functions by value, while third-party imports must exist in Extropic's
+sandbox. See the
 [Extropic execution guide](../../docs/guides/extropic-execution.md) for the
 complete lifecycle and current boundaries.
 

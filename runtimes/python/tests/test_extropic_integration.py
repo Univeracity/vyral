@@ -381,10 +381,19 @@ class ExtropicIntegrationTests(unittest.TestCase):
     def test_sdk_backend_uses_staged_public_operations(self) -> None:
         client = FakeSdkClient()
         sdk = FakeSdk(client)
+        serialized: list[object] = []
+
+        def serialize(value: object) -> bytes:
+            serialized.append(value)
+            return b"serialized-registered-workload"
+
         cloudpickle = SimpleNamespace(
             __version__="3.1.1",
-            dumps=lambda value: b"serialized-registered-workload",
+            dumps=serialize,
         )
+
+        def registered_workload(value: JSONValue) -> JSONValue:
+            return value
 
         def imported(name: str) -> object:
             if name == "extro_sim":
@@ -398,7 +407,11 @@ class ExtropicIntegrationTests(unittest.TestCase):
             side_effect=imported,
         ):
             backend = ExtropicSdkBackend(client)
-            prepared = backend.prepare(lambda value: value, {"seed": 7}, 30)
+            prepared = backend.prepare(
+                registered_workload,
+                {"seed": 7},
+                30,
+            )
             created = backend.create_job("l4")
             backend.upload_job(created, prepared)
             started = backend.start_job(created.job_id, prepared.manifest)
@@ -416,6 +429,15 @@ class ExtropicIntegrationTests(unittest.TestCase):
         self.assertEqual("artifact text", artifact)
         self.assertEqual("sdk-job", client.cancelled)
         self.assertIsNotNone(client.uploaded)
+        self.assertEqual(1, len(serialized))
+        transport_workload = cast(tuple[object, ...], serialized[0])[0]
+        self.assertTrue(callable(transport_workload))
+        self.assertEqual("__main__", transport_workload.__module__)
+        self.assertEqual(
+            {"seed": 8},
+            transport_workload({"seed": 8}),
+        )
+        self.assertEqual(__name__, registered_workload.__module__)
 
     def test_sdk_backend_translates_provider_errors_without_detail(self) -> None:
         client = FakeSdkClient()

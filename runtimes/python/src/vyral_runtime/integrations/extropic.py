@@ -22,6 +22,7 @@ import inspect
 import json
 import math
 import sys
+from types import FunctionType
 from typing import Any, NoReturn, Protocol, TypeVar, cast
 
 from ..contracts import JSONObject, JSONValue
@@ -237,6 +238,38 @@ class ExtropicAdapterOptions:
         object.__setattr__(self, "seed_field", seed_field)
 
 
+def _transport_workload(workload: ExtropicWorkload) -> ExtropicWorkload:
+    """Make a plain registered function self-contained in cloudpickle.
+
+    Cloudpickle normally serializes an importable module-level function by
+    reference. The Extropic sandbox does not contain the host application's
+    module, so that otherwise turns a successful upload into an import error
+    at execution time. A shallow function clone identified as ``__main__`` is
+    serialized by value while referenced third-party modules, such as Torx and
+    JAX, remain ordinary sandbox imports.
+
+    Callable objects and extension functions retain cloudpickle's native
+    behavior. Registered Extropic workloads should therefore be plain Python
+    functions unless their defining package is known to exist in the sandbox.
+    """
+
+    if not inspect.isfunction(workload):
+        return workload
+    function = cast(FunctionType, workload)
+    transported = FunctionType(
+        function.__code__,
+        function.__globals__,
+        function.__name__,
+        function.__defaults__,
+        function.__closure__,
+    )
+    transported.__kwdefaults__ = function.__kwdefaults__
+    transported.__doc__ = function.__doc__
+    transported.__module__ = "__main__"
+    transported.__qualname__ = function.__name__
+    return cast(ExtropicWorkload, transported)
+
+
 class ExtropicSdkBackend:
     """Adapter for the public ``extro-sim`` 0.5.x Python SDK."""
 
@@ -254,7 +287,8 @@ class ExtropicSdkBackend:
         self._ensure_sdk()
         try:
             cloudpickle = importlib.import_module("cloudpickle")
-            encoded = cloudpickle.dumps((workload, (payload,), {}))
+            transport_workload = _transport_workload(workload)
+            encoded = cloudpickle.dumps((transport_workload, (payload,), {}))
             envelope = base64.b64encode(
                 json.dumps(
                     {
