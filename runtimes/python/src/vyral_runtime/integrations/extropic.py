@@ -255,7 +255,7 @@ def _transport_workload(workload: ExtropicWorkload) -> ExtropicWorkload:
 
     if not inspect.isfunction(workload):
         return workload
-    function = cast(FunctionType, workload)
+    function = workload
     transported = FunctionType(
         function.__code__,
         function.__globals__,
