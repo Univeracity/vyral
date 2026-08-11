@@ -1,5 +1,5 @@
 {
-  "fileCount": 827,
+  "fileCount": 832,
   "files": [
     {
       "mode": "644",
@@ -54,7 +54,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "80d2b432d425187dda1b08e377db5befec12ed5ac1b52876d9374de87246e6cd"
+      "sha256": "d8c34f6654ab50453c351e691f12e47a182a906a653803344f1744b61b1c9c64"
     },
     {
       "mode": "644",
@@ -104,7 +104,7 @@
     {
       "mode": "644",
       "path": ".gitignore",
-      "sha256": "57ddda23948159577073baa5dbea4082b33c22f975b9b5669c65ef8810eaec3b"
+      "sha256": "7b15c20e8f94c53e6c50a55dc511928718af35a1cd0e3c9104c10d1ad43ef969"
     },
     {
       "mode": "644",
@@ -134,7 +134,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "77fcc61d84373d0cf29e1b9935105c7b104cb3f24f3cd3d6771a5e19606f3bfe"
+      "sha256": "2a6443fe2d34ae2d31c36ca706db9c8d55719fff8e3c9fbc48f8567eaffa546b"
     },
     {
       "mode": "644",
@@ -559,7 +559,7 @@
     {
       "mode": "644",
       "path": "docs/README.md",
-      "sha256": "a4a4f2479130c950c0856f0b0d9d0e6858f26d42cedeaa46192eaf489617e8e3"
+      "sha256": "2a846342f0e616eaefcc46ba817ab7ab73b9f7611be92b85e7407e70ef974d46"
     },
     {
       "mode": "644",
@@ -579,12 +579,17 @@
     {
       "mode": "644",
       "path": "docs/guides/consumer-handoff.md",
-      "sha256": "fb19dee1acb9d02f3f50fa79e4c17ec9313c90a76e4f547ebd88bb576f69ca84"
+      "sha256": "2de27f52d6ebc717ebe74a422fb9c028233aaa0c04ca7e8bbfdf71b3b596868c"
     },
     {
       "mode": "644",
       "path": "docs/guides/extropic-execution.md",
       "sha256": "09e9c18f2f54f28da367906c197abbd192699d686387a147fdf114feff51f656"
+    },
+    {
+      "mode": "644",
+      "path": "docs/guides/source-native-retrieval.md",
+      "sha256": "e8cf1dfcf5bd815d2f320262d9854d8083a197eedbe8a91bfaf5505b02299ce9"
     },
     {
       "mode": "644",
@@ -614,7 +619,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "2163d0dd9b99a47e3f9dda60d4afc13cc6e80724dd7bfa3f2e2678afeeda94ae"
+      "sha256": "53ec5f86eb7e5deb8eeac8b12cbb365962b53ac4ec1c54bf094cfe42d8162bc4"
     },
     {
       "mode": "644",
@@ -624,7 +629,7 @@
     {
       "mode": "644",
       "path": "examples/javascript/rag-quickstart.mjs",
-      "sha256": "3c603757a807432edc647d3945222b2098e235d0b4af6fe4854238ecf1a7711f"
+      "sha256": "a2f6dab248bdc892a8beaecec9cd0935fddb1bfe782f4c07503b192c2ee2fe00"
     },
     {
       "mode": "644",
@@ -644,7 +649,12 @@
     {
       "mode": "644",
       "path": "examples/python/rag_quickstart.py",
-      "sha256": "9ccd3f757d1f90e773fd13cf719f75baf938b1663567915c72636f9247e1ee3b"
+      "sha256": "6210fcbcfaa8419b30576096cc48f82ff87a8c1de04e0acb3aa64d7edfdc7559"
+    },
+    {
+      "mode": "644",
+      "path": "examples/python/source_native_search.py",
+      "sha256": "6078532d1b25733f3b0b9a4556cf5445c7e24f29b028e87389328c9dc7f6280b"
     },
     {
       "mode": "644",
@@ -674,7 +684,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "f74eeb84a7bb500e7bfab63279a68737b0d0315d2e68fd2197b03a3996e407f2"
+      "sha256": "e1f79f657e531c49211524fa8405b21700f6f586753352af68cdd91e78e4785f"
     },
     {
       "mode": "644",
@@ -809,7 +819,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/_local_experience.py",
-      "sha256": "c00ff042ebb73e6518b9f2e87a50c61a4b1daf6512dd6fab472403f3d794689d"
+      "sha256": "c983078cb9addfb0141271f397512ef32657ac5e83afc938f1b5485ff996667d"
     },
     {
       "mode": "644",
@@ -1019,12 +1029,17 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/integrations/__init__.py",
-      "sha256": "92e6f7c95b560675cf838c4d1aeafa5c7490afce5f2a932c3d09ea53f9a65afe"
+      "sha256": "bf107710396b5386c6dab15accf39a9fcda991d66397577475f3064a908e9f10"
     },
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/integrations/extropic.py",
       "sha256": "b2068cd5495d763c3f7831300afb144bbffa4e83f3cd0713cfd7522792050fbe"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/integrations/ripgrep.py",
+      "sha256": "6cc8f26459b80cc7b1d0c477273ed3de2acab4f72ff21843eebb23760c1ffae4"
     },
     {
       "mode": "644",
@@ -1229,7 +1244,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_local_experience.py",
-      "sha256": "fe7948aa0501f626ca7b7485048d0ee3a22438f187c8857256ab5773037664c0"
+      "sha256": "1838232710d321167f0d27c1289e0ad21c160c78d60f42385376fdb7a55bfdb5"
     },
     {
       "mode": "644",
@@ -1280,6 +1295,11 @@
       "mode": "644",
       "path": "runtimes/python/tests/test_retrieval_evaluation.py",
       "sha256": "8c7e5ae6f0ab68478038c79c1e7b262b6edf4a21df7152a34baebeb212275229"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/tests/test_ripgrep_integration.py",
+      "sha256": "72383a2520106f05e9f474452f93f8f9620cbf0343418bc5f487d817c49d937b"
     },
     {
       "mode": "644",
@@ -1444,7 +1464,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "cda75ce6fc5864869f471ca3de0cd9172fdd3b37ae2bc850d6847f6818ccef5e"
+      "sha256": "4c51919eac13813eec8679e8b17c7580776ea306ce67d8d05fcdfae14cd097b6"
     },
     {
       "mode": "755",
@@ -1683,6 +1703,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/verify-lexical-http-quickstarts.sh",
+      "sha256": "4e7bc7d534aaef9f553a337f23c032d6915641b725a9a4b416c09e122d6b486f"
+    },
+    {
+      "mode": "755",
       "path": "scripts/verify-markdown-links.py",
       "sha256": "c5c6935e78528f5ba5d7443bde857ffe61b3de77711758470646af9035fd2cbe"
     },
@@ -1779,7 +1804,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime.sh",
-      "sha256": "fbd9cd085eff6803debdad5bc52407a85d99fc5f2b9bae3d5b9de167f59b8e63"
+      "sha256": "7c8362e518ffbc810174972e9340f5d69cf9325211a33d42612227b2d2e13827"
     },
     {
       "mode": "755",
@@ -4139,5 +4164,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "6ede7d4303711c80c351578da49700971ce01b18baa4729cf9566bc6e4561649"
+  "treeSha256": "8f310317079832bea59c83c253dcf26b2bebbc6e6c8963c2b1c2d8c0dd7e7733"
 }
