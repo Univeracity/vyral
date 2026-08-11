@@ -102,7 +102,7 @@ def main() -> int:
         "oci-archive:/evidence/$archive",
         "vyral-server.oci",
         "vyral-server-build-metadata.json",
-        "if: always()",
+        "always() && github.event_name != 'pull_request'",
     ):
         if evidence_hook not in release_workflow:
             errors.append(

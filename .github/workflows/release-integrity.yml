@@ -24,6 +24,7 @@ jobs:
     # fallback, so keep this job on the supported 22.04 runner until a reviewed AppArmor profile
     # can be installed by the deployment topology.
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
@@ -38,11 +39,13 @@ jobs:
           fetch-depth: 0
 
       - name: Set up .NET
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.x
 
       - name: Set up Node
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.x
@@ -53,12 +56,14 @@ jobs:
           python-version: "3.12"
 
       - name: Set up Go
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26.5"
           cache: false
 
       - name: Install Python release tooling
+        if: ${{ github.event_name != 'pull_request' }}
         run: >-
           python -m pip install
           --disable-pip-version-check
@@ -66,6 +71,7 @@ jobs:
           --editable "runtimes/python[dev]"
 
       - name: Install release gate tooling
+        if: ${{ github.event_name != 'pull_request' }}
         run: >-
           sudo apt-get update &&
           sudo apt-get install --yes --no-install-recommends
@@ -73,6 +79,7 @@ jobs:
           pkg-config ripgrep xz-utils
 
       - name: Build the pinned Bubblewrap security boundary
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           BUBBLEWRAP_VERSION: "0.11.2"
           BUBBLEWRAP_SHA256: 69abc30005d2186baf7737feacd8da35633b93cf5af38838ecff17c5f8e924f6
@@ -98,13 +105,20 @@ jobs:
           test "$("$VYRAL_TEST_BUBBLEWRAP" --version)" = "bubblewrap $BUBBLEWRAP_VERSION"
           "$VYRAL_TEST_BUBBLEWRAP" --help | grep --fixed-strings -- '--disable-userns'
 
+      - name: Verify the pre-merge release boundary
+        if: ${{ github.event_name == 'pull_request' }}
+        run: scripts/verify-pr-release-boundary.sh
+
       - name: Verify package layouts, metadata, SBOM, and clean consumers
+        if: ${{ github.event_name != 'pull_request' }}
         run: scripts/verify-release-artifacts.sh
 
       - name: Run deterministic conformance and adapter tests
-        run: dotnet test Vyral.sln --no-restore --logger 'console;verbosity=minimal'
+        if: ${{ github.event_name != 'pull_request' }}
+        run: scripts/run-dotnet-tests.sh Vyral.sln --no-restore --logger 'console;verbosity=minimal'
 
       - name: Set up an attestation-capable BuildKit builder
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
           docker buildx create \
             --driver docker-container \
@@ -113,6 +127,7 @@ jobs:
           docker buildx inspect --bootstrap "$VYRAL_BUILDX_BUILDER"
 
       - name: Build container images with SBOM and provenance attestations
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
           mkdir -p artifacts/release/images
           docker buildx build \
@@ -137,6 +152,7 @@ jobs:
             .
 
       - name: Import and qualify the packaged containers
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
           import_oci() {
             local archive="$1"
@@ -170,6 +186,7 @@ jobs:
             artifacts/release/images/execution-smoke-worker-build-metadata.json
 
       - name: Reject high or critical container vulnerabilities and embedded secrets
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
           mkdir -p "$RUNNER_TEMP/vyral-trivy-cache"
           docker run --rm \
@@ -190,14 +207,14 @@ jobs:
             "vyral-execution-smoke-qualification:${{ github.sha }}"
 
       - name: Remove the qualification BuildKit builder
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         run: |
           if docker buildx inspect "$VYRAL_BUILDX_BUILDER" >/dev/null 2>&1; then
             docker buildx rm "$VYRAL_BUILDX_BUILDER"
           fi
 
       - name: Upload release evidence
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-integrity-${{ github.sha }}
@@ -207,7 +224,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload container evidence
-        if: ${{ always() && hashFiles('artifacts/release/images/**', 'artifacts/release/qualification/*container.json', 'artifacts/release/qualification/*trivy.json') != '' }}
+        if: ${{ always() && github.event_name != 'pull_request' && hashFiles('artifacts/release/images/**', 'artifacts/release/qualification/*container.json', 'artifacts/release/qualification/*trivy.json') != '' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: container-integrity-${{ github.sha }}

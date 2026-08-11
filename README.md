@@ -369,7 +369,7 @@ scripts/       Local start, generation, verification, and release gates
 The ordinary deterministic checks are:
 
 ```bash
-dotnet test Vyral.sln
+scripts/run-dotnet-tests.sh Vyral.sln
 
 npm ci --ignore-scripts --prefix clients/javascript
 npm test --prefix clients/javascript

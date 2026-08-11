@@ -15,17 +15,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Select affected CI surfaces
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      dotnet: ${{ steps.scope.outputs.dotnet }}
+      javascript: ${{ steps.scope.outputs.javascript }}
+      python: ${{ steps.scope.outputs.python }}
+      go: ${{ steps.scope.outputs.go }}
+      clients: ${{ steps.scope.outputs.clients }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed surfaces
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: >-
+          python3 scripts/classify-ci-changes.py
+          --event "$EVENT_NAME"
+          --base "$BASE_SHA"
+          --head "$HEAD_SHA"
+
   dotnet:
     name: Build and test .NET
+    needs: changes
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
     steps:
+      - name: Report documentation-only scope
+        if: ${{ needs.changes.outputs.dotnet != 'true' }}
+        run: echo 'dotnet-ci=not-affected'
+
       - name: Check out repository
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up supported .NET SDKs
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: |
@@ -33,18 +69,23 @@ jobs:
             10.0.x
 
       - name: Restore
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
         run: dotnet restore Vyral.sln
 
       - name: Build
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
         run: dotnet build Vyral.sln --configuration Release --no-restore
 
       - name: Run deterministic tests
-        run: dotnet test Vyral.sln --configuration Release --no-build --logger 'console;verbosity=minimal'
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
+        run: scripts/run-dotnet-tests.sh Vyral.sln --configuration Release --no-build --logger 'console;verbosity=minimal'
 
       - name: Verify zero-embedding HTTP quickstarts
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
         run: scripts/verify-lexical-http-quickstarts.sh
 
       - name: Prove core contract TFMs
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
         run: |
           dotnet build src/Vyral.Abstractions/Vyral.Abstractions.csproj --configuration Release --framework net8.0 --no-restore
           dotnet build src/Vyral.Execution/Vyral.Execution.csproj --configuration Release --framework net8.0 --no-restore
@@ -52,12 +93,20 @@ jobs:
 
   clients:
     name: Test language clients
+    needs: changes
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
+      - name: Report documentation-only scope
+        if: ${{ needs.changes.outputs.clients != 'true' }}
+        run: echo 'language-client-ci=not-affected'
+
       - name: Check out repository
+        if: ${{ needs.changes.outputs.clients == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node
+        if: ${{ needs.changes.outputs.javascript == 'true' }}
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.x
@@ -65,6 +114,7 @@ jobs:
           cache-dependency-path: clients/javascript/package-lock.json
 
       - name: Set up Python
+        if: ${{ needs.changes.outputs.python == 'true' }}
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -74,6 +124,7 @@ jobs:
             runtimes/python/pyproject.toml
 
       - name: Set up Go
+        if: ${{ needs.changes.outputs.go == 'true' }}
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26.5"
@@ -81,9 +132,11 @@ jobs:
           cache: false
 
       - name: Verify the install-free source quickstart
+        if: ${{ needs.changes.outputs.python == 'true' }}
         run: python -I scripts/verify-source-quickstart.py
 
       - name: Test JavaScript client
+        if: ${{ needs.changes.outputs.javascript == 'true' }}
         working-directory: clients/javascript
         run: |
           npm ci --ignore-scripts
@@ -92,6 +145,7 @@ jobs:
           npm test
 
       - name: Test and type-check Python client
+        if: ${{ needs.changes.outputs.python == 'true' }}
         run: |
           python -m pip install --disable-pip-version-check --editable 'clients/python[typecheck]' --editable 'runtimes/python[dev]'
           python -m unittest discover -s clients/python/tests -p 'test_*.py'
@@ -99,12 +153,14 @@ jobs:
           scripts/verify-python-runtime.sh
 
       - name: Test Go worker client
+        if: ${{ needs.changes.outputs.go == 'true' }}
         working-directory: clients/go
         run: go test ./...
 
   contracts-and-export:
     name: Verify contracts and public export
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -131,8 +187,10 @@ jobs:
       - name: Check scripts and JSON
         run: |
           python3 scripts/test-audit-github-launch-controls.py
+          python3 scripts/test-classify-ci-changes.py
           python3 scripts/test-export-public-tree.py
           python3 scripts/test-python-runtime-platform-matrix.py
+          scripts/test-run-dotnet-tests.sh
           python3 scripts/verify-ripgrep-retrieval-report.py \
             benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json \
             --require-admission
