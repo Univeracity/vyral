@@ -54,7 +54,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "e17a1e95ed15e26be2fc1afdb0192c0fb8f7c9f3a649914b07066b038eba687e"
+      "sha256": "f2ee6e2e92d2cd36fe5fc65928be57e2c77620c062c75ce7e867320937a66036"
     },
     {
       "mode": "644",
@@ -1829,7 +1829,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "85c0f2f93ab818261d4c6d583eda7d6c0570dc13177c54bd2b0c5abae324c7a5"
+      "sha256": "b84d3aa20a74f49ebce0f34b18c79099335dea9f6c9808eb9182febfc65cc92e"
     },
     {
       "mode": "755",
@@ -4189,5 +4189,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "1ca53fa5cd63c8344929484e31a9bb096a5696c89f45ab8d59335ec3d5760b18"
+  "treeSha256": "e6b7959543b600c6eed8e33b420b1cecd373519e2a212af9f81f7817bc9f5058"
 }
