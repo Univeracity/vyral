@@ -27,6 +27,7 @@ case "${1:-}" in
     [[ -n "$output" ]]
     mkdir -p "$output"
     printf '{"version":"2.0"}\n' > "$output/host.json"
+    printf '%s\n' '[{"name":"VyralAzureDurableSmokeCancel"},{"name":"VyralAzureDurableSmokeGet"},{"name":"VyralAzureDurableSmokeRaiseEvent"},{"name":"VyralAzureDurableSmokeStart"},{"name":"VyralExecutionRuntimeOrchestrator"},{"name":"VyralExecutionRuntimeStart"},{"name":"VyralExecutionRuntimeStep"}]' > "$output/functions.metadata"
     ;;
   test)
     printf 'mock-live-assertions=passed\n'
@@ -56,9 +57,6 @@ command="$*"
 case "$command" in
   "storage account show-connection-string "*)
     printf 'DefaultEndpointsProtocol=https;AccountName=fixture;AccountKey=fixture;EndpointSuffix=core.windows.net\n'
-    ;;
-  "functionapp function list "*)
-    printf '%s\n' "${VYRAL_TEST_FUNCTION_COUNT:-7}"
     ;;
   "functionapp keys list "*)
     printf '%s\n' '{"functionKeys":{"default":"test-function-key-never-log"},"masterKey":"test-master-key-never-log"}'
@@ -111,6 +109,22 @@ done
 [[ -n "$url" ]]
 
 case "$url" in
+  */admin/functions | */admin/functions/)
+    case "${VYRAL_TEST_FUNCTION_COUNT:-7}" in
+      7)
+        printf '%s\n' '[{"name":"VyralAzureDurableSmokeCancel"},{"name":"VyralAzureDurableSmokeGet"},{"name":"VyralAzureDurableSmokeRaiseEvent"},{"name":"VyralAzureDurableSmokeStart"},{"name":"VyralExecutionRuntimeOrchestrator"},{"name":"VyralExecutionRuntimeStart"},{"name":"VyralExecutionRuntimeStep"}]'
+        ;;
+      1)
+        printf '%s\n' '[{"name":"VyralAzureDurableSmokeCancel"}]'
+        ;;
+      0)
+        printf '%s\n' '[]'
+        ;;
+      *)
+        exit 2
+        ;;
+    esac
+    ;;
   */runs/not-a-run)
     printf '404'
     ;;
