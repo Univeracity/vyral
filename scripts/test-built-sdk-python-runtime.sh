@@ -54,7 +54,7 @@ python3 -m venv "$TEST_ROOT/venv"
 
 env \
   VYRAL_API_KEY="$API_KEY" \
-  "$TEST_ROOT/venv/bin/vyral-runtime" \
+  "$TEST_ROOT/venv/bin/vyral" serve \
     --root "$TEST_ROOT/state" \
     --host 127.0.0.1 \
     --port "$PORT" \

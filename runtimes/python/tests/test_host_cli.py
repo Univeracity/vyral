@@ -22,9 +22,9 @@ class HostCliTests(unittest.TestCase):
         with redirect_stdout(output), self.assertRaises(SystemExit) as raised:
             main(["--help"])
         self.assertEqual(0, raised.exception.code)
-        self.assertIn("vyral-runtime init", output.getvalue())
-        self.assertIn("vyral-runtime quickstart", output.getvalue())
-        self.assertIn("vyral-runtime inspect", output.getvalue())
+        self.assertIn("vyral init", output.getvalue())
+        self.assertIn("vyral inspect", output.getvalue())
+        self.assertIn("vyral                 # run the local proof", output.getvalue())
 
     def test_init_creates_an_editable_application_without_server_extra(
         self,
@@ -91,11 +91,28 @@ class HostCliTests(unittest.TestCase):
 
         self.assertEqual(0, status)
         run.assert_called_once_with(".vyral/quickstart", emit=print)
-        self.assertIn("  vyral-runtime inspect\n", output.getvalue())
+        self.assertIn("  vyral inspect\n", output.getvalue())
         self.assertIn(
-            "  vyral-runtime quickstart --reset\n",
+            "  vyral quickstart --reset\n",
             output.getvalue(),
         )
+
+    def test_bare_command_runs_the_local_proof(self) -> None:
+        result = SimpleNamespace(
+            root_path=str((Path.cwd() / ".vyral/quickstart").resolve()),
+            context_text="Context:\nlocal evidence",
+            to_dict=lambda: {},
+        )
+        output = StringIO()
+        with patch(
+            "vyral_runtime.host.cli.run_local_quickstart_sync",
+            return_value=result,
+        ) as run, redirect_stdout(output):
+            status = main([], display_name="./scripts/vyral")
+
+        self.assertEqual(0, status)
+        run.assert_called_once_with(".vyral/quickstart", emit=print)
+        self.assertIn("  ./scripts/vyral inspect\n", output.getvalue())
 
     def test_inspect_subcommand_summarizes_local_providers(self) -> None:
         inspection = {
@@ -187,13 +204,6 @@ class HostCliTests(unittest.TestCase):
             os.environ, {}, clear=True
         ), self.assertRaises(SystemExit) as raised:
             main(["--root", root, "--host", "0.0.0.0"])
-        self.assertEqual(2, raised.exception.code)
-
-    def test_root_is_never_selected_implicitly(self) -> None:
-        with patch.dict(
-            os.environ, {}, clear=True
-        ), self.assertRaises(SystemExit) as raised:
-            main([])
         self.assertEqual(2, raised.exception.code)
 
     def test_port_must_be_in_tcp_range(self) -> None:

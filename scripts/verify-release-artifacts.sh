@@ -424,8 +424,12 @@ with zipfile.ZipFile(wheels[0]) as wheel:
     ]
     if len(entry_points) != 1:
         raise SystemExit("Python runtime wheel is missing its CLI entry point.")
-    if "vyral-runtime" not in wheel.read(entry_points[0]).decode("utf-8"):
-        raise SystemExit("Python runtime CLI entry point is malformed.")
+    console_scripts = wheel.read(entry_points[0]).decode("utf-8")
+    for command in ("vyral =", "vyral-runtime ="):
+        if command not in console_scripts:
+            raise SystemExit(
+                f"Python runtime CLI entry point is missing: {command[:-2]}"
+            )
 
 with tarfile.open(sdists[0]) as sdist:
     names = set(sdist.getnames())
