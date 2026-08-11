@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""Run the Vyral Python experience directly from a source checkout."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+
+ROOT = Path(__file__).resolve().parent.parent
+RUNTIME_SOURCE = ROOT / "runtimes" / "python" / "src"
+
+if sys.version_info < (3, 10):
+    raise SystemExit("Vyral requires Python 3.10 or newer.")
+
+sys.path.insert(0, str(RUNTIME_SOURCE))
+
+from vyral_runtime.host.cli import main  # noqa: E402
+
+
+raise SystemExit(main(display_name=sys.argv[0]))

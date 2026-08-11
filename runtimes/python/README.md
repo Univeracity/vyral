@@ -55,7 +55,17 @@ silently delegate embedded behavior to .NET or to the existing HTTP client.
 
 ## Local single-player experience
 
-From the repository root, install the package into an isolated environment:
+From the repository root, the shortest path runs directly from source:
+
+```bash
+./scripts/vyral
+```
+
+It performs the connected retrieval-and-execution proof described below. No
+installation or third-party service is required. Use `python scripts/vyral` on
+Windows.
+
+To install the command into an isolated environment instead:
 
 ```bash
 python3 -m venv .venv
@@ -63,10 +73,11 @@ python3 -m venv .venv
 python -m pip install --editable runtimes/python
 ```
 
-Run the connected retrieval-and-execution proof:
+The installed command is `vyral`, and running it without arguments performs the
+same proof:
 
 ```bash
-vyral-runtime quickstart
+vyral
 ```
 
 The quickstart creates and ingests a three-document corpus, returns cited hybrid
@@ -82,20 +93,20 @@ for local development; its ranking is not a semantic-model quality claim.
 Inspect the state and its material limitations independently:
 
 ```bash
-vyral-runtime inspect
+vyral inspect
 ```
 
 The quickstart records an ownership marker and will reset only a dedicated
 directory bearing that marker:
 
 ```bash
-vyral-runtime quickstart --reset
+vyral quickstart --reset
 ```
 
 Generate one editable application when you are ready to own the code:
 
 ```bash
-vyral-runtime init
+vyral init
 python ./vyral_app.py
 ```
 
@@ -110,10 +121,10 @@ work to admit a new run. Use `--path` or `--root` when you need non-default code
 or state locations.
 
 Use `--json` with `init`, `quickstart`, or `inspect` for machine-readable
-output. Package publication remains withheld, so the editable install is the
-supported public pre-release path. Once a qualified wheel is published, the
-install command can be replaced with `python -m pip install vyral-runtime`
-without changing the local commands.
+output. `vyral-runtime` remains a compatibility alias. Package publication is
+withheld, so direct source use or the editable install is the public pre-release
+path. Once a qualified wheel is published, the install command can be replaced
+with `python -m pip install vyral-runtime` without changing the local commands.
 
 The quickstart JSON includes measured `firstCitationMs`, `durableReceiptMs`,
 `restartRecoveryMs`, and `completedMs` milestones. Artifact qualification runs
@@ -248,7 +259,7 @@ Install the server extra and choose an explicit durable directory:
 ```bash
 python -m pip install "vyral-runtime[server]"
 export VYRAL_API_KEY="replace-with-a-secret"
-vyral-runtime --root ./.vyral --host 127.0.0.1 --port 5220
+vyral serve --root ./.vyral --host 127.0.0.1 --port 5220
 ```
 
 REST is available at the public OpenAPI paths and stateless MCP at `/mcp`.

@@ -57,7 +57,7 @@ python3 -m venv "$TEST_ROOT/venv"
   --disable-pip-version-check \
   "${RUNTIME_WHEEL}[server]"
 
-"$TEST_ROOT/venv/bin/vyral-runtime" \
+"$TEST_ROOT/venv/bin/vyral" serve \
   --root "$TEST_ROOT/state" \
   --host 127.0.0.1 \
   --port "$PORT" \

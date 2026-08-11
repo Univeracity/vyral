@@ -1,13 +1,10 @@
 # Vyral Examples
 
-For the no-server, no-.NET local path, install the embedded Python runtime and
-run its connected retrieval and durable-restart experience:
+For the no-server, no-.NET local path, run the embedded Python experience
+directly from the repository root:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --editable runtimes/python
-vyral-runtime quickstart
+./scripts/vyral
 ```
 
 The remaining examples exercise the local HTTP boundary intended for Python

@@ -23,32 +23,39 @@ from .rest import RestApplicationConfig
 DEFAULT_QUICKSTART_ROOT = ".vyral/quickstart"
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    display_name: str = "vyral",
+) -> int:
     selected = list(sys.argv[1:] if argv is None else argv)
+    if not selected:
+        return _quickstart_main([], display_name)
     if selected and selected[0] == "init":
-        return _init_main(selected[1:])
+        return _init_main(selected[1:], display_name)
     if selected and selected[0] == "quickstart":
-        return _quickstart_main(selected[1:])
+        return _quickstart_main(selected[1:], display_name)
     if selected and selected[0] == "inspect":
-        return _inspect_main(selected[1:])
+        return _inspect_main(selected[1:], display_name)
     if selected and selected[0] == "serve":
         selected = selected[1:]
-    return _serve_main(selected)
+    return _serve_main(selected, display_name)
 
 
-def _serve_main(argv: Sequence[str]) -> int:
+def _serve_main(argv: Sequence[str], display_name: str) -> int:
     parser = argparse.ArgumentParser(
-        prog="vyral-runtime",
+        prog=display_name,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Serve the local Vyral Python runtime over REST and "
-            "stateless MCP."
+            "Run Vyral locally, inspect durable state, create an editable "
+            "application, or serve REST and stateless MCP."
         ),
         epilog=(
             "Local single-player commands:\n"
-            "  vyral-runtime quickstart\n"
-            "  vyral-runtime inspect\n"
-            "  vyral-runtime init\n\n"
+            f"  {display_name}                 # run the local proof\n"
+            f"  {display_name} inspect\n"
+            f"  {display_name} init\n"
+            f"  {display_name} serve --root ./.vyral\n\n"
             "The explicit 'serve' command is also accepted before the "
             "server options."
         ),
@@ -193,9 +200,9 @@ def _serve_main(argv: Sequence[str]) -> int:
     return 0
 
 
-def _init_main(argv: Sequence[str]) -> int:
+def _init_main(argv: Sequence[str], display_name: str) -> int:
     parser = argparse.ArgumentParser(
-        prog="vyral-runtime init",
+        prog=f"{display_name} init",
         description=(
             "Create one editable @vyral application that proves durable "
             "admission, close/reopen recovery, completion, and idempotent rerun."
@@ -231,9 +238,9 @@ def _init_main(argv: Sequence[str]) -> int:
     return 0
 
 
-def _quickstart_main(argv: Sequence[str]) -> int:
+def _quickstart_main(argv: Sequence[str], display_name: str) -> int:
     parser = argparse.ArgumentParser(
-        prog="vyral-runtime quickstart",
+        prog=f"{display_name} quickstart",
         description=(
             "Run cited local retrieval and prove that one idempotently "
             "admitted execution survives a close/reopen boundary."
@@ -284,23 +291,25 @@ def _quickstart_main(argv: Sequence[str]) -> int:
         print(result.context_text)
         print("\nInspect this state:")
         if result_root == default_root:
-            print("  vyral-runtime inspect")
-        else:
-            print(f"  vyral-runtime inspect --root {result.root_path}")
-        print("Reset only this quickstart-owned directory:")
-        if result_root == default_root:
-            print("  vyral-runtime quickstart --reset")
+            print(f"  {display_name} inspect")
         else:
             print(
-                "  vyral-runtime quickstart "
+                f"  {display_name} inspect --root {result.root_path}"
+            )
+        print("Reset only this quickstart-owned directory:")
+        if result_root == default_root:
+            print(f"  {display_name} quickstart --reset")
+        else:
+            print(
+                f"  {display_name} quickstart "
                 f"--root {result.root_path} --reset"
             )
     return 0
 
 
-def _inspect_main(argv: Sequence[str]) -> int:
+def _inspect_main(argv: Sequence[str], display_name: str) -> int:
     parser = argparse.ArgumentParser(
-        prog="vyral-runtime inspect",
+        prog=f"{display_name} inspect",
         description=(
             "Explain the active providers, topology, readiness, and "
             "limitations for an existing local runtime directory."

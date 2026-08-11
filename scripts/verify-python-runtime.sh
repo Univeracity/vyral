@@ -26,6 +26,24 @@ python3 -m mypy \
   runtimes/python/tests/typecheck_consumer.py \
   runtimes/python/tests/test_record_store.py
 
+launcher_root="$work_root/source-launcher"
+mkdir -p "$launcher_root"
+(
+  cd "$launcher_root"
+  "$ROOT/scripts/vyral" >first-run.txt
+  "$ROOT/scripts/vyral" inspect --json >inspection.json
+  "$ROOT/scripts/vyral" quickstart --reset >/dev/null
+)
+if ! grep -q 'Citation-ready context' "$launcher_root/first-run.txt"; then
+  echo "The source launcher did not produce useful local context." >&2
+  exit 1
+fi
+if [[ -e "$launcher_root/.vyral/quickstart" ]]; then
+  echo "The source launcher reset left its owned state directory." >&2
+  exit 1
+fi
+printf 'python-runtime-source-launcher=ok\n'
+
 python3 -m build \
   --sdist \
   --wheel \
@@ -76,8 +94,17 @@ with zipfile.ZipFile(wheel_path) as archive:
         raise SystemExit("Python runtime wheel is missing: " + ", ".join(missing))
     if not any(name.endswith(".dist-info/licenses/LICENSE") for name in names):
         raise SystemExit("Python runtime wheel is missing the Apache license.")
-    if not any(name.endswith(".dist-info/entry_points.txt") for name in names):
+    entry_points = [
+        name for name in names if name.endswith(".dist-info/entry_points.txt")
+    ]
+    if len(entry_points) != 1:
         raise SystemExit("Python runtime wheel is missing its server entry point.")
+    console_scripts = archive.read(entry_points[0]).decode("utf-8")
+    for command in ("vyral =", "vyral-runtime ="):
+        if command not in console_scripts:
+            raise SystemExit(
+                f"Python runtime wheel is missing its {command[:-2]} command."
+            )
 
 with tarfile.open(sdist_path, "r:gz") as archive:
     names = {name.split("/", 1)[1] for name in archive.getnames() if "/" in name}
@@ -147,10 +174,10 @@ print(
 PY
 
 quickstart_root="$work_root/local-quickstart"
-"$work_root/venv/bin/vyral-runtime" quickstart \
+"$work_root/venv/bin/vyral" quickstart \
   --root "$quickstart_root" \
   --json >"$work_root/quickstart-first.json"
-"$work_root/venv/bin/vyral-runtime" inspect \
+"$work_root/venv/bin/vyral" inspect \
   --root "$quickstart_root" \
   --json >"$work_root/quickstart-inspection.json"
 "$work_root/venv/bin/python" -m vyral_runtime quickstart \
@@ -202,7 +229,7 @@ print(
     f"first-citation-ms={first['timings']['firstCitationMs']}"
 )
 PY
-"$work_root/venv/bin/vyral-runtime" quickstart \
+"$work_root/venv/bin/vyral" quickstart \
   --root "$quickstart_root" \
   --reset >/dev/null
 if [[ -e "$quickstart_root" ]]; then
@@ -243,6 +270,7 @@ python3 -m venv "$work_root/server-venv"
   --quiet \
   --disable-pip-version-check \
   "${wheel}[server]"
+"$work_root/server-venv/bin/vyral" --help >/dev/null
 "$work_root/server-venv/bin/vyral-runtime" --help >/dev/null
 "$work_root/server-venv/bin/python" -m vyral_runtime.host --help \
   >/dev/null

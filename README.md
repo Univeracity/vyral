@@ -23,6 +23,34 @@ for SQLite, Postgres/pgvector, Azure, AWS, Google Cloud, Cloudflare, Temporal,
 and others. Conformance tests and a versioned qualification matrix make adapter
 behavior explicit instead of assumed.
 
+## Quick start
+
+From a source checkout, run:
+
+```bash
+./scripts/vyral
+```
+
+That is the complete local path. It needs only Python 3.10 or newer—no package
+installation, .NET SDK, container runtime, cloud account, external service, or
+model download. It runs retrieval with citations, admits durable work, closes
+and reopens the runtime, and completes the preserved run. State remains visible
+under `./.vyral/quickstart`.
+
+Create a small editable application when you are ready to build:
+
+```bash
+./scripts/vyral init
+python ./vyral_app.py
+```
+
+The installed command is simply `vyral`; `vyral-runtime` remains a compatibility
+alias and the distribution name. Use `./scripts/vyral inspect` to explain the
+local providers and limitations. Windows users can invoke the source launcher
+with `python scripts/vyral`. Manual installation, custom state paths, JSON
+output, reset, and server instructions are in the
+[Python runtime guide](runtimes/python).
+
 | You need… | Start here |
 | --- | --- |
 | Local RAG / retrieval substrate | [Quick start](#quick-start) |
@@ -73,71 +101,7 @@ A package existing in the repository is not a production-readiness claim. The
 [qualification report](qualification/adapter-qualification.json) is the source
 of truth for recorded evidence.
 
-## Quick start
-
-The shortest path is the embedded Python runtime. It needs no .NET SDK,
-container runtime, cloud account, external service, or model download. From a
-source checkout, create an isolated environment and install the runtime:
-
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --editable runtimes/python
-```
-
-Run the complete local retrieval-and-durable-execution proof:
-
-```bash
-vyral-runtime quickstart
-```
-
-It ingests a small corpus, prints citation-ready context and the active
-model-free local embedding shape, admits an idempotent durable handler before
-dispatch, closes the runtime, reopens the same directory, and completes the
-same run identity. State stays visible under `./.vyral/quickstart`. Inspect its
-providers, topology, readiness, and limitations without rerunning it:
-
-```bash
-vyral-runtime inspect
-```
-
-When you are ready to own the code, generate the smallest editable application:
-
-```bash
-vyral-runtime init
-python ./vyral_app.py
-```
-
-The generated file uses the concise `@vyral(...)` authoring surface, prints a
-durable receipt before dispatch, closes and reopens its local runtime, and then
-completes the preserved run. Rerunning it replays the same idempotent run
-instead of dispatching duplicate work. The generator never overwrites an
-existing path and keeps state beside the file under `.vyral/vyral_app`.
-After editing the intended work, increment the visible `RUN_VERSION` to admit a
-new idempotent run. `--path` and `--root` remain available when you want
-different code or state locations.
-
-Add `--json` to the quickstart to capture machine-readable first-citation,
-durable-receipt, restart-recovery, and completion timings. Clean wheel and
-source-distribution qualification generates and runs the editable application
-as well as the connected quickstart in isolated environments. It enforces a
-five-minute package-install-to-useful-result budget rather than relying on a
-synthetic import smoke.
-
-The quickstart owns only the directory bearing its marker. Its reset command
-refuses foreign, symbolic-link, home, filesystem-root, and working-directory
-targets:
-
-```bash
-vyral-runtime quickstart --reset
-```
-
-Package publication is still withheld, so the editable source install above is
-the public pre-release path. The deterministic token-hash provider demonstrates
-bounded local mechanics and lexical similarity; it is not presented as a
-semantic model.
-
-### Local REST and client examples
+## Server and client examples
 
 To exercise the server boundary instead, start the .NET host from the
 repository root:
@@ -158,7 +122,7 @@ node examples/javascript/rag-quickstart.mjs
 Set `VYRAL_URL` to use a different host. More complete retrieval, GraphRAG, AI,
 and execution examples live in [examples](examples) and [samples](samples).
 
-### Container
+## Container
 
 The server image is non-root, shell-free, and compatible with a read-only root
 filesystem. This local command keeps state in a Docker-managed volume:
