@@ -238,7 +238,16 @@ class RipgrepSearchAdapter:
                 f"ripgrep exited without a usable result (code {return_code})"
             )
 
-        raw_matches = _parse_match_events(output)
+        raw_matches = tuple(
+            sorted(
+                _parse_match_events(output),
+                key=lambda event: (
+                    event["path"],
+                    event["line_number"],
+                    event["byte_column"],
+                ),
+            )
+        )
         revisions: dict[str, str] = {}
         matches: list[RipgrepSourceMatch] = []
         filtered_sensitive_paths = 0

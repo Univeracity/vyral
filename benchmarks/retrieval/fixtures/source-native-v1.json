@@ -1,0 +1,185 @@
+{
+  "schemaVersion": "vyral.retrieval.source-native-fixture.v1",
+  "documents": [
+    {
+      "path": "runtime/admission.py",
+      "content": "ADMISSION_RECEIPT_V1 = \"accepted work survives restart\"\n\ndef admit_work(worker_id: str) -> str:\n    \"\"\"Commit the durable receipt before a worker executes the handler.\"\"\"\n    return f\"receipt:{worker_id}\"\n"
+    },
+    {
+      "path": "runtime/recovery.md",
+      "content": "# Recovery\n\nA persisted acceptance receipt lets queued work resume after a process restart. The dispatcher reuses the preserved run identity.\n"
+    },
+    {
+      "path": "runtime/retry.md",
+      "content": "# Retry policy\n\nERR_RETRY_EXHAUSTED_503 marks a handler that exhausted exponential backoff with jitter. A retry is not a new admission.\n"
+    },
+    {
+      "path": "runtime/worker-pool.md",
+      "content": "# Worker pool\n\nA worker may restart after a routine deployment. Pool capacity and shutdown grace periods are deployment concerns.\n"
+    },
+    {
+      "path": "retrieval/source-native.md",
+      "content": "# Source-native retrieval\n\nUse source-native fixed-string search for exact identifiers in current local code and Markdown. It requires no copied index.\n"
+    },
+    {
+      "path": "retrieval/semantic.md",
+      "content": "# Semantic retrieval\n\nVector retrieval helps when a question and its answer share meaning but not vocabulary. Embeddings trade freshness and operating cost for semantic recall.\n"
+    },
+    {
+      "path": "retrieval/prefix.md",
+      "content": "# Legal retrieval fixture\n\nThe preliminary injunction deadline is recorded in the governed matter index.\n"
+    },
+    {
+      "path": "retrieval/hard-negative.md",
+      "content": "# Restart checklist\n\nRestart the documentation preview worker after changing the theme. This page does not describe durable admission.\n"
+    },
+    {
+      "path": "mcp/routing.md",
+      "content": "# Stateless MCP routing\n\nMcp-Session-Id is a request header used when session routing is required. A self-describing request can otherwise land on any gateway instance.\n"
+    },
+    {
+      "path": "canonical/conflict.md",
+      "content": "# Canonical conflict\n\nERR_CANONICAL_CONFLICT_409 means a conditional write lost a canonical state revision race. Reload the current revision before retrying.\n"
+    },
+    {
+      "path": "tenants/tenant-7f3a.md",
+      "content": "# Tenant fixture\n\ntenant-7f3a owns this governed record. Indexed retrieval can enforce its partition boundary before ranking.\n"
+    },
+    {
+      "path": "operations/request-timeout.md",
+      "content": "# Request timeout\n\nA request timeout stops an upstream provider call after its declared wall-clock budget.\n"
+    },
+    {
+      "path": "operations/socket-timeout.md",
+      "content": "# Socket timeout\n\nA socket timeout indicates that the transport did not make progress before its network deadline.\n"
+    },
+    {
+      "path": "operations/retry-budget.md",
+      "content": "# Retry budget\n\nRetry limits protect a provider from an unbounded failure loop. The budget is separate from a request timeout.\n"
+    },
+    {
+      "path": "governance/authorization.md",
+      "content": "# Authorization\n\nSearch authorization is evaluated before retrieval. Tenant filters and record policy remain part of the governed query boundary.\n"
+    },
+    {
+      "path": "live/freshness.md",
+      "content": "# Freshness fixture\n\nThis file begins without the post-index freshness canary.\n"
+    }
+  ],
+  "qualityCases": [
+    {
+      "id": "identifier-admission-receipt",
+      "group": "exact-literal",
+      "query": "ADMISSION_RECEIPT_V1",
+      "relevant": ["runtime/admission.py"]
+    },
+    {
+      "id": "identifier-canonical-conflict",
+      "group": "exact-literal",
+      "query": "ERR_CANONICAL_CONFLICT_409",
+      "relevant": ["canonical/conflict.md"]
+    },
+    {
+      "id": "identifier-retry-exhausted",
+      "group": "exact-literal",
+      "query": "ERR_RETRY_EXHAUSTED_503",
+      "relevant": ["runtime/retry.md"]
+    },
+    {
+      "id": "identifier-tenant",
+      "group": "exact-literal",
+      "query": "tenant-7f3a",
+      "relevant": ["tenants/tenant-7f3a.md"]
+    },
+    {
+      "id": "header-mcp-session",
+      "group": "exact-literal",
+      "query": "mcp-session-id",
+      "relevant": ["mcp/routing.md"]
+    },
+    {
+      "id": "phrase-source-native",
+      "group": "exact-literal",
+      "query": "source-native fixed-string search",
+      "relevant": ["retrieval/source-native.md"]
+    },
+    {
+      "id": "phrase-accepted-work",
+      "group": "exact-literal",
+      "query": "accepted work survives restart",
+      "relevant": ["runtime/admission.py"]
+    },
+    {
+      "id": "phrase-injunction",
+      "group": "exact-literal",
+      "query": "preliminary injunction deadline",
+      "relevant": ["retrieval/prefix.md"]
+    },
+    {
+      "id": "terms-reordered-admission",
+      "group": "term-retrieval",
+      "query": "restart accepted work",
+      "relevant": ["runtime/admission.py"]
+    },
+    {
+      "id": "terms-separated-receipt",
+      "group": "term-retrieval",
+      "query": "receipt worker commit",
+      "relevant": ["runtime/admission.py"]
+    },
+    {
+      "id": "natural-recovery",
+      "group": "term-retrieval",
+      "query": "queued work resume after restart",
+      "relevant": ["runtime/recovery.md"]
+    },
+    {
+      "id": "natural-mcp-routing",
+      "group": "term-retrieval",
+      "query": "header routes MCP session",
+      "relevant": ["mcp/routing.md"]
+    },
+    {
+      "id": "prefix-injunction",
+      "group": "prefix",
+      "query": "prelim injunc deadl",
+      "relevant": ["retrieval/prefix.md"]
+    },
+    {
+      "id": "prefix-canonical-conflict",
+      "group": "prefix",
+      "query": "canon confl",
+      "relevant": ["canonical/conflict.md"]
+    },
+    {
+      "id": "ambiguous-timeout",
+      "group": "ambiguous",
+      "query": "timeout",
+      "relevant": [
+        "operations/request-timeout.md",
+        "operations/socket-timeout.md"
+      ]
+    },
+    {
+      "id": "ambiguous-retry",
+      "group": "ambiguous",
+      "query": "retry",
+      "relevant": [
+        "operations/retry-budget.md",
+        "runtime/retry.md"
+      ]
+    },
+    {
+      "id": "negative-missing-identifier",
+      "group": "negative",
+      "query": "ERR_UNICORN_TRANSPORT_9917",
+      "relevant": []
+    },
+    {
+      "id": "negative-missing-phrase",
+      "group": "negative",
+      "query": "violet telescope orchard",
+      "relevant": []
+    }
+  ]
+}

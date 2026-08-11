@@ -76,6 +76,7 @@ class RipgrepIntegrationTests(unittest.TestCase):
 
             insensitive = adapter.search(RipgrepSearchRequest("needle", limit=1))
             self.assertEqual(1, len(insensitive.matches))
+            self.assertEqual("a.md", insensitive.matches[0].relative_path)
             self.assertTrue(insensitive.truncated)
 
             sensitive = adapter.search(

@@ -1,5 +1,5 @@
 {
-  "fileCount": 832,
+  "fileCount": 835,
   "files": [
     {
       "mode": "644",
@@ -54,7 +54,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "d8c34f6654ab50453c351e691f12e47a182a906a653803344f1744b61b1c9c64"
+      "sha256": "246b11dbc507bb36eec6491b5ae4569c574faa5400379c7222470b5fb4657818"
     },
     {
       "mode": "644",
@@ -170,6 +170,11 @@
       "mode": "644",
       "path": "benchmarks/canonical-store/mysql-8.0.46-local.json",
       "sha256": "9032bf64760c76820016af95192c1a7b60f38fad7380e1e8ef3bc88c35bcbb81"
+    },
+    {
+      "mode": "644",
+      "path": "benchmarks/retrieval/fixtures/source-native-v1.json",
+      "sha256": "abf12894b9720f59872a63f2e596bfa5b0fa268b1ebbd53a239561c5055618bb"
     },
     {
       "mode": "644",
@@ -1039,7 +1044,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/integrations/ripgrep.py",
-      "sha256": "6cc8f26459b80cc7b1d0c477273ed3de2acab4f72ff21843eebb23760c1ffae4"
+      "sha256": "d662ba9cded10b2dc33e910ae1275e012a8d1a20db0ee8623779c0b3a4018a80"
     },
     {
       "mode": "644",
@@ -1299,7 +1304,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_ripgrep_integration.py",
-      "sha256": "72383a2520106f05e9f474452f93f8f9620cbf0343418bc5f487d817c49d937b"
+      "sha256": "9117dddae9441b7b1d21137d5533115e710554e04a36c7bcdd06c2c153d10bae"
     },
     {
       "mode": "644",
@@ -1450,6 +1455,11 @@
       "mode": "755",
       "path": "scripts/benchmark-python-runtime.py",
       "sha256": "08282add3792153654fbcb6211a974e94e95f693ab7c778f33e6c1e83c6085e2"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/benchmark-ripgrep-retrieval.py",
+      "sha256": "a2ffcc98b2ef92697a2d0a879f6282395ba073ae65ba4776bb398156cb182f20"
     },
     {
       "mode": "755",
@@ -1810,6 +1820,11 @@
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
       "sha256": "37656bb728e094285b4915f11044fea227cc1c3c34d1497ad8cbde425090d0a6"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-ripgrep-retrieval-report.py",
+      "sha256": "bd3ae53e0b90e2ba55c987d28e90e7fe31be5474b6c84a294eeaf2a8e4f507c7"
     },
     {
       "mode": "755",
@@ -4163,6 +4178,6 @@
     }
   ],
   "schemaVersion": 1,
-  "sourceDirty": false,
-  "treeSha256": "8f310317079832bea59c83c253dcf26b2bebbc6e6c8963c2b1c2d8c0dd7e7733"
+  "sourceDirty": true,
+  "treeSha256": "cf37ea61c1d4998534ae5ad689342d0e66ce3b6e0bd8a6cb7476c01b437e60ec"
 }
