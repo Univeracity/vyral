@@ -17,6 +17,17 @@ from .extropic import (
     ExtropicSdkBackend,
     ExtropicTransportError,
 )
+from .ripgrep import (
+    RipgrepAdapterOptions,
+    RipgrepIntegrationError,
+    RipgrepNotAvailableError,
+    RipgrepSearchAdapter,
+    RipgrepSearchError,
+    RipgrepSearchLimitError,
+    RipgrepSearchRequest,
+    RipgrepSearchResult,
+    RipgrepSourceMatch,
+)
 
 __all__ = [
     "EXTROPIC_CHECKPOINT_KEY",
@@ -34,4 +45,13 @@ __all__ = [
     "ExtropicRateLimitedError",
     "ExtropicSdkBackend",
     "ExtropicTransportError",
+    "RipgrepAdapterOptions",
+    "RipgrepIntegrationError",
+    "RipgrepNotAvailableError",
+    "RipgrepSearchAdapter",
+    "RipgrepSearchError",
+    "RipgrepSearchLimitError",
+    "RipgrepSearchRequest",
+    "RipgrepSearchResult",
+    "RipgrepSourceMatch",
 ]

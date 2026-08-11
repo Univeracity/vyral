@@ -18,14 +18,10 @@ from .execution import (
 from .local import (
     LexicalSearchOptions,
     RecordCollectionPolicy,
-    VectorFieldPolicy,
+    VyralRecord,
 )
-from .rag import (
-    RagContextRequest,
-    RagIngestTextRequest,
-    RagIngestionOptions,
-)
-from .retrieval import EmbeddingOptions, HybridSearchOptions, RetrievalRequest
+from .rag import RagContextRequest
+from .retrieval import RetrievalRequest
 from .runtime import VyralRuntime
 
 
@@ -93,6 +89,8 @@ class LocalQuickstartResult:
     contract_version: str
     maturity: str
     full_local_ready: bool
+    retrieval_mode: str
+    embedding_used: bool
     embedding_provider: str
     embedding_model: str
     embedding_dimensions: int
@@ -124,6 +122,7 @@ class LocalQuickstartResult:
             "fullLocalReady": self.full_local_ready,
             "topology": "local-single-node",
             "embedding": {
+                "used": self.embedding_used,
                 "provider": self.embedding_provider,
                 "model": self.embedding_model,
                 "dimensions": self.embedding_dimensions,
@@ -131,6 +130,7 @@ class LocalQuickstartResult:
                 "requiresNetwork": False,
             },
             "retrieval": {
+                "mode": self.retrieval_mode,
                 "query": self.query,
                 "contextText": self.context_text,
                 "contextHash": self.context_hash,
@@ -221,51 +221,50 @@ async def run_local_quickstart(
         _emit(
             emit,
             (
-                f"Embedding: {provider.provider_id}/{provider.model_id} "
-                f"({provider.dimensions} dimensions, "
-                f"{descriptor.semantic_quality}, no network)"
+                "Retrieval: lexical (SQLite, no embeddings generated, "
+                "no network)"
             ),
         )
 
         runtime.records.create_collection(
             RecordCollectionPolicy(
                 name=_COLLECTION,
-                vector_policies=(
-                    VectorFieldPolicy(
-                        name="contentEmbedding",
-                        path="/vectors/contentEmbedding/values",
-                        dimensions=provider.dimensions,
-                    ),
-                ),
                 indexed_metadata=("/metadata/topic",),
             )
         )
         for document_id, label, text, uri in _DOCUMENTS:
-            ingestion = runtime.rag_ingestion.ingest_text(
-                _COLLECTION,
-                RagIngestTextRequest(
-                    document_id=document_id,
-                    partition_key=_PARTITION,
-                    text=text,
-                    embedding=EmbeddingOptions(
-                        field="contentEmbedding",
-                        purpose="passage",
-                    ),
-                    metadata={"topic": document_id},
-                    source_uri=uri,
-                    source_kind="documentation",
-                    source_label=label,
-                    options=RagIngestionOptions(
-                        chunk_chars=600,
-                        chunk_overlap_chars=0,
-                        replace_document_chunks=True,
-                        skip_unchanged_chunks=True,
-                        persist_manifest=True,
-                    ),
+            record = VyralRecord(
+                id=document_id,
+                partition_key=_PARTITION,
+                type="rag.chunk",
+                metadata={"topic": document_id},
+                content={"text": text},
+                sources=(
+                    {
+                        "id": document_id,
+                        "kind": "documentation",
+                        "uri": uri,
+                        "label": label,
+                        "span": None,
+                    },
                 ),
             )
-            created_chunks += ingestion.created_count
-            reused_chunks += ingestion.reused_count
+            existing = runtime.records.get_record(
+                _COLLECTION,
+                _PARTITION,
+                document_id,
+            )
+            if (
+                existing is not None
+                and existing.type == record.type
+                and existing.metadata == record.metadata
+                and existing.content == record.content
+                and existing.sources == record.sources
+            ):
+                reused_chunks += 1
+            else:
+                runtime.records.upsert_record(_COLLECTION, record)
+                created_chunks += 1
 
         context = runtime.rag_context.build_context(
             RagContextRequest(
@@ -273,18 +272,9 @@ async def run_local_quickstart(
                     query=_QUERY,
                     collections=(_COLLECTION,),
                     partition_keys=(_PARTITION,),
-                    search_mode="hybrid",
-                    embedding=EmbeddingOptions(
-                        field="contentEmbedding",
-                        purpose="query",
-                    ),
+                    search_mode="lexical",
                     lexical=LexicalSearchOptions(
                         fields=("/content/text",),
-                    ),
-                    hybrid=HybridSearchOptions(
-                        vector_weight=0.4,
-                        lexical_weight=0.6,
-                        fusion="weighted",
                     ),
                     limit=3,
                     include_trace=True,
@@ -313,8 +303,8 @@ async def run_local_quickstart(
             emit,
             (
                 f"Retrieved {len(context.chunks)} chunks with "
-                f"{len(citations)} citations. Token-hash rankings are "
-                "model-free local-development evidence, not semantic-model quality."
+                f"{len(citations)} citations using exact, current lexical "
+                "content; embeddings were not used."
             ),
         )
 
@@ -383,6 +373,8 @@ async def run_local_quickstart(
         contract_version=readiness.contract_version,
         maturity=readiness.maturity,
         full_local_ready=readiness.full_local_ready,
+        retrieval_mode="lexical",
+        embedding_used=False,
         embedding_provider=provider.provider_id,
         embedding_model=provider.model_id,
         embedding_dimensions=provider.dimensions,

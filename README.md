@@ -15,6 +15,7 @@
 
 Vyral is a local-first contract layer and runtime for applications that need
 **records and objects**, **lexical/vector/hybrid retrieval and RAG**,
+**source-native retrieval experiments**,
 **durable jobs**, and **provider-backed AI runs** without binding application
 code to a single cloud, vector store, orchestration engine, or model vendor.
 
@@ -33,9 +34,9 @@ From a source checkout, run:
 
 That is the complete local path. It needs only Python 3.10 or newer—no package
 installation, .NET SDK, container runtime, cloud account, external service, or
-model download. It runs retrieval with citations, admits durable work, closes
-and reopens the runtime, and completes the preserved run. State remains visible
-under `./.vyral/quickstart`.
+model download. It runs zero-embedding lexical retrieval with citations, admits
+durable work, closes and reopens the runtime, and completes the preserved run.
+State remains visible under `./.vyral/quickstart`.
 
 Create a small editable application when you are ready to build:
 
@@ -54,6 +55,7 @@ output, reset, and server instructions are in the
 | You need… | Start here |
 | --- | --- |
 | Local RAG / retrieval substrate | [Quick start](#quick-start) |
+| Source-native, lexical, vector, or hybrid choice | [Retrieval guide](docs/guides/source-native-retrieval.md) |
 | Embedded Python runtime, no server or .NET | [Python runtime](runtimes/python) |
 | HTTP clients (Python / JavaScript) | [Client packages](#client-packages) |
 | Go external-worker client | [Go client](clients/go) |
@@ -72,7 +74,7 @@ Vyral keeps the capability model application-owned:
 
 - **Records** — ids, partition keys, metadata, content, sources, vectors, and etags
 - **Objects** — large immutable payloads and manifests outside the record index
-- **Retrieval** — filters, lexical, vector, hybrid, profiles, and evaluation
+- **Retrieval** — filters, lexical, vector, hybrid, profiles, evaluation, and experimental source-native search
 - **RAG** — deterministic chunk plans, dry-run/commit, manifests, context, and citations
 - **Provider runs** — one envelope for local, CLI, and ONNX-backed AI capabilities
 - **Execution** — durable runs and plugins with local and provider-backed adapters
@@ -80,6 +82,13 @@ Vyral keeps the capability model application-owned:
 
 Use Vyral when you want realistic local development and a rehearsed path to
 re-home storage, retrieval, or execution without rewriting the product surface.
+
+For local, current, structured sources that an application can safely access,
+searching the source directly is often the best first retrieval path: exact,
+immediately fresh, and free of index synchronization. Use indexed lexical
+retrieval when you need a governed record boundary, vectors when labeled tests
+show semantic recall is worth the added index, and hybrid or reranking only
+when the same evaluation demonstrates an improvement.
 
 ## Status
 
@@ -93,6 +102,7 @@ compatibility policy.
 | .NET local server, SQLite, retrieval, and RAG | Primary supported implementation |
 | Python and JavaScript HTTP clients | Implemented and tested against the public SDK catalog |
 | Python-native embedded runtime and REST/MCP host | Prototype; implemented and clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
+| Source-native ripgrep integration | Experimental; bounded, read-only Python integration outside the stable wire/MCP contract |
 | Stateless MCP `2026-07-28` endpoint | Preview; opt-in and REST-backed |
 | Local SQLite and Azure Durable execution | Preview; locally conformant |
 | AWS, Google, Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
@@ -111,8 +121,8 @@ scripts/start-local-server.sh
 ```
 
 It listens on `http://127.0.0.1:5220` and writes local state beneath `.vyral/`.
-Run either HTTP client example to create a collection, ingest three documents,
-retrieve context, and print citations:
+Run either HTTP client example to create a collection, store three documents,
+retrieve lexical context without embeddings, and print citations:
 
 ```bash
 python3 examples/python/rag_quickstart.py

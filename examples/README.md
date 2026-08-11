@@ -28,7 +28,12 @@ Run the JavaScript quickstart:
 node examples/javascript/rag-quickstart.mjs
 ```
 
-Both examples create a collection, call `/collections/{collection}/rag/ingest-text` with the server's configured embedding provider, call `/rag/context`, and print returned citation IDs plus the deterministic `contextText` block. Set `VYRAL_URL` to point at a non-default server URL. Set `VYRAL_COLLECTION` to override the sample collection name.
+Both examples create a collection without a vector policy, store three small
+source-backed records, run lexical RAG with no embeddings, and print citation IDs
+plus the deterministic `contextText` block. Set `VYRAL_URL` to point at a
+non-default server URL. Set `VYRAL_COLLECTION` to override the sample
+collection name. `scripts/verify-lexical-http-quickstarts.sh` runs both examples
+against one isolated Release server as a CI regression gate.
 
 Run the broader consumer workflows when you want to exercise lexical RAG, vector RAG, lexical plus rerank, GraphRAG expansion/evaluation, `ai.extract`, provider model listing, and quota discovery:
 
@@ -38,6 +43,23 @@ node examples/javascript/consumer-workflows.mjs
 ```
 
 These scripts create isolated example collections by default. Override `VYRAL_COLLECTION`, `VYRAL_GRAPH_COLLECTION`, `VYRAL_RECIPE_AI_PROVIDER`, and `VYRAL_RECIPE_RERANK_PROVIDER` to point them at different local test surfaces.
+
+## Source-native retrieval
+
+For a local code or Markdown corpus, test the bounded experimental ripgrep
+integration before creating an index:
+
+```bash
+python3 examples/python/source_native_search.py \
+  "durable receipt" \
+  --root .
+```
+
+The example searches only allowlisted `*.py` and `*.md` paths by default and
+prints root-relative line citations with source revisions. It does not expose a
+REST or MCP tool. See the
+[source-native retrieval guide](../docs/guides/source-native-retrieval.md) for
+the safety boundary and comparison recipe.
 
 ## Execution Runtime Sample
 

@@ -41,6 +41,9 @@ jobs:
       - name: Run deterministic tests
         run: dotnet test Vyral.sln --configuration Release --no-build --logger 'console;verbosity=minimal'
 
+      - name: Verify zero-embedding HTTP quickstarts
+        run: scripts/verify-lexical-http-quickstarts.sh
+
       - name: Prove core contract TFMs
         run: |
           dotnet build src/Vyral.Abstractions/Vyral.Abstractions.csproj --configuration Release --framework net8.0 --no-restore

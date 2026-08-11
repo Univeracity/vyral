@@ -160,12 +160,25 @@ If `VYRAL_API_KEY` is set, pass the same key to the client constructor. Failed c
 
 ## Retrieval Defaults
 
-For evidence-sensitive or exact-reference retrieval, start with lexical retrieval or a retrieval profile that keeps lexical scoring dominant. Use vectors for semantic discovery, recall expansion, or exploratory search unless your own evaluation shows vector-only retrieval is strong enough for the corpus.
+For local or structured text that the application can safely read directly,
+test source-native search first. It provides exact matching and current source
+state without an index. Use Vyral lexical retrieval when the corpus needs a
+governed record boundary, filters, stable snapshots, or provider-portable
+retrieval semantics. Use vectors for semantic discovery, recall expansion,
+remote or unstructured corpora, and non-greppable modalities when your own
+evaluation supports the added index. Treat hybrid and reranking as evaluated
+policies rather than defaults. See the
+[source-native and indexed retrieval guide](source-native-retrieval.md) for the
+bounded ripgrep experiment and a five-variant comparison recipe.
 
 Recommended first path:
 
-1. Create a RAG collection with `create_rag_collection(...)` / `createRagCollection(...)`.
-2. Ingest with `plan_rag_text_ingestion(...)` then `commit_rag_text_ingestion(...)`, or use `ingest_rag_text(...)` for simple loops.
+1. Create a record-only collection for lexical retrieval, or a RAG collection
+   with `create_rag_collection(...)` / `createRagCollection(...)` when vectors
+   are justified.
+2. Store source-backed records directly for zero-embedding lexical RAG. For
+   vector ingestion, use `plan_rag_text_ingestion(...)` then
+   `commit_rag_text_ingestion(...)`, or `ingest_rag_text(...)` for simple loops.
 3. Build context with `build_rag_context(...)`.
 4. Evaluate with `/retrieval/evaluate` or `evaluate_retrieval(...)` before changing retrieval profiles.
 5. Snapshot with collection export before destructive corpus changes.

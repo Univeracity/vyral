@@ -14,6 +14,8 @@ here so each document has a clear audience and owner.
   portable guarantees and adapter-specific boundaries.
 - [Extropic execution](guides/extropic-execution.md) — experimental,
   fail-closed dispatch of registered Python workloads to Extropic compute.
+- [Source-native and indexed retrieval](guides/source-native-retrieval.md) —
+  choose and evaluate direct, lexical, vector, hybrid, and reranked retrieval.
 - [Stability and versioning](reference/stability.md) — maturity labels, version
   lines, and compatibility promises.
 

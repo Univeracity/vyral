@@ -72,6 +72,7 @@ required_package_files = {
     "vyral_runtime/_contracts/public-sdk-surface.json",
     "vyral_runtime/_contracts/vyral-public.schema.json",
     "vyral_runtime/_contracts/vyral.openapi.json",
+    "vyral_runtime/integrations/ripgrep.py",
     "vyral_runtime/_conformance/runtime/v1/manifest.json",
     "vyral_runtime/_conformance/runtime/v1/manifest.schema.json",
     "vyral_runtime/_conformance/runtime/v1/scenario.schema.json",
@@ -118,6 +119,7 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "src/vyral_runtime/_contracts/public-sdk-surface.json",
         "src/vyral_runtime/_contracts/vyral-public.schema.json",
         "src/vyral_runtime/_contracts/vyral.openapi.json",
+        "src/vyral_runtime/integrations/ripgrep.py",
         "src/vyral_runtime/_conformance/runtime/v1/manifest.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/primitives-hashing.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/collection-snapshot-hash.json",
@@ -201,6 +203,8 @@ replay = json.loads(replay_path.read_text(encoding="utf-8"))
 assert first["topology"] == "local-single-node"
 assert first["maturity"] == "prototype"
 assert first["fullLocalReady"] is False
+assert first["retrieval"]["mode"] == "lexical"
+assert first["embedding"]["used"] is False
 assert first["embedding"]["provider"] == "local-token-hash"
 assert first["embedding"]["requiresNetwork"] is False
 assert len(first["retrieval"]["citations"]) >= 1

@@ -44,6 +44,7 @@ docs/contributing/*
 docs/guides/*
 !docs/guides/consumer-handoff.md
 !docs/guides/extropic-execution.md
+!docs/guides/source-native-retrieval.md
 !docs/maintainers/
 docs/maintainers/*
 !docs/maintainers/releasing.md
