@@ -197,6 +197,53 @@ naming or dynamic registration is clearer. Handler and plugin IDs remain
 explicit because they are durable contract identities; renaming or moving a
 Python function must not silently create a different operation.
 
+### Experimental Extropic execution
+
+Install the optional `extropic` extra to place a registered Python workload
+behind the same Vyral execution lifecycle:
+
+```bash
+python -m pip install --editable "runtimes/python[extropic]"
+```
+
+```python
+from vyral_runtime import ExecutionRunContext, ExecutionRunResult, vyral
+from vyral_runtime.integrations.extropic import (
+    ExtropicAdapterOptions,
+    ExtropicExecutionAdapter,
+)
+
+
+def simulate(payload):
+    return {"seed": payload["seed"], "samples": payload["samples"]}
+
+
+extropic = ExtropicExecutionAdapter(
+    "example.simulation.v1",
+    simulate,
+    options=ExtropicAdapterOptions(tier="l4", require_seed=True),
+)
+
+
+@vyral("example.simulate", plugin="example.extropic", max_attempts=3)
+async def run_simulation(
+    context: ExecutionRunContext,
+) -> ExecutionRunResult:
+    return await extropic.execute(context)
+```
+
+Vyral retains the provider job id, safe status, bounded logs, and replay state;
+it never persists Extropic credentials or upload grants. Because Extropic 0.5
+does not accept an idempotency key during job creation, a lost create response
+fails closed and is not resubmitted automatically. Known provider jobs are
+reconnected and retried by id. The integration is a prototype, remains outside
+the adapter qualification matrix, and makes no Z1 support claim. Registered
+workloads should be self-contained plain Python functions; Vyral serializes
+those functions by value, while third-party imports must exist in Extropic's
+sandbox. See the
+[Extropic execution guide](../../docs/guides/extropic-execution.md) for the
+complete lifecycle and current boundaries.
+
 ## Choosing a Python package
 
 | Goal | Install |

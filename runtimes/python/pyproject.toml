@@ -32,6 +32,9 @@ dependencies = []
 server = [
   "uvicorn>=0.30,<1"
 ]
+extropic = [
+  "extro-sim>=0.5,<0.6"
+]
 dev = [
   "build>=1.2,<2",
   "coverage==7.15.4",

@@ -12,6 +12,8 @@ here so each document has a clear audience and owner.
   identity policy, export/restore, and provider qualification.
 - [Execution runtime limitations](reference/execution-runtime-limitations.md) —
   portable guarantees and adapter-specific boundaries.
+- [Extropic execution](guides/extropic-execution.md) — experimental,
+  fail-closed dispatch of registered Python workloads to Extropic compute.
 - [Stability and versioning](reference/stability.md) — maturity labels, version
   lines, and compatibility promises.
 

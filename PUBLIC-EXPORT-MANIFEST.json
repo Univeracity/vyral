@@ -1,5 +1,5 @@
 {
-  "fileCount": 818,
+  "fileCount": 823,
   "files": [
     {
       "mode": "644",
@@ -99,7 +99,7 @@
     {
       "mode": "644",
       "path": ".gitignore",
-      "sha256": "d0bd5503f54f88442afc226475bd5a28c9fcf2496fe409026ea664ac2161bdd2"
+      "sha256": "57ddda23948159577073baa5dbea4082b33c22f975b9b5669c65ef8810eaec3b"
     },
     {
       "mode": "644",
@@ -129,7 +129,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "191c7f8726bad2524ef718924f2c9839b1d371d42f9393704ea6a16d81dae14e"
+      "sha256": "77fcc61d84373d0cf29e1b9935105c7b104cb3f24f3cd3d6771a5e19606f3bfe"
     },
     {
       "mode": "644",
@@ -554,7 +554,7 @@
     {
       "mode": "644",
       "path": "docs/README.md",
-      "sha256": "b26074e44c00154f649bf33b09848735700e3c57e148ac9daae29e2e0a1cdcb6"
+      "sha256": "a4a4f2479130c950c0856f0b0d9d0e6858f26d42cedeaa46192eaf489617e8e3"
     },
     {
       "mode": "644",
@@ -578,6 +578,11 @@
     },
     {
       "mode": "644",
+      "path": "docs/guides/extropic-execution.md",
+      "sha256": "92fd151ebb3d6d198e7b8d94384b49c46eec9ba823eb71cd08947be6ffa47609"
+    },
+    {
+      "mode": "644",
       "path": "docs/maintainers/releasing.md",
       "sha256": "a63504fa1f48133f87dc0f3871a5b925bfa1f29a0472f7684938568b44732f43"
     },
@@ -589,7 +594,7 @@
     {
       "mode": "644",
       "path": "docs/reference/stability.md",
-      "sha256": "083e65412a38b7d0ee8d9374f1f74112f711c419108809adaf91bd011e64dd80"
+      "sha256": "138aa6d3dab86077ed8ae4e6ba87c022b442daf435d059871f58980a6d55da65"
     },
     {
       "mode": "644",
@@ -659,7 +664,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "fb3358a624bfe57f27b4b1b04c7db9ec36be375d847b92c0b7c4d832ed9d585f"
+      "sha256": "2f89eedcacb8a7641ffec99cb106526b9891a3d1e6b3b1dd7c9f4ae0c3c15eaa"
     },
     {
       "mode": "644",
@@ -679,7 +684,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/pyproject.toml",
-      "sha256": "525a7e612bf44aafaa29df37ce29e4f0191a3c45a29191523746cd4322b1a70b"
+      "sha256": "a11bad821329f41857e22cea0f254737ce4a8cbe97e81ef6c0e48ce567e65bdf"
     },
     {
       "mode": "644",
@@ -1003,6 +1008,16 @@
     },
     {
       "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/integrations/__init__.py",
+      "sha256": "92e6f7c95b560675cf838c4d1aeafa5c7490afce5f2a932c3d09ea53f9a65afe"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/integrations/extropic.py",
+      "sha256": "b2068cd5495d763c3f7831300afb144bbffa4e83f3cd0713cfd7522792050fbe"
+    },
+    {
+      "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/local/__init__.py",
       "sha256": "51593c1d1436f3174b73a28aa4bcd7a2e67b64e1128c6367eab129fc59d8f594"
     },
@@ -1180,6 +1195,11 @@
       "mode": "644",
       "path": "runtimes/python/tests/test_execution_worker.py",
       "sha256": "ed76c1a2b3752537f123901beb34f983fcfb2c35f928dd138f1eabf3cceee433"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/tests/test_extropic_integration.py",
+      "sha256": "b9954b53b80a40ff467c7f348025019e41fdd0a2b4dc993d317323f4787f1802"
     },
     {
       "mode": "644",
@@ -1414,7 +1434,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "309b2a397b85609ea2dd1ecc03b06662e40cbe615cba88c3fb505ee25b6bb306"
+      "sha256": "cda75ce6fc5864869f471ca3de0cd9172fdd3b37ae2bc850d6847f6818ccef5e"
     },
     {
       "mode": "755",
@@ -1700,6 +1720,11 @@
       "mode": "755",
       "path": "scripts/verify-python-external-worker-integration.py",
       "sha256": "53b814fd9f47360558424c24253c33ad382bfe5681e476c7a029d0865773e2fd"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-python-extropic-live.py",
+      "sha256": "b33ff4b37582f669dddaa3170d048050514ffb13389cfa5ab795703e0acfa1c7"
     },
     {
       "mode": "755",
@@ -4094,5 +4119,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "c5bb3835cc777c1ecdb5ca506913cd8f386ec756e56fa16af7695e2dd4588df8"
+  "treeSha256": "ff7ab50f4fe171ffefd459c0abfbe314126dc3b5cfc32fd36045af32fb71efe7"
 }

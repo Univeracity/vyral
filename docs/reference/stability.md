@@ -61,6 +61,7 @@ release notes until current live evidence supports a stronger claim.
 | Local server, SQLite records/objects, retrieval, and RAG | `public` |
 | Python and JavaScript HTTP SDK surface catalog | `public` |
 | Python-native portable local runtime, REST host, and MCP adapter | `prototype` |
+| Python Extropic registered-workload integration | `prototype` |
 | Core .NET contracts | `public` |
 | Stateless MCP endpoint | `preview` |
 | Azure, AWS, Google, pgvector, Cloudflare, and specialized store adapters | `preview` unless the qualification report says otherwise |

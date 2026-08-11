@@ -392,6 +392,7 @@ are documented in the [release process](docs/maintainers/releasing.md).
 | Security policy | [SECURITY.md](SECURITY.md) |
 | Public SDK and stateless MCP | [design/public-sdk-surface-and-stateless-mcp.md](design/public-sdk-surface-and-stateless-mcp.md) |
 | Python runtime | [runtimes/python/README.md](runtimes/python/README.md) and [design/python-runtime.md](design/python-runtime.md) |
+| Extropic execution | [Extropic execution guide](docs/guides/extropic-execution.md) |
 | Canonical storage | [CanonicalStore guide](docs/concepts/canonical-store.md) |
 | Execution runtime | [design/execution-runtime.md](design/execution-runtime.md) |
 | Adapter contribution | [Adapter contributor guide](docs/contributing/adapter-contributor.md) |
