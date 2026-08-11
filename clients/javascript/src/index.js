@@ -954,7 +954,11 @@ function normalizeBaseUrl(baseUrl) {
   if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) {
     throw new Error("baseUrl must be an absolute HTTP(S) URL without user credentials");
   }
-  return baseUrl.replace(/\/+$/, "");
+  let normalizedLength = baseUrl.length;
+  while (normalizedLength > 0 && baseUrl.charCodeAt(normalizedLength - 1) === 47) {
+    normalizedLength -= 1;
+  }
+  return normalizedLength === baseUrl.length ? baseUrl : baseUrl.slice(0, normalizedLength);
 }
 
 function isLoopbackBaseUrl(baseUrl) {
