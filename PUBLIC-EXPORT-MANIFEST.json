@@ -1,5 +1,5 @@
 {
-  "fileCount": 827,
+  "fileCount": 837,
   "files": [
     {
       "mode": "644",
@@ -54,7 +54,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "80d2b432d425187dda1b08e377db5befec12ed5ac1b52876d9374de87246e6cd"
+      "sha256": "f2ee6e2e92d2cd36fe5fc65928be57e2c77620c062c75ce7e867320937a66036"
     },
     {
       "mode": "644",
@@ -104,7 +104,7 @@
     {
       "mode": "644",
       "path": ".gitignore",
-      "sha256": "57ddda23948159577073baa5dbea4082b33c22f975b9b5669c65ef8810eaec3b"
+      "sha256": "7b15c20e8f94c53e6c50a55dc511928718af35a1cd0e3c9104c10d1ad43ef969"
     },
     {
       "mode": "644",
@@ -134,7 +134,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "77fcc61d84373d0cf29e1b9935105c7b104cb3f24f3cd3d6771a5e19606f3bfe"
+      "sha256": "4181ac731be532f77e8044780902d57f925da784e169d147094ccc4a3311840e"
     },
     {
       "mode": "644",
@@ -170,6 +170,21 @@
       "mode": "644",
       "path": "benchmarks/canonical-store/mysql-8.0.46-local.json",
       "sha256": "9032bf64760c76820016af95192c1a7b60f38fad7380e1e8ef3bc88c35bcbb81"
+    },
+    {
+      "mode": "644",
+      "path": "benchmarks/retrieval/README.md",
+      "sha256": "2eb3d5e8bdb8518fa3ddadf29b4deb6d29d1fb465f1172a63c0648cc46669b94"
+    },
+    {
+      "mode": "644",
+      "path": "benchmarks/retrieval/fixtures/source-native-v1.json",
+      "sha256": "abf12894b9720f59872a63f2e596bfa5b0fa268b1ebbd53a239561c5055618bb"
+    },
+    {
+      "mode": "644",
+      "path": "benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json",
+      "sha256": "20fd30ca51b43ca7ac8a36a95be3dff346fd94af39c3d6fdc57ad1d0c2c4c273"
     },
     {
       "mode": "644",
@@ -559,7 +574,7 @@
     {
       "mode": "644",
       "path": "docs/README.md",
-      "sha256": "a4a4f2479130c950c0856f0b0d9d0e6858f26d42cedeaa46192eaf489617e8e3"
+      "sha256": "2a846342f0e616eaefcc46ba817ab7ab73b9f7611be92b85e7407e70ef974d46"
     },
     {
       "mode": "644",
@@ -579,12 +594,17 @@
     {
       "mode": "644",
       "path": "docs/guides/consumer-handoff.md",
-      "sha256": "fb19dee1acb9d02f3f50fa79e4c17ec9313c90a76e4f547ebd88bb576f69ca84"
+      "sha256": "2de27f52d6ebc717ebe74a422fb9c028233aaa0c04ca7e8bbfdf71b3b596868c"
     },
     {
       "mode": "644",
       "path": "docs/guides/extropic-execution.md",
       "sha256": "09e9c18f2f54f28da367906c197abbd192699d686387a147fdf114feff51f656"
+    },
+    {
+      "mode": "644",
+      "path": "docs/guides/source-native-retrieval.md",
+      "sha256": "3bc7161ed4b1d83ee3a8461968bf7bc681ca49a38b4535ec81763629ce0e941e"
     },
     {
       "mode": "644",
@@ -614,7 +634,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "2163d0dd9b99a47e3f9dda60d4afc13cc6e80724dd7bfa3f2e2678afeeda94ae"
+      "sha256": "6ebe3db180f7c8c18bfa35fb433168cc6e4e8523848b39e0c20b15d7b570ef01"
     },
     {
       "mode": "644",
@@ -624,7 +644,7 @@
     {
       "mode": "644",
       "path": "examples/javascript/rag-quickstart.mjs",
-      "sha256": "3c603757a807432edc647d3945222b2098e235d0b4af6fe4854238ecf1a7711f"
+      "sha256": "a2f6dab248bdc892a8beaecec9cd0935fddb1bfe782f4c07503b192c2ee2fe00"
     },
     {
       "mode": "644",
@@ -644,7 +664,12 @@
     {
       "mode": "644",
       "path": "examples/python/rag_quickstart.py",
-      "sha256": "9ccd3f757d1f90e773fd13cf719f75baf938b1663567915c72636f9247e1ee3b"
+      "sha256": "6210fcbcfaa8419b30576096cc48f82ff87a8c1de04e0acb3aa64d7edfdc7559"
+    },
+    {
+      "mode": "644",
+      "path": "examples/python/source_native_search.py",
+      "sha256": "6078532d1b25733f3b0b9a4556cf5445c7e24f29b028e87389328c9dc7f6280b"
     },
     {
       "mode": "644",
@@ -674,7 +699,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "f74eeb84a7bb500e7bfab63279a68737b0d0315d2e68fd2197b03a3996e407f2"
+      "sha256": "f2ae828afaf0af80241b1acfc38f2f536d02d217fe129a6c08190707fe536b20"
     },
     {
       "mode": "644",
@@ -809,7 +834,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/_local_experience.py",
-      "sha256": "c00ff042ebb73e6518b9f2e87a50c61a4b1daf6512dd6fab472403f3d794689d"
+      "sha256": "c983078cb9addfb0141271f397512ef32657ac5e83afc938f1b5485ff996667d"
     },
     {
       "mode": "644",
@@ -1019,12 +1044,17 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/integrations/__init__.py",
-      "sha256": "92e6f7c95b560675cf838c4d1aeafa5c7490afce5f2a932c3d09ea53f9a65afe"
+      "sha256": "bf107710396b5386c6dab15accf39a9fcda991d66397577475f3064a908e9f10"
     },
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/integrations/extropic.py",
       "sha256": "b2068cd5495d763c3f7831300afb144bbffa4e83f3cd0713cfd7522792050fbe"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/integrations/ripgrep.py",
+      "sha256": "d662ba9cded10b2dc33e910ae1275e012a8d1a20db0ee8623779c0b3a4018a80"
     },
     {
       "mode": "644",
@@ -1229,7 +1259,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_local_experience.py",
-      "sha256": "fe7948aa0501f626ca7b7485048d0ee3a22438f187c8857256ab5773037664c0"
+      "sha256": "1838232710d321167f0d27c1289e0ad21c160c78d60f42385376fdb7a55bfdb5"
     },
     {
       "mode": "644",
@@ -1280,6 +1310,11 @@
       "mode": "644",
       "path": "runtimes/python/tests/test_retrieval_evaluation.py",
       "sha256": "8c7e5ae6f0ab68478038c79c1e7b262b6edf4a21df7152a34baebeb212275229"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/tests/test_ripgrep_integration.py",
+      "sha256": "9117dddae9441b7b1d21137d5533115e710554e04a36c7bcdd06c2c153d10bae"
     },
     {
       "mode": "644",
@@ -1433,6 +1468,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/benchmark-ripgrep-retrieval.py",
+      "sha256": "a2ffcc98b2ef92697a2d0a879f6282395ba073ae65ba4776bb398156cb182f20"
+    },
+    {
+      "mode": "755",
       "path": "scripts/download-benchmark-onnx-models.sh",
       "sha256": "6304add1341e0145746bb3c43078bc83be52b5e7f9e8ea38ca52fbc4f95a75a3"
     },
@@ -1444,7 +1484,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "cda75ce6fc5864869f471ca3de0cd9172fdd3b37ae2bc850d6847f6818ccef5e"
+      "sha256": "3854825cf1d2c38c4a87633479d6b1a68f4209644430b78dcc0f487f70fc0ff5"
     },
     {
       "mode": "755",
@@ -1683,6 +1723,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/verify-lexical-http-quickstarts.sh",
+      "sha256": "4e7bc7d534aaef9f553a337f23c032d6915641b725a9a4b416c09e122d6b486f"
+    },
+    {
+      "mode": "755",
       "path": "scripts/verify-markdown-links.py",
       "sha256": "c5c6935e78528f5ba5d7443bde857ffe61b3de77711758470646af9035fd2cbe"
     },
@@ -1779,12 +1824,17 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime.sh",
-      "sha256": "fbd9cd085eff6803debdad5bc52407a85d99fc5f2b9bae3d5b9de167f59b8e63"
+      "sha256": "7c8362e518ffbc810174972e9340f5d69cf9325211a33d42612227b2d2e13827"
     },
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "37656bb728e094285b4915f11044fea227cc1c3c34d1497ad8cbde425090d0a6"
+      "sha256": "b84d3aa20a74f49ebce0f34b18c79099335dea9f6c9808eb9182febfc65cc92e"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-ripgrep-retrieval-report.py",
+      "sha256": "bd3ae53e0b90e2ba55c987d28e90e7fe31be5474b6c84a294eeaf2a8e4f507c7"
     },
     {
       "mode": "755",
@@ -4139,5 +4189,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "6ede7d4303711c80c351578da49700971ce01b18baa4729cf9566bc6e4561649"
+  "treeSha256": "e6b7959543b600c6eed8e33b420b1cecd373519e2a212af9f81f7817bc9f5058"
 }

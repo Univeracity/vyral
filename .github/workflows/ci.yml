@@ -41,6 +41,9 @@ jobs:
       - name: Run deterministic tests
         run: dotnet test Vyral.sln --configuration Release --no-build --logger 'console;verbosity=minimal'
 
+      - name: Verify zero-embedding HTTP quickstarts
+        run: scripts/verify-lexical-http-quickstarts.sh
+
       - name: Prove core contract TFMs
         run: |
           dotnet build src/Vyral.Abstractions/Vyral.Abstractions.csproj --configuration Release --framework net8.0 --no-restore
@@ -126,6 +129,9 @@ jobs:
           python3 scripts/test-audit-github-launch-controls.py
           python3 scripts/test-export-public-tree.py
           python3 scripts/test-python-runtime-platform-matrix.py
+          python3 scripts/verify-ripgrep-retrieval-report.py \
+            benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json \
+            --require-admission
           while IFS= read -r -d '' script; do bash -n "$script"; done < <(find scripts deploy -type f -name '*.sh' -print0)
           find conformance contracts qualification -type f -name '*.json' -print0 | xargs -0 jq empty
 

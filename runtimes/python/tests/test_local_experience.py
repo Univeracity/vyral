@@ -10,6 +10,8 @@ from vyral_runtime._local_experience import (
     reset_local_quickstart,
     run_local_quickstart_sync,
 )
+from vyral_runtime.local import QueryEnvelope
+from vyral_runtime.runtime import VyralRuntime
 
 
 class LocalExperienceTests(unittest.TestCase):
@@ -24,6 +26,8 @@ class LocalExperienceTests(unittest.TestCase):
 
             self.assertEqual("prototype", first.maturity)
             self.assertFalse(first.full_local_ready)
+            self.assertEqual("lexical", first.retrieval_mode)
+            self.assertFalse(first.embedding_used)
             self.assertEqual("local-token-hash", first.embedding_provider)
             self.assertEqual("lexical", first.embedding_semantic_quality)
             self.assertEqual(3, first.created_chunks)
@@ -58,6 +62,15 @@ class LocalExperienceTests(unittest.TestCase):
                 "accepted work survived the runtime restart",
                 first.completed_result["message"],
             )
+            serialized = first.to_dict()
+            retrieval = serialized["retrieval"]
+            embedding = serialized["embedding"]
+            self.assertIsInstance(retrieval, dict)
+            self.assertIsInstance(embedding, dict)
+            assert isinstance(retrieval, dict)
+            assert isinstance(embedding, dict)
+            self.assertEqual("lexical", retrieval["mode"])
+            self.assertFalse(embedding["used"])
             self.assertLess(
                 next(
                     index
@@ -78,6 +91,20 @@ class LocalExperienceTests(unittest.TestCase):
             self.assertEqual(3, second.reused_chunks)
             self.assertEqual(0, second.dispatched_runs)
             self.assertTrue(second.admission_replayed)
+
+            with VyralRuntime.open_local(root) as runtime:
+                policy = runtime.records.get_collection_policy(
+                    "vyral-quickstart"
+                )
+                self.assertIsNotNone(policy)
+                assert policy is not None
+                self.assertEqual((), policy.vector_policies)
+                records = runtime.records.query_all_records(
+                    "vyral-quickstart",
+                    QueryEnvelope(partition_keys=("local",)),
+                )
+                self.assertEqual(3, len(records))
+                self.assertTrue(all(not record.vectors for record in records))
 
             inspection = inspect_local_runtime(root)
             self.assertEqual("local-single-node", inspection["topology"])

@@ -80,15 +80,17 @@ same proof:
 vyral
 ```
 
-The quickstart creates and ingests a three-document corpus, returns cited hybrid
-retrieval context, admits a decorated handler with a stable idempotency key,
+The quickstart creates a three-document, source-backed record corpus without
+vectors, returns cited lexical context, admits a decorated handler with a
+stable idempotency key,
 closes the runtime before dispatch, reopens the same SQLite/filesystem state,
 and completes the preserved run identity. It reports the queued receipt before
 the close/reopen boundary so acceptance is not confused with completion.
 
-The default `local-token-hash` provider is CPU-only, model-free, and requires no
-network or downloaded assets. It provides deterministic lexical-overlap vectors
-for local development; its ranking is not a semantic-model quality claim.
+The quickstart does not invoke an embedding provider. The runtime's available
+default `local-token-hash` provider remains CPU-only, model-free, and requires
+no network or downloaded assets; when explicitly selected for vector mechanics,
+its lexical-overlap ranking is not a semantic-model quality claim.
 
 Inspect the state and its material limitations independently:
 
@@ -196,6 +198,20 @@ The decorated handler remains directly awaitable for focused tests. Explicit
 naming or dynamic registration is clearer. Handler and plugin IDs remain
 explicit because they are durable contract identities; renaming or moving a
 Python function must not silently create a different operation.
+
+### Experimental source-native retrieval
+
+`vyral_runtime.integrations.ripgrep` provides a bounded, read-only experiment
+for code, Markdown, and other safely accessible text sources. It uses a static
+root and glob allowlist, fixed-string queries over standard input, source
+revision citations, and strict resource limits. It is not part of the stable
+wire contract and is not automatically exposed through REST or MCP. Retained
+comparison evidence supports it for exact identifiers and phrases in current
+local sources when maintaining a duplicate index is not worthwhile. Use Vyral
+lexical retrieval for reordered terms, prefixes, record filters, tenant
+boundaries, snapshots, and lower post-index query latency. See the
+[source-native retrieval guide](../../docs/guides/source-native-retrieval.md)
+and [comparison receipt](../../benchmarks/retrieval/README.md).
 
 ### Experimental Extropic execution
 

@@ -11,23 +11,22 @@ from vyral_client import VyralClient
 
 COLLECTION = os.environ.get("VYRAL_COLLECTION", "quickstart-chunks-python")
 PARTITION_KEY = "tenant:quickstart"
-VECTOR_FIELD = "contentEmbedding"
 
 
 def main() -> None:
     client = VyralClient(os.environ.get("VYRAL_URL", "http://localhost:5220"))
-    health = client.health()
-    embedding = health["embedding"]
 
     delete_run = client.delete_collection(
         COLLECTION, idempotency_key=f"quickstart:{COLLECTION}:delete"
     )
     client.wait_execution_run(delete_run["id"])
-    create_run = client.create_rag_collection(
-        COLLECTION,
-        dimensions=embedding["dimensions"],
-        embedding_field=VECTOR_FIELD,
-        indexed_metadata=["/metadata/status", "/metadata/topic"],
+    create_run = client.create_collection(
+        {
+            "name": COLLECTION,
+            "partitionKeyPath": "/partitionKey",
+            "vectorPolicies": [],
+            "indexedMetadata": ["/metadata/status", "/metadata/topic"],
+        },
         idempotency_key=f"quickstart:{COLLECTION}:create",
     )
     client.wait_execution_run(create_run["id"])
@@ -50,49 +49,55 @@ def main() -> None:
         },
     ]
 
-    ingestion = client.ingest_rag_texts(COLLECTION, [
-        {
-            "documentId": document["id"],
-            "partitionKey": PARTITION_KEY,
-            "text": document["text"],
-            "embeddingField": VECTOR_FIELD,
-            "sourceUri": f"memory://quickstart/{document['id']}",
-            "sourceKind": "example",
-            "metadata": {
-                "status": "active",
-                "topic": document["topic"],
-            },
-        }
-        for document in documents
-    ], idempotency_key=f"quickstart:{COLLECTION}:ingest")
-    client.wait_rag_ingestion_job(ingestion["id"])
+    client.upsert_records(
+        COLLECTION,
+        [
+            {
+                "id": document["id"],
+                "partitionKey": PARTITION_KEY,
+                "type": "rag.chunk",
+                "content": {"text": document["text"]},
+                "metadata": {
+                    "status": "active",
+                    "topic": document["topic"],
+                },
+                "sources": [
+                    {
+                        "id": document["id"],
+                        "kind": "example",
+                        "uri": f"memory://quickstart/{document['id']}",
+                        "label": document["id"],
+                    }
+                ],
+            }
+            for document in documents
+        ],
+        idempotency_key=f"quickstart:{COLLECTION}:ingest",
+    )
 
-    context = client.build_rag_context({
+    retrieval = {
         "query": "Retention holds keep protected records from deletion until the hold is released.",
         "collections": [COLLECTION],
         "partitionKeys": [PARTITION_KEY],
-        "embeddingField": VECTOR_FIELD,
+        "searchMode": "lexical",
+        "lexical": {"fields": ["/content/text"]},
         "limit": 2,
+        "includeTrace": True,
+    }
+    context_request = {
+        "retrieval": retrieval,
         "maxChars": 2000,
         "maxCharsPerChunk": 800,
         "includeContextText": True,
         "includeTrace": True,
-    })
+    }
+    context = client.build_rag_context(context_request)
     prompt = client.build_rag_prompt({
-        "context": {
-            "query": "Retention holds keep protected records from deletion until the hold is released.",
-            "collections": [COLLECTION],
-            "partitionKeys": [PARTITION_KEY],
-            "embeddingField": VECTOR_FIELD,
-            "limit": 2,
-            "maxChars": 2000,
-            "maxCharsPerChunk": 800,
-            "includeTrace": True,
-        },
+        "context": context_request,
         "template": {"failOnEmptyContext": True},
     })
 
-    print(f"provider={embedding['provider']} model={embedding['modelId']} dimensions={embedding['dimensions']}")
+    print("retrieval=lexical embeddings=unused")
     for chunk in context["chunks"]:
         citations = ", ".join(chunk.get("citationIds", [])) or "none"
         print(f"{chunk['rank']}. {chunk['id']} score={chunk['score']:.4f} citations={citations} text={chunk['text']}")
