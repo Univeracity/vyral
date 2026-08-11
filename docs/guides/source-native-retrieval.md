@@ -83,6 +83,28 @@ The executable is resolved once when the adapter starts and must identify
 itself as ripgrep. Install `rg` separately and keep its version in evaluation
 receipts when results need to be reproduced.
 
+### Retained comparison evidence
+
+A clean-tree local comparison over 2,016 documents and 18 labeled queries
+identifies one bounded role for this integration. Ripgrep achieved 1.00 recall,
+1.00 returned precision, and 1.00 MRR across eight exact-literal cases, returned
+a committed edit without an index refresh, and produced revision-bound line
+citations. Its warm p50/p95 was 16.734/33.398 ms.
+
+Vyral lexical `all` matched the exact-literal quality at a much lower indexed
+p50/p95 of 1.172/1.508 ms and beat fixed-string ripgrep on reordered terms.
+Vyral prefix retrieval achieved 1.00 recall on the two prefix cases where
+ripgrep returned none. Building the local record index took 29.158 seconds;
+ripgrep used the authorized source tree directly and initialized in 2.668 ms.
+
+The adapter therefore remains experimental for exact identifiers, error codes,
+headers, and literal phrases in current local code or Markdown when an index
+would be duplicate state. Prefer Vyral lexical retrieval once records need
+filters, tenant boundaries, stable snapshots, term-order tolerance, prefixes,
+or consistently lower query latency. The
+[retained report](../../benchmarks/retrieval/README.md) describes the fixture,
+limitations, complete metrics, and reproduction command.
+
 ## Corpus comparison recipe
 
 Use a labeled fixture that resembles the real corpus. Keep the source revision,

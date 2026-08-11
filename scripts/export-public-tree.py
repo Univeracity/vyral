@@ -129,6 +129,9 @@ REQUIRED_FILES = {
     ".gitattributes",
     ".github/workflows/ci.yml",
     ".github/workflows/python-runtime-qualification.yml",
+    "benchmarks/retrieval/README.md",
+    "benchmarks/retrieval/fixtures/source-native-v1.json",
+    "benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json",
     "conformance/invariant.md",
     "deploy/canonical-cutover/cloudbuild-mysql.yaml",
     "deploy/canonical-cutover/cloudbuild-postgres.yaml",
@@ -155,6 +158,7 @@ REQUIRED_FILES = {
     "runtimes/python/pyproject.toml",
     "runtimes/python/LICENSE",
     "scripts/benchmark-python-runtime.py",
+    "scripts/benchmark-ripgrep-retrieval.py",
     "scripts/audit-github-launch-controls.py",
     "scripts/export-public-tree.py",
     "scripts/mcp-wire-proxy.py",
@@ -176,6 +180,7 @@ REQUIRED_FILES = {
     "scripts/verify-oci-image-identity.py",
     "scripts/verify-public-export.sh",
     "scripts/verify-publication-policy.py",
+    "scripts/verify-ripgrep-retrieval-report.py",
     "scripts/write-python-runtime-platform-receipt.py",
 }
 

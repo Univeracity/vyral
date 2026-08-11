@@ -205,8 +205,13 @@ Python function must not silently create a different operation.
 for code, Markdown, and other safely accessible text sources. It uses a static
 root and glob allowlist, fixed-string queries over standard input, source
 revision citations, and strict resource limits. It is not part of the stable
-wire contract and is not automatically exposed through REST or MCP. See the
-[source-native retrieval guide](../../docs/guides/source-native-retrieval.md).
+wire contract and is not automatically exposed through REST or MCP. Retained
+comparison evidence supports it for exact identifiers and phrases in current
+local sources when maintaining a duplicate index is not worthwhile. Use Vyral
+lexical retrieval for reordered terms, prefixes, record filters, tenant
+boundaries, snapshots, and lower post-index query latency. See the
+[source-native retrieval guide](../../docs/guides/source-native-retrieval.md)
+and [comparison receipt](../../benchmarks/retrieval/README.md).
 
 ### Experimental Extropic execution
 

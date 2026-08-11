@@ -1,5 +1,5 @@
 {
-  "fileCount": 835,
+  "fileCount": 837,
   "files": [
     {
       "mode": "644",
@@ -54,7 +54,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "246b11dbc507bb36eec6491b5ae4569c574faa5400379c7222470b5fb4657818"
+      "sha256": "3d47c7a4fc46186d4ed091a4f6a89c3c9f0b368afe458a43554bc247043da8e8"
     },
     {
       "mode": "644",
@@ -134,7 +134,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "2a6443fe2d34ae2d31c36ca706db9c8d55719fff8e3c9fbc48f8567eaffa546b"
+      "sha256": "4181ac731be532f77e8044780902d57f925da784e169d147094ccc4a3311840e"
     },
     {
       "mode": "644",
@@ -173,8 +173,18 @@
     },
     {
       "mode": "644",
+      "path": "benchmarks/retrieval/README.md",
+      "sha256": "2eb3d5e8bdb8518fa3ddadf29b4deb6d29d1fb465f1172a63c0648cc46669b94"
+    },
+    {
+      "mode": "644",
       "path": "benchmarks/retrieval/fixtures/source-native-v1.json",
       "sha256": "abf12894b9720f59872a63f2e596bfa5b0fa268b1ebbd53a239561c5055618bb"
+    },
+    {
+      "mode": "644",
+      "path": "benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json",
+      "sha256": "20fd30ca51b43ca7ac8a36a95be3dff346fd94af39c3d6fdc57ad1d0c2c4c273"
     },
     {
       "mode": "644",
@@ -594,7 +604,7 @@
     {
       "mode": "644",
       "path": "docs/guides/source-native-retrieval.md",
-      "sha256": "e8cf1dfcf5bd815d2f320262d9854d8083a197eedbe8a91bfaf5505b02299ce9"
+      "sha256": "3bc7161ed4b1d83ee3a8461968bf7bc681ca49a38b4535ec81763629ce0e941e"
     },
     {
       "mode": "644",
@@ -624,7 +634,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "53ec5f86eb7e5deb8eeac8b12cbb365962b53ac4ec1c54bf094cfe42d8162bc4"
+      "sha256": "6ebe3db180f7c8c18bfa35fb433168cc6e4e8523848b39e0c20b15d7b570ef01"
     },
     {
       "mode": "644",
@@ -689,7 +699,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "e1f79f657e531c49211524fa8405b21700f6f586753352af68cdd91e78e4785f"
+      "sha256": "f2ae828afaf0af80241b1acfc38f2f536d02d217fe129a6c08190707fe536b20"
     },
     {
       "mode": "644",
@@ -1474,7 +1484,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "4c51919eac13813eec8679e8b17c7580776ea306ce67d8d05fcdfae14cd097b6"
+      "sha256": "3854825cf1d2c38c4a87633479d6b1a68f4209644430b78dcc0f487f70fc0ff5"
     },
     {
       "mode": "755",
@@ -1819,7 +1829,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "37656bb728e094285b4915f11044fea227cc1c3c34d1497ad8cbde425090d0a6"
+      "sha256": "85c0f2f93ab818261d4c6d583eda7d6c0570dc13177c54bd2b0c5abae324c7a5"
     },
     {
       "mode": "755",
@@ -4179,5 +4189,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": true,
-  "treeSha256": "cf37ea61c1d4998534ae5ad689342d0e66ce3b6e0bd8a6cb7476c01b437e60ec"
+  "treeSha256": "fb75e25a335be7dd10e5ae4095ec6b8220a860a03cfbd4ebc4b1004eb76051da"
 }

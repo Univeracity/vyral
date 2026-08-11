@@ -46,8 +46,9 @@ These scripts create isolated example collections by default. Override `VYRAL_CO
 
 ## Source-native retrieval
 
-For a local code or Markdown corpus, test the bounded experimental ripgrep
-integration before creating an index:
+For an authorized local code or Markdown tree, use the bounded experimental
+ripgrep integration to find exact identifiers, error codes, headers, or literal
+phrases without first copying the tree into an index:
 
 ```bash
 python3 examples/python/source_native_search.py \
@@ -59,7 +60,9 @@ The example searches only allowlisted `*.py` and `*.md` paths by default and
 prints root-relative line citations with source revisions. It does not expose a
 REST or MCP tool. See the
 [source-native retrieval guide](../docs/guides/source-native-retrieval.md) for
-the safety boundary and comparison recipe.
+the safety boundary and retained comparison evidence. Use indexed Vyral
+retrieval when queries need reordered terms, prefixes, record filters, tenant
+boundaries, or consistently lower post-index latency.
 
 ## Execution Runtime Sample
 

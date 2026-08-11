@@ -110,6 +110,9 @@ scripts/test-validate-google-execution-live.sh
 scripts/test-validate-aws-opensearch-live.sh
 scripts/test-scan-release-history.sh
 scripts/test-validate-canonical-mysql-benchmark-report.sh
+python3 scripts/verify-ripgrep-retrieval-report.py \
+  benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json \
+  --require-admission
 
 if [[ -n "${VYRAL_PUBLIC_HISTORY_DENYLIST_FILE:-}" || -n "${VYRAL_PUBLIC_HISTORY_DENYLIST:-}" ]]; then
   scripts/scan-release-history.sh

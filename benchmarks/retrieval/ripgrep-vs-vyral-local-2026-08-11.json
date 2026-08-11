@@ -1,0 +1,1711 @@
+{
+  "admission": {
+    "criteria": {
+      "absoluteRootNotDisclosed": true,
+      "editVisibleWithoutIndexRefresh": true,
+      "exactLiteralFirstRelevantIsPerfect": true,
+      "exactLiteralPrecisionIsPerfect": true,
+      "exactLiteralRecallIsPerfect": true,
+      "indexedRecordIsStaleUntilRefresh": true,
+      "localP95AtOrBelow100Ms": true,
+      "revisionBoundLineCitations": true,
+      "sensitiveCanaryExcluded": true,
+      "sourceTreeClean": true,
+      "vyralWinsPrefixQueries": true,
+      "vyralWinsReorderedTerms": true
+    },
+    "decision": "admit",
+    "identifiedUseCase": "Bounded, read-only, zero-index lookup of exact literals in an authorized local code or Markdown tree, with revision-bound line citations and immediate visibility of source edits.",
+    "notFor": [
+      "semantic or paraphrase retrieval",
+      "governed record filtering or tenant authorization",
+      "remote or non-text corpora",
+      "regex or caller-selected filesystem traversal"
+    ],
+    "userPath": "Construct RipgrepSearchAdapter once with an application-owned root and static globs, then call search with a fixed-string query and bounded limit."
+  },
+  "environment": {
+    "architecture": "x86_64",
+    "logicalCpuCount": 16,
+    "platform": "linux",
+    "pythonVersion": "3.12.3",
+    "ripgrepVersion": "ripgrep 15.2.0 (rev e89fff89ac)",
+    "sqliteVersion": "3.45.1"
+  },
+  "freshness": {
+    "absentBeforeEdit": true,
+    "path": "live/freshness.md",
+    "ripgrepVisibleWithoutIndexRefresh": true,
+    "ripgrepWriteToResultMs": 16.589,
+    "vyralPostRefreshQueryMs": 1.851,
+    "vyralRecordRefreshMs": 17.377,
+    "vyralStaleBeforeRecordRefresh": true,
+    "vyralStaleQueryMs": 1.452,
+    "vyralVisibleAfterRecordRefresh": true
+  },
+  "generatedAtUtc": "2026-08-11T08:31:53.999398Z",
+  "latencyMs": {
+    "iterations": 30,
+    "queriesPerIteration": 18,
+    "variants": {
+      "ripgrep-fixed": {
+        "coldFirstQueryMs": 17.152,
+        "warmAllCasesMs": {
+          "count": 540,
+          "max": 34.845,
+          "mean": 19.579,
+          "min": 16.212,
+          "p50": 16.734,
+          "p95": 33.398
+        }
+      },
+      "vyral-lexical-all": {
+        "coldFirstQueryMs": 1.591,
+        "warmAllCasesMs": {
+          "count": 540,
+          "max": 1.84,
+          "mean": 1.147,
+          "min": 0.699,
+          "p50": 1.172,
+          "p95": 1.508
+        }
+      },
+      "vyral-lexical-any": {
+        "coldFirstQueryMs": 2.231,
+        "warmAllCasesMs": {
+          "count": 540,
+          "max": 429.971,
+          "mean": 19.426,
+          "min": 0.701,
+          "p50": 1.492,
+          "p95": 291.765
+        }
+      },
+      "vyral-lexical-prefix": {
+        "coldFirstQueryMs": 1.117,
+        "warmAllCasesMs": {
+          "count": 540,
+          "max": 2.296,
+          "mean": 1.289,
+          "min": 0.744,
+          "p50": 1.292,
+          "p95": 1.738
+        }
+      }
+    }
+  },
+  "parameters": {
+    "authoredDocuments": 16,
+    "fixture": "benchmarks/retrieval/fixtures/source-native-v1.json",
+    "fixtureSha256": "abf12894b9720f59872a63f2e596bfa5b0fa268b1ebbd53a239561c5055618bb",
+    "generatedNoiseDocuments": 2000,
+    "iterations": 30,
+    "randomSeed": 20260811,
+    "topK": 5,
+    "totalIndexedDocuments": 2016
+  },
+  "quality": {
+    "topK": 5,
+    "variants": {
+      "ripgrep-fixed": {
+        "aggregate": {
+          "caseCount": 18,
+          "exactSetRate": 0.555556,
+          "meanPrecisionReturned": 0.62963,
+          "meanRecallAtK": 0.666667,
+          "meanReciprocalRank": 0.59375,
+          "positiveCaseCount": 16
+        },
+        "cases": [
+          {
+            "group": "exact-literal",
+            "id": "identifier-admission-receipt",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "ADMISSION_RECEIPT_V1"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-canonical-conflict",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": [
+                "canonical/conflict.md"
+              ]
+            },
+            "query": "ERR_CANONICAL_CONFLICT_409"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-retry-exhausted",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "runtime/retry.md"
+              ]
+            },
+            "query": "ERR_RETRY_EXHAUSTED_503"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-tenant",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "tenants/tenant-7f3a.md"
+              ],
+              "returned": [
+                "tenants/tenant-7f3a.md"
+              ]
+            },
+            "query": "tenant-7f3a"
+          },
+          {
+            "group": "exact-literal",
+            "id": "header-mcp-session",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": [
+                "mcp/routing.md"
+              ]
+            },
+            "query": "mcp-session-id"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-source-native",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/source-native.md"
+              ],
+              "returned": [
+                "retrieval/source-native.md"
+              ]
+            },
+            "query": "source-native fixed-string search"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-accepted-work",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "accepted work survives restart"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-injunction",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": [
+                "retrieval/prefix.md"
+              ]
+            },
+            "query": "preliminary injunction deadline"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-reordered-admission",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": []
+            },
+            "query": "restart accepted work"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-separated-receipt",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": []
+            },
+            "query": "receipt worker commit"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-recovery",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "runtime/recovery.md"
+              ],
+              "returned": []
+            },
+            "query": "queued work resume after restart"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-mcp-routing",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": []
+            },
+            "query": "header routes MCP session"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-injunction",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": []
+            },
+            "query": "prelim injunc deadl"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-canonical-conflict",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": []
+            },
+            "query": "canon confl"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-timeout",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.666667,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md"
+              ],
+              "returned": [
+                "operations/request-timeout.md",
+                "operations/retry-budget.md",
+                "operations/socket-timeout.md"
+              ]
+            },
+            "query": "timeout"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-retry",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.666667,
+              "recallAtK": 1.0,
+              "reciprocalRank": 0.5,
+              "relevant": [
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "canonical/conflict.md",
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ]
+            },
+            "query": "retry"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-identifier",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "ERR_UNICORN_TRANSPORT_9917"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-phrase",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "violet telescope orchard"
+          }
+        ],
+        "groups": {
+          "ambiguous": {
+            "caseCount": 2,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.666667,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 0.75,
+            "positiveCaseCount": 2
+          },
+          "exact-literal": {
+            "caseCount": 8,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 8
+          },
+          "negative": {
+            "caseCount": 2,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": null,
+            "positiveCaseCount": 0
+          },
+          "prefix": {
+            "caseCount": 2,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.0,
+            "meanRecallAtK": 0.0,
+            "meanReciprocalRank": 0.0,
+            "positiveCaseCount": 2
+          },
+          "term-retrieval": {
+            "caseCount": 4,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.0,
+            "meanRecallAtK": 0.0,
+            "meanReciprocalRank": 0.0,
+            "positiveCaseCount": 4
+          }
+        }
+      },
+      "vyral-lexical-all": {
+        "aggregate": {
+          "caseCount": 18,
+          "exactSetRate": 0.777778,
+          "meanPrecisionReturned": 0.814815,
+          "meanRecallAtK": 0.833333,
+          "meanReciprocalRank": 0.8125,
+          "positiveCaseCount": 16
+        },
+        "cases": [
+          {
+            "group": "exact-literal",
+            "id": "identifier-admission-receipt",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "ADMISSION_RECEIPT_V1"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-canonical-conflict",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": [
+                "canonical/conflict.md"
+              ]
+            },
+            "query": "ERR_CANONICAL_CONFLICT_409"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-retry-exhausted",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "runtime/retry.md"
+              ]
+            },
+            "query": "ERR_RETRY_EXHAUSTED_503"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-tenant",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "tenants/tenant-7f3a.md"
+              ],
+              "returned": [
+                "tenants/tenant-7f3a.md"
+              ]
+            },
+            "query": "tenant-7f3a"
+          },
+          {
+            "group": "exact-literal",
+            "id": "header-mcp-session",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": [
+                "mcp/routing.md"
+              ]
+            },
+            "query": "mcp-session-id"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-source-native",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/source-native.md"
+              ],
+              "returned": [
+                "retrieval/source-native.md"
+              ]
+            },
+            "query": "source-native fixed-string search"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-accepted-work",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "accepted work survives restart"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-injunction",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": [
+                "retrieval/prefix.md"
+              ]
+            },
+            "query": "preliminary injunction deadline"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-reordered-admission",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "restart accepted work"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-separated-receipt",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "receipt worker commit"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-recovery",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/recovery.md"
+              ],
+              "returned": [
+                "runtime/recovery.md"
+              ]
+            },
+            "query": "queued work resume after restart"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-mcp-routing",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": []
+            },
+            "query": "header routes MCP session"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-injunction",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": []
+            },
+            "query": "prelim injunc deadl"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-canonical-conflict",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": []
+            },
+            "query": "canon confl"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-timeout",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.666667,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md"
+              ],
+              "returned": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md",
+                "operations/retry-budget.md"
+              ]
+            },
+            "query": "timeout"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-retry",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ]
+            },
+            "query": "retry"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-identifier",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "ERR_UNICORN_TRANSPORT_9917"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-phrase",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "violet telescope orchard"
+          }
+        ],
+        "groups": {
+          "ambiguous": {
+            "caseCount": 2,
+            "exactSetRate": 0.5,
+            "meanPrecisionReturned": 0.833333,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 2
+          },
+          "exact-literal": {
+            "caseCount": 8,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 8
+          },
+          "negative": {
+            "caseCount": 2,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": null,
+            "positiveCaseCount": 0
+          },
+          "prefix": {
+            "caseCount": 2,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.0,
+            "meanRecallAtK": 0.0,
+            "meanReciprocalRank": 0.0,
+            "positiveCaseCount": 2
+          },
+          "term-retrieval": {
+            "caseCount": 4,
+            "exactSetRate": 0.75,
+            "meanPrecisionReturned": 0.75,
+            "meanRecallAtK": 0.75,
+            "meanReciprocalRank": 0.75,
+            "positiveCaseCount": 4
+          }
+        }
+      },
+      "vyral-lexical-any": {
+        "aggregate": {
+          "caseCount": 18,
+          "exactSetRate": 0.166667,
+          "meanPrecisionReturned": 0.427778,
+          "meanRecallAtK": 0.833333,
+          "meanReciprocalRank": 0.875,
+          "positiveCaseCount": 16
+        },
+        "cases": [
+          {
+            "group": "exact-literal",
+            "id": "identifier-admission-receipt",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 3,
+              "hit": true,
+              "precisionReturned": 0.25,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py",
+                "runtime/recovery.md",
+                "retrieval/hard-negative.md",
+                "runtime/retry.md"
+              ]
+            },
+            "query": "ADMISSION_RECEIPT_V1"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-canonical-conflict",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.5,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": [
+                "canonical/conflict.md",
+                "runtime/retry.md"
+              ]
+            },
+            "query": "ERR_CANONICAL_CONFLICT_409"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-retry-exhausted",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 2,
+              "hit": true,
+              "precisionReturned": 0.333333,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "runtime/retry.md",
+                "operations/retry-budget.md",
+                "canonical/conflict.md"
+              ]
+            },
+            "query": "ERR_RETRY_EXHAUSTED_503"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-tenant",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.5,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "tenants/tenant-7f3a.md"
+              ],
+              "returned": [
+                "tenants/tenant-7f3a.md",
+                "governance/authorization.md"
+              ]
+            },
+            "query": "tenant-7f3a"
+          },
+          {
+            "group": "exact-literal",
+            "id": "header-mcp-session",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.5,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": [
+                "mcp/routing.md",
+                "runtime/admission.py"
+              ]
+            },
+            "query": "mcp-session-id"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-source-native",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.5,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/source-native.md"
+              ],
+              "returned": [
+                "retrieval/source-native.md",
+                "governance/authorization.md"
+              ]
+            },
+            "query": "source-native fixed-string search"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-accepted-work",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 3,
+              "hit": true,
+              "precisionReturned": 0.25,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py",
+                "runtime/recovery.md",
+                "retrieval/hard-negative.md",
+                "runtime/worker-pool.md"
+              ]
+            },
+            "query": "accepted work survives restart"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-injunction",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.5,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": [
+                "retrieval/prefix.md",
+                "operations/socket-timeout.md"
+              ]
+            },
+            "query": "preliminary injunction deadline"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-reordered-admission",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 3,
+              "hit": true,
+              "precisionReturned": 0.25,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py",
+                "runtime/recovery.md",
+                "retrieval/hard-negative.md",
+                "runtime/worker-pool.md"
+              ]
+            },
+            "query": "restart accepted work"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-separated-receipt",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 3,
+              "hit": true,
+              "precisionReturned": 0.25,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py",
+                "runtime/worker-pool.md",
+                "runtime/recovery.md",
+                "retrieval/hard-negative.md"
+              ]
+            },
+            "query": "receipt worker commit"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-recovery",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 4,
+              "hit": true,
+              "precisionReturned": 0.2,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/recovery.md"
+              ],
+              "returned": [
+                "runtime/recovery.md",
+                "runtime/admission.py",
+                "retrieval/hard-negative.md",
+                "runtime/worker-pool.md",
+                "operations/request-timeout.md"
+              ]
+            },
+            "query": "queued work resume after restart"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-mcp-routing",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": [
+                "mcp/routing.md"
+              ]
+            },
+            "query": "header routes MCP session"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-injunction",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": []
+            },
+            "query": "prelim injunc deadl"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-canonical-conflict",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": []
+            },
+            "query": "canon confl"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-timeout",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.666667,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md"
+              ],
+              "returned": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md",
+                "operations/retry-budget.md"
+              ]
+            },
+            "query": "timeout"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-retry",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ]
+            },
+            "query": "retry"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-identifier",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 3,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": [
+                "operations/socket-timeout.md",
+                "canonical/conflict.md",
+                "runtime/retry.md"
+              ]
+            },
+            "query": "ERR_UNICORN_TRANSPORT_9917"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-phrase",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "violet telescope orchard"
+          }
+        ],
+        "groups": {
+          "ambiguous": {
+            "caseCount": 2,
+            "exactSetRate": 0.5,
+            "meanPrecisionReturned": 0.833333,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 2
+          },
+          "exact-literal": {
+            "caseCount": 8,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.416667,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 8
+          },
+          "negative": {
+            "caseCount": 2,
+            "exactSetRate": 0.5,
+            "meanPrecisionReturned": 0.5,
+            "meanRecallAtK": 0.5,
+            "meanReciprocalRank": null,
+            "positiveCaseCount": 0
+          },
+          "prefix": {
+            "caseCount": 2,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.0,
+            "meanRecallAtK": 0.0,
+            "meanReciprocalRank": 0.0,
+            "positiveCaseCount": 2
+          },
+          "term-retrieval": {
+            "caseCount": 4,
+            "exactSetRate": 0.25,
+            "meanPrecisionReturned": 0.425,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 4
+          }
+        }
+      },
+      "vyral-lexical-prefix": {
+        "aggregate": {
+          "caseCount": 18,
+          "exactSetRate": 0.833333,
+          "meanPrecisionReturned": 0.907407,
+          "meanRecallAtK": 0.944444,
+          "meanReciprocalRank": 0.9375,
+          "positiveCaseCount": 16
+        },
+        "cases": [
+          {
+            "group": "exact-literal",
+            "id": "identifier-admission-receipt",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "ADMISSION_RECEIPT_V1"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-canonical-conflict",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": [
+                "canonical/conflict.md"
+              ]
+            },
+            "query": "ERR_CANONICAL_CONFLICT_409"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-retry-exhausted",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "runtime/retry.md"
+              ]
+            },
+            "query": "ERR_RETRY_EXHAUSTED_503"
+          },
+          {
+            "group": "exact-literal",
+            "id": "identifier-tenant",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "tenants/tenant-7f3a.md"
+              ],
+              "returned": [
+                "tenants/tenant-7f3a.md"
+              ]
+            },
+            "query": "tenant-7f3a"
+          },
+          {
+            "group": "exact-literal",
+            "id": "header-mcp-session",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": [
+                "mcp/routing.md"
+              ]
+            },
+            "query": "mcp-session-id"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-source-native",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/source-native.md"
+              ],
+              "returned": [
+                "retrieval/source-native.md"
+              ]
+            },
+            "query": "source-native fixed-string search"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-accepted-work",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "accepted work survives restart"
+          },
+          {
+            "group": "exact-literal",
+            "id": "phrase-injunction",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": [
+                "retrieval/prefix.md"
+              ]
+            },
+            "query": "preliminary injunction deadline"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-reordered-admission",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "restart accepted work"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "terms-separated-receipt",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/admission.py"
+              ],
+              "returned": [
+                "runtime/admission.py"
+              ]
+            },
+            "query": "receipt worker commit"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-recovery",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "runtime/recovery.md"
+              ],
+              "returned": [
+                "runtime/recovery.md"
+              ]
+            },
+            "query": "queued work resume after restart"
+          },
+          {
+            "group": "term-retrieval",
+            "id": "natural-mcp-routing",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 0,
+              "hit": false,
+              "precisionReturned": 0.0,
+              "recallAtK": 0.0,
+              "reciprocalRank": 0.0,
+              "relevant": [
+                "mcp/routing.md"
+              ],
+              "returned": []
+            },
+            "query": "header routes MCP session"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-injunction",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "retrieval/prefix.md"
+              ],
+              "returned": [
+                "retrieval/prefix.md"
+              ]
+            },
+            "query": "prelim injunc deadl"
+          },
+          {
+            "group": "prefix",
+            "id": "prefix-canonical-conflict",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "canonical/conflict.md"
+              ],
+              "returned": [
+                "canonical/conflict.md"
+              ]
+            },
+            "query": "canon confl"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-timeout",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.666667,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md"
+              ],
+              "returned": [
+                "operations/request-timeout.md",
+                "operations/socket-timeout.md",
+                "operations/retry-budget.md"
+              ]
+            },
+            "query": "timeout"
+          },
+          {
+            "group": "ambiguous",
+            "id": "ambiguous-retry",
+            "metrics": {
+              "exactSet": false,
+              "falsePositiveCount": 1,
+              "hit": true,
+              "precisionReturned": 0.666667,
+              "recallAtK": 1.0,
+              "reciprocalRank": 1.0,
+              "relevant": [
+                "operations/retry-budget.md",
+                "runtime/retry.md"
+              ],
+              "returned": [
+                "operations/retry-budget.md",
+                "runtime/retry.md",
+                "canonical/conflict.md"
+              ]
+            },
+            "query": "retry"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-identifier",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "ERR_UNICORN_TRANSPORT_9917"
+          },
+          {
+            "group": "negative",
+            "id": "negative-missing-phrase",
+            "metrics": {
+              "exactSet": true,
+              "falsePositiveCount": 0,
+              "hit": true,
+              "precisionReturned": 1.0,
+              "recallAtK": 1.0,
+              "reciprocalRank": null,
+              "relevant": [],
+              "returned": []
+            },
+            "query": "violet telescope orchard"
+          }
+        ],
+        "groups": {
+          "ambiguous": {
+            "caseCount": 2,
+            "exactSetRate": 0.0,
+            "meanPrecisionReturned": 0.666667,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 2
+          },
+          "exact-literal": {
+            "caseCount": 8,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 8
+          },
+          "negative": {
+            "caseCount": 2,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": null,
+            "positiveCaseCount": 0
+          },
+          "prefix": {
+            "caseCount": 2,
+            "exactSetRate": 1.0,
+            "meanPrecisionReturned": 1.0,
+            "meanRecallAtK": 1.0,
+            "meanReciprocalRank": 1.0,
+            "positiveCaseCount": 2
+          },
+          "term-retrieval": {
+            "caseCount": 4,
+            "exactSetRate": 0.75,
+            "meanPrecisionReturned": 0.75,
+            "meanRecallAtK": 0.75,
+            "meanReciprocalRank": 0.75,
+            "positiveCaseCount": 4
+          }
+        }
+      }
+    }
+  },
+  "safety": {
+    "absoluteRootDisclosed": false,
+    "citationSampleCount": 1,
+    "citationsRevisionBound": true,
+    "ripgrepFilteredSensitivePaths": 1,
+    "ripgrepReturnedPaths": [],
+    "ripgrepSensitiveCanaryExcluded": true,
+    "vyralSensitiveCanaryExcluded": true
+  },
+  "schemaVersion": "vyral.retrieval.ripgrep-comparison.v1",
+  "setupMs": {
+    "ripgrepAdapterInitialize": 2.668,
+    "vyralRecordIngest": 29158.337,
+    "vyralStoreInitialize": 43.954,
+    "writeCorpus": 205.486
+  },
+  "sourceCommit": "9931243b07d18f0c959a7182455fdb032cf15904",
+  "sourceDirty": false,
+  "storageBytes": {
+    "sourceCorpus": 288995,
+    "vyralDatabase": 13324288
+  }
+}
