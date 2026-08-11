@@ -114,6 +114,44 @@ python3 scripts/verify-ripgrep-retrieval-report.py \
   benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json \
   --require-admission
 
+ripgrep_comparison="$ARTIFACT_ROOT/ripgrep-comparison.json"
+ripgrep_tampered="$ARTIFACT_ROOT/ripgrep-comparison-tampered.json"
+ripgrep_user_result="$ARTIFACT_ROOT/ripgrep-user-path.json"
+python3 scripts/benchmark-ripgrep-retrieval.py \
+  --output "$ripgrep_comparison" \
+  --noise-documents 60 \
+  --iterations 3 \
+  --require-admission
+python3 scripts/verify-ripgrep-retrieval-report.py \
+  "$ripgrep_comparison" \
+  --minimum-noise 60 \
+  --minimum-iterations 3 \
+  --require-admission
+jq '.quality.variants["ripgrep-fixed"].cases[0].metrics.recallAtK = 0' \
+  "$ripgrep_comparison" > "$ripgrep_tampered"
+if python3 scripts/verify-ripgrep-retrieval-report.py \
+  "$ripgrep_tampered" \
+  --minimum-noise 60 \
+  --minimum-iterations 3; then
+  echo "The ripgrep comparison verifier accepted altered metrics." >&2
+  exit 1
+fi
+python3 examples/python/source_native_search.py \
+  RipgrepSearchAdapter \
+  --root . \
+  --limit 5 \
+  --json > "$ripgrep_user_result"
+jq -e '
+  (.matches | length > 0)
+  and all(
+    .matches[];
+    (.sourceUri | startswith("vyral-source://ripgrep/"))
+    and (.sourceUri | contains("#L"))
+    and (.sourceRevision | startswith("sha256:"))
+  )
+' "$ripgrep_user_result" >/dev/null
+printf 'ripgrep-retrieval-admission-gate=ok\n'
+
 if [[ -n "${VYRAL_PUBLIC_HISTORY_DENYLIST_FILE:-}" || -n "${VYRAL_PUBLIC_HISTORY_DENYLIST:-}" ]]; then
   scripts/scan-release-history.sh
 fi
