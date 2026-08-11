@@ -62,6 +62,7 @@ PUBLIC_DOC_FILES = {
     "docs/concepts/canonical-store.md",
     "docs/contributing/adapter-contributor.md",
     "docs/guides/consumer-handoff.md",
+    "docs/guides/extropic-execution.md",
     "docs/maintainers/releasing.md",
     "docs/reference/execution-runtime-limitations.md",
     "docs/reference/stability.md",

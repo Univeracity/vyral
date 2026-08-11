@@ -43,6 +43,7 @@ docs/contributing/*
 !docs/guides/
 docs/guides/*
 !docs/guides/consumer-handoff.md
+!docs/guides/extropic-execution.md
 !docs/maintainers/
 docs/maintainers/*
 !docs/maintainers/releasing.md
