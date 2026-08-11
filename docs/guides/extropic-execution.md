@@ -89,6 +89,32 @@ is useful for stochastic workloads whose results need an explicit replay and
 evaluation input; it accepts an integer or string in the configured seed
 field.
 
+## Prove a real Torx workload locally
+
+The repository includes a small parameterized stochastic circuit that uses
+the [public Torx API](https://github.com/extropic-ai/torx) rather than a
+placeholder compute function. It evaluates a two-wire circuit with an explicit
+seed and returns a normalized JSON distribution through the same
+registered-workload boundary.
+
+Torx 0.0.1 requires Python 3.11 or newer. The proof extra pins the current Torx
+and JAX compatibility line without changing Vyral's Python 3.10 baseline:
+
+```bash
+python3.12 -m venv .venv
+. .venv/bin/activate
+python -m pip install --editable "runtimes/python[extropic-torx]"
+python scripts/verify-python-extropic-torx.py
+```
+
+The verifier executes
+[`examples/python/extropic_torx_workload.py`](../../examples/python/extropic_torx_workload.py)
+locally, prepares the exact Extropic cloudpickle envelope, removes the
+application module from a clean child process, and executes the transported
+function again. It creates no provider job and consumes no credits. This is
+evidence for Torx API compatibility and workload packaging, not evidence for
+the hosted sandbox or Z1.
+
 ## Lifecycle and recovery
 
 Extropic 0.5 submission has three provider operations: create, upload, and
@@ -125,6 +151,9 @@ platform failures. Provider error detail is kept out of public results.
 
 - Compatibility is pinned to `extro-sim >=0.5,<0.6`. The SDK and provider are
   new enough that minor contract changes should be expected and reviewed.
+- The optional local Torx proof pins `extro-torx ==0.0.1` and JAX 0.11.x. Torx
+  is not a Vyral runtime dependency and its Python 3.11 floor does not narrow
+  the base runtime's supported Python versions.
 - Vyral serializes plain registered Python functions by value so the sandbox
   does not need the host application's module. Imported packages must already
   exist in the sandbox image. Callable objects and helpers imported from other
@@ -163,3 +192,15 @@ VYRAL_EXTROPIC_LIVE=1 EXTROPIC_TOKEN="..." \
 
 The command consumes provider credits and leaves the terminal provider job in
 the account's history. Review the receipt and account job list after every run.
+
+After the dependency-free smoke succeeds, an operator can separately prove
+that Extropic's current L4 sandbox contains the Torx/JAX workload dependencies:
+
+```bash
+VYRAL_EXTROPIC_TORX_LIVE=1 EXTROPIC_TOKEN="..." \
+  python scripts/verify-python-extropic-torx-live.py
+```
+
+This second command is intentionally absent from ordinary CI. It consumes L4
+credits, never opens browser authentication, emits a redacted receipt, and
+does not turn the prototype into an adapter-qualification or hardware claim.

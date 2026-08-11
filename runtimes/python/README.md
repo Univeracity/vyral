@@ -240,7 +240,9 @@ reconnected and retried by id. The integration is a prototype, remains outside
 the adapter qualification matrix, and makes no Z1 support claim. Registered
 workloads should be self-contained plain Python functions; Vyral serializes
 those functions by value, while third-party imports must exist in Extropic's
-sandbox. See the
+sandbox. A pinned `extropic-torx` extra and
+[`examples/python/extropic_torx_workload.py`](../../examples/python/extropic_torx_workload.py)
+provide a real, credit-free Torx packaging proof on Python 3.11 or newer. See the
 [Extropic execution guide](../../docs/guides/extropic-execution.md) for the
 complete lifecycle and current boundaries.
 
@@ -251,6 +253,7 @@ complete lifecycle and current boundaries.
 | Talk to a running .NET or Python Vyral host | `vyral-client` |
 | Run Vyral in-process without a server or .NET | `vyral-runtime` |
 | Run a Python-hosted REST and MCP endpoint | `vyral-runtime[server]` |
+| Rehearse the current Extropic/Torx proof locally | `vyral-runtime[extropic-torx]` (Python 3.11+) |
 
 The existing `vyral-client` distribution remains the supported lightweight
 client for a running Vyral server. `vyral-runtime` is a separate distribution

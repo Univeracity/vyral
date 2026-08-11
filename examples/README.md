@@ -70,6 +70,23 @@ requires API-key authentication. The key is resolved inside the task and is
 not passed as a Prefect flow parameter. This is an optional composition recipe,
 not a Prefect runtime adapter or a provider-qualification claim.
 
+## Extropic and Torx
+
+`python/extropic_torx_workload.py` places a real Torx parameterized stochastic
+circuit behind Vyral's durable execution lifecycle. On Python 3.11 or newer,
+install the isolated proof dependencies and run the deterministic local and
+clean-process packaging check:
+
+```bash
+python -m pip install --editable "runtimes/python[extropic-torx]"
+python scripts/verify-python-extropic-torx.py
+```
+
+That check does not contact Extropic or consume credits. The separately gated
+live script is documented in the
+[Extropic execution guide](../docs/guides/extropic-execution.md); it is not an
+ordinary example command or a Z1 support claim.
+
 ## GraphRAG Recipes
 
 GraphRAG works best when the record collection remains the retrieval source of truth and the graph is used to add bounded relationships, provenance, and review state around retrieved chunks.

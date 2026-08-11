@@ -35,6 +35,11 @@ server = [
 extropic = [
   "extro-sim>=0.5,<0.6"
 ]
+extropic-torx = [
+  "extro-sim>=0.5,<0.6",
+  "extro-torx==0.0.1",
+  "jax>=0.11,<0.12"
+]
 dev = [
   "build>=1.2,<2",
   "coverage==7.15.4",
