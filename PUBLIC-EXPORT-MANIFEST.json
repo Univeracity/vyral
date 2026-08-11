@@ -1,5 +1,5 @@
 {
-  "fileCount": 837,
+  "fileCount": 844,
   "files": [
     {
       "mode": "644",
@@ -49,12 +49,17 @@
     {
       "mode": "644",
       "path": ".github/pull_request_template.md",
-      "sha256": "ac9923dbb8f62d8b8daef7742187a99cdbade669c4c728de3c297e5e3915b48d"
+      "sha256": "2329c64ad1437e0590b25827751bb075b50c6b1bcb26aa07b9dc472553221827"
+    },
+    {
+      "mode": "644",
+      "path": ".github/workflows/aws-live-qualification.yml",
+      "sha256": "4f6ce30537ce142d0140a24a435e75f66e9c07e3cc4665ea0a35640102418c98"
     },
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "f2ee6e2e92d2cd36fe5fc65928be57e2c77620c062c75ce7e867320937a66036"
+      "sha256": "56c55a1fa8d81450b3332c67dad30974568fe431a3e91e76530153c57d52df74"
     },
     {
       "mode": "644",
@@ -84,7 +89,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/python-runtime-qualification.yml",
-      "sha256": "8593187e599e4a4d3659c68aa2a0db339dbdc2df00558169fd48b6da8816e326"
+      "sha256": "31ad9f66d0d3207ab026809cc4f6c8d6d74459aa1218bced85134347e8a22868"
     },
     {
       "mode": "644",
@@ -134,7 +139,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "4181ac731be532f77e8044780902d57f925da784e169d147094ccc4a3311840e"
+      "sha256": "918e59fa888aab5ec1951d4522feda022dc324e938ca5ef4f3c715841ecfe16a"
     },
     {
       "mode": "644",
@@ -174,7 +179,7 @@
     {
       "mode": "644",
       "path": "benchmarks/retrieval/README.md",
-      "sha256": "2eb3d5e8bdb8518fa3ddadf29b4deb6d29d1fb465f1172a63c0648cc46669b94"
+      "sha256": "12d5f1486cb4b3a8b142882a080d9d4e144e24af0d26ada479b004f467352d68"
     },
     {
       "mode": "644",
@@ -184,7 +189,7 @@
     {
       "mode": "644",
       "path": "benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json",
-      "sha256": "20fd30ca51b43ca7ac8a36a95be3dff346fd94af39c3d6fdc57ad1d0c2c4c273"
+      "sha256": "8bfcc43b4ba24f02be810860c7bc011814aa4f5d45a67df3a99fa95900687ba3"
     },
     {
       "mode": "644",
@@ -604,12 +609,12 @@
     {
       "mode": "644",
       "path": "docs/guides/source-native-retrieval.md",
-      "sha256": "3bc7161ed4b1d83ee3a8461968bf7bc681ca49a38b4535ec81763629ce0e941e"
+      "sha256": "c6e22d6137d6d1544d752b722dc634c69f4429207cd298f2b590948528ba54a7"
     },
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "a63504fa1f48133f87dc0f3871a5b925bfa1f29a0472f7684938568b44732f43"
+      "sha256": "888945792fed15e89bd1241c6d828b758a6daaba9130a79eeeff74bd8fc375ab"
     },
     {
       "mode": "644",
@@ -634,7 +639,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "6ebe3db180f7c8c18bfa35fb433168cc6e4e8523848b39e0c20b15d7b570ef01"
+      "sha256": "a6b9159b28ace04cb37f1398e863235dd8ba87030e70899cedaf70ac5e5fd79f"
     },
     {
       "mode": "644",
@@ -668,6 +673,11 @@
     },
     {
       "mode": "644",
+      "path": "examples/python/retrieval_migration.py",
+      "sha256": "dc7ae7b1fb37aacb9df88116535e8baf4261067775963eb5546638c34224d2f4"
+    },
+    {
+      "mode": "644",
       "path": "examples/python/source_native_search.py",
       "sha256": "6078532d1b25733f3b0b9a4556cf5445c7e24f29b028e87389328c9dc7f6280b"
     },
@@ -678,8 +688,13 @@
     },
     {
       "mode": "644",
+      "path": "packaging/publication-cohort.json",
+      "sha256": "fbb6e176bc2fdeff3b8fb071ee34565577ce4e13d8bacdf392fb6e830ef684fc"
+    },
+    {
+      "mode": "644",
       "path": "qualification/README.md",
-      "sha256": "1adbe334d87252798238886fda01c0eb477f1e59f95831ed30c99de1aa4aea01"
+      "sha256": "dc72562fe45928550130c661474035f2f92eef0ca9ae82b58967d2ad70ee0759"
     },
     {
       "mode": "644",
@@ -699,7 +714,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "f2ae828afaf0af80241b1acfc38f2f536d02d217fe129a6c08190707fe536b20"
+      "sha256": "7a092b02573f2b01bfa4ae5b53227db9e0075a5bae7047db8eafe4f8b9a6574e"
     },
     {
       "mode": "644",
@@ -839,7 +854,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/_starter.py",
-      "sha256": "7c628c66603796ecfc3e083221cccb9a4ba54da6739323e4cbd13b064349f5a4"
+      "sha256": "2f0a5b393b97cc813462199aa46f19c527bcb9f35726a02087ecf852f01bf96c"
     },
     {
       "mode": "644",
@@ -1019,7 +1034,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/cli.py",
-      "sha256": "a4216db3116918da043902525d84a8a73a1d9563e016b933310818636de813f0"
+      "sha256": "e9d168517ba4fa3b73368af7982f5175c7104101eec498c69435a522d8e1e530"
     },
     {
       "mode": "644",
@@ -1254,7 +1269,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_host_cli.py",
-      "sha256": "38776f48036cd936a80a95e99a71361e290362d03c79caa37ad05c68243731cc"
+      "sha256": "1e81661bf783c45fa1f719a330ab435307ed2a9481c7e96319260d98581229ee"
     },
     {
       "mode": "644",
@@ -1459,7 +1474,7 @@
     {
       "mode": "644",
       "path": "scripts/audit-github-launch-controls.py",
-      "sha256": "5a76b0a411c0ca89becfbbbf37cdcce5ffc8a7b637129d42a8ded8233afdf349"
+      "sha256": "56c8d03cbabbaa7bee80a5c73c23ac7a10bf4a44a38fa15503c8adc23d246750"
     },
     {
       "mode": "755",
@@ -1484,7 +1499,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "3854825cf1d2c38c4a87633479d6b1a68f4209644430b78dcc0f487f70fc0ff5"
+      "sha256": "d846346a72c2c748f070c01ca544c5be9824339b0be86263b7c5cd90b1d65bd9"
     },
     {
       "mode": "755",
@@ -1574,7 +1589,7 @@
     {
       "mode": "644",
       "path": "scripts/test-audit-github-launch-controls.py",
-      "sha256": "4314da8422e7ffa65f62c3c142deebf43dbbaf25b156c4affc12afc0ef2aecc3"
+      "sha256": "87b8ad83721e5c3ad30b00b1470c7bff04940594cb502aa580af5130c48f2bb5"
     },
     {
       "mode": "755",
@@ -1618,6 +1633,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/test-validate-aws-live-qualification.sh",
+      "sha256": "74bc95e68629d76cea581c950e7fbc07c59b029491a6c8508e9a97845991145d"
+    },
+    {
+      "mode": "755",
       "path": "scripts/test-validate-aws-opensearch-live.sh",
       "sha256": "2faf7d1c4a64f191a226f7fee977cf94c4bca73733553da5ca34a76d32c0a1fe"
     },
@@ -1645,6 +1665,11 @@
       "mode": "755",
       "path": "scripts/validate-aws-execution-live.sh",
       "sha256": "567bcb9753925874312829c3054143045e8aa18809124731918c4957a1189d18"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/validate-aws-live-qualification.sh",
+      "sha256": "652819a9a14acc628996525f065d9ed1427281b3fd8a41c892263576e1e71200"
     },
     {
       "mode": "755",
@@ -1768,8 +1793,13 @@
     },
     {
       "mode": "644",
+      "path": "scripts/verify-publication-cohort.py",
+      "sha256": "7855de2e76c8db7a456858c1a845d30424723fb0f6065a5d2a8cb646129f2385"
+    },
+    {
+      "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "aaebed0e149ce65eb36333961abfa78a212dc8a5ac39b61c7e8d7c900e8eebff"
+      "sha256": "49657eb43f9963eff79c10f760c419c719016a9389d047daaedcf29473e5393f"
     },
     {
       "mode": "755",
@@ -1799,7 +1829,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime-install.py",
-      "sha256": "e58289de89a7b26a1ec86cb30413351532f6f011d736814bf43e30150f8235fe"
+      "sha256": "857db8f58f699da296fc13e8c8117e11e5741d03cc551dfe73a3cd4b3278dba9"
     },
     {
       "mode": "755",
@@ -1829,7 +1859,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "b84d3aa20a74f49ebce0f34b18c79099335dea9f6c9808eb9182febfc65cc92e"
+      "sha256": "35fa42e39f087c7a68ed50e357edbad3f9595ca01720d5c5a138a78ebca6d0c0"
     },
     {
       "mode": "755",
@@ -1840,6 +1870,11 @@
       "mode": "755",
       "path": "scripts/verify-runtime-conformance.py",
       "sha256": "14f4e46a8093804e522982f980d474441ce3829413cbb7b6923bddb7fac5764d"
+    },
+    {
+      "mode": "644",
+      "path": "scripts/verify-source-quickstart.py",
+      "sha256": "b04c73826aa710f4e9b5b9ed711cf178f918adc9edf4812ebc1aa4c1f4dce01b"
     },
     {
       "mode": "755",
@@ -4189,5 +4224,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "e6b7959543b600c6eed8e33b420b1cecd373519e2a212af9f81f7817bc9f5058"
+  "treeSha256": "1bb721ab03e70d9fefeaa9581469cb8755da58764705bca6a36b1e81acdd9aa4"
 }

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import re
 
@@ -68,6 +69,14 @@ def main() -> int:
             errors.append(f"{name} no longer fails closed behind the automation gate")
 
     all_workflows = "\n".join(workflow_text.values())
+    cohort = json.loads(
+        _read(ROOT / "packaging" / "publication-cohort.json")
+    )
+    if cohort.get("publicationAuthorized") is not False:
+        errors.append(
+            "publication-cohort.json must remain explicitly unauthorized "
+            "while source policy is build-only"
+        )
     if re.search(
         r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
         all_workflows,

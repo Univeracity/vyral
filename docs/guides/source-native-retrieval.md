@@ -105,6 +105,27 @@ or consistently lower query latency. The
 [retained report](../../benchmarks/retrieval/README.md) describes the fixture,
 limitations, complete metrics, and reproduction command.
 
+## Executable migration walkthrough
+
+Run the bundled walkthrough from a source checkout:
+
+```bash
+python3 examples/python/retrieval_migration.py
+```
+
+The first stage uses the bounded adapter to find one exact phrase directly in
+an authorized Markdown tree. It also shows that a reordered version of that
+phrase is not a fixed-string match. The second stage deliberately copies the
+three example documents into a local Vyral collection and retrieves the
+reordered query with lexical `all` matching and no embeddings.
+
+This is the intended migration boundary: do not build duplicate state while
+direct search meets the measured need. Introduce an index when the application
+needs governed records, partitions, filters, snapshots, order-tolerant terms,
+prefixes, or lower repeated-query latency. Replace the walkthrough's authored
+fixture with an application-owned ingestion policy; never turn arbitrary
+filesystem traversal into an implicit REST or MCP capability.
+
 ## Corpus comparison recipe
 
 Use a labeled fixture that resembles the real corpus. Keep the source revision,

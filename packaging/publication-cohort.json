@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "vyral.publication-cohort.v1",
+  "publicationAuthorized": false,
+  "artifacts": [
+    {
+      "ecosystem": "nuget",
+      "name": "Vyral.Abstractions",
+      "version": "0.3.0",
+      "source": "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
+      "environment": "publish-nuget",
+      "maturity": "public"
+    },
+    {
+      "ecosystem": "nuget",
+      "name": "Vyral.Local",
+      "version": "0.3.0",
+      "source": "src/Vyral.Local/Vyral.Local.csproj",
+      "environment": "publish-nuget",
+      "maturity": "public"
+    },
+    {
+      "ecosystem": "nuget",
+      "name": "Vyral.Primitives",
+      "version": "0.2.0",
+      "source": "src/Vyral.Primitives/Vyral.Primitives.csproj",
+      "environment": "publish-nuget",
+      "maturity": "public"
+    },
+    {
+      "ecosystem": "nuget",
+      "name": "Vyral.Execution",
+      "version": "0.2.0",
+      "source": "src/Vyral.Execution/Vyral.Execution.csproj",
+      "environment": "publish-nuget",
+      "maturity": "public"
+    },
+    {
+      "ecosystem": "nuget",
+      "name": "Vyral.Execution.Local",
+      "version": "0.2.0",
+      "source": "src/Vyral.Execution.Local/Vyral.Execution.Local.csproj",
+      "environment": "publish-nuget",
+      "maturity": "preview"
+    },
+    {
+      "ecosystem": "pypi",
+      "name": "vyral-client",
+      "version": "0.3.0",
+      "source": "clients/python/pyproject.toml",
+      "environment": "publish-pypi",
+      "maturity": "public"
+    },
+    {
+      "ecosystem": "npm",
+      "name": "@vyral/client",
+      "version": "0.3.0",
+      "source": "clients/javascript/package.json",
+      "environment": "publish-npm",
+      "maturity": "public"
+    },
+    {
+      "ecosystem": "container",
+      "name": "ghcr.io/univeracity/vyral-server",
+      "version": "0.3.0",
+      "source": "Dockerfile",
+      "environment": "publish-container",
+      "maturity": "mixed"
+    }
+  ],
+  "excludedFromFirstCohort": [
+    "cloud-provider packages",
+    "provider-specific execution adapters",
+    "Temporal packages",
+    "vyral-runtime",
+    "prototype integrations"
+  ],
+  "authorizationBoundary": "A reviewed maintainer decision must replace the build-only publication policy and authorize exact registry publishers. Changing this file alone never authorizes a push."
+}

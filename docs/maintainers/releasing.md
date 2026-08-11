@@ -69,6 +69,16 @@ Each release candidate must be built from a reviewed commit in protected CI. Bef
 The version lines and maturity promises are defined in the [stability policy](../reference/stability.md) and enforced by
 `scripts/verify-version-policy.py`. Source versions do not prove registry publication.
 
+The exact proposed first cohort is recorded in
+[`packaging/publication-cohort.json`](../../packaging/publication-cohort.json).
+CI requires `publicationAuthorized: false` and rejects drift between that
+manifest and package metadata while the repository remains build-only.
+Changing the manifest alone never authorizes publication: a separate reviewed
+maintainer decision must introduce the exact protected-environment publishers,
+registry trust relationships, signed release tag, and release notes. The
+Python-native `vyral-runtime`, provider-specific packages, Temporal packages,
+and prototype integrations remain outside this cohort.
+
 Before the first public release, the repository owner must also configure the hosted controls that
 cannot be represented in source: protected release branches, required release-integrity,
 dependency-review, and CodeQL checks, Dependency Graph/Dependabot alerts, secret scanning with

@@ -121,7 +121,7 @@ class LocalStarterResult:
             "createdPath": str(self.created_path),
             "stateRootPath": str(self.state_root_path),
             "appId": self.app_id,
-            "runArguments": ["python", str(self.created_path)],
+            "runArguments": ["vyral", "run", str(self.created_path)],
         }
 
 

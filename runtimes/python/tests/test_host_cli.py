@@ -24,6 +24,7 @@ class HostCliTests(unittest.TestCase):
         self.assertEqual(0, raised.exception.code)
         self.assertIn("vyral init", output.getvalue())
         self.assertIn("vyral inspect", output.getvalue())
+        self.assertIn("vyral run ./vyral_app.py", output.getvalue())
         self.assertIn("vyral                 # run the local proof", output.getvalue())
 
     def test_init_creates_an_editable_application_without_server_extra(
@@ -48,10 +49,30 @@ class HostCliTests(unittest.TestCase):
                 result["stateRootPath"],
             )
             self.assertEqual(
-                ["python", str(target.resolve())],
+                ["vyral", "run", str(target.resolve())],
                 result["runArguments"],
             )
             self.assertIn("@vyral(", target.read_text(encoding="utf-8"))
+
+    def test_source_launcher_run_executes_an_explicit_application(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-cli-run-"
+        ) as temporary:
+            target = Path(temporary) / "application.py"
+            target.write_text(
+                "from vyral_runtime import VyralRuntime\n"
+                "import sys\n"
+                "print(VyralRuntime().readiness().status, sys.argv[1:])\n",
+                encoding="utf-8",
+            )
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    ["run", str(target), "alpha", "beta"],
+                    display_name="./scripts/vyral",
+                )
+            self.assertEqual(0, status)
+            self.assertIn("ok ['alpha', 'beta']", output.getvalue())
 
     def test_quickstart_subcommand_does_not_require_server_extra(self) -> None:
         result = SimpleNamespace(

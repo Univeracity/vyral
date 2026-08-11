@@ -127,6 +127,7 @@ FORBIDDEN_SUFFIXES = {
 
 REQUIRED_FILES = {
     ".gitattributes",
+    ".github/workflows/aws-live-qualification.yml",
     ".github/workflows/ci.yml",
     ".github/workflows/python-runtime-qualification.yml",
     "benchmarks/retrieval/README.md",
@@ -143,8 +144,10 @@ REQUIRED_FILES = {
     "docs/maintainers/releasing.md",
     "docs/reference/execution-runtime-limitations.md",
     "docs/reference/stability.md",
+    "examples/python/retrieval_migration.py",
     "LICENSE",
     "packaging/nuget/README.md",
+    "packaging/publication-cohort.json",
     "README.md",
     "ROADMAP.md",
     "contracts/public-sdk-surface.json",
@@ -166,6 +169,7 @@ REQUIRED_FILES = {
     "scripts/test-export-public-tree.py",
     "scripts/test-verify-oci-image-identity.py",
     "scripts/test-python-runtime-platform-matrix.py",
+    "scripts/test-validate-aws-live-qualification.sh",
     "scripts/verify-python-runtime-external-worker.sh",
     "scripts/verify-python-runtime-install.py",
     "scripts/verify-python-runtime-mcp-conformance.sh",
@@ -180,7 +184,10 @@ REQUIRED_FILES = {
     "scripts/verify-oci-image-identity.py",
     "scripts/verify-public-export.sh",
     "scripts/verify-publication-policy.py",
+    "scripts/verify-publication-cohort.py",
     "scripts/verify-ripgrep-retrieval-report.py",
+    "scripts/verify-source-quickstart.py",
+    "scripts/validate-aws-live-qualification.sh",
     "scripts/write-python-runtime-platform-receipt.py",
 }
 

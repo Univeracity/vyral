@@ -6,6 +6,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import runpy
 import sys
 from typing import Sequence
 
@@ -33,6 +34,8 @@ def main(
         return _quickstart_main([], display_name)
     if selected and selected[0] == "init":
         return _init_main(selected[1:], display_name)
+    if selected and selected[0] == "run":
+        return _run_main(selected[1:], display_name)
     if selected and selected[0] == "quickstart":
         return _quickstart_main(selected[1:], display_name)
     if selected and selected[0] == "inspect":
@@ -55,6 +58,7 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
             f"  {display_name}                 # run the local proof\n"
             f"  {display_name} inspect\n"
             f"  {display_name} init\n"
+            f"  {display_name} run ./vyral_app.py\n"
             f"  {display_name} serve --root ./.vyral\n\n"
             "The explicit 'serve' command is also accepted before the "
             "server options."
@@ -227,14 +231,54 @@ def _init_main(argv: Sequence[str], display_name: str) -> int:
     except (OSError, ValueError) as error:
         parser.error(str(error))
     if arguments.json:
-        print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        payload = result.to_dict()
+        payload["runArguments"] = [
+            display_name,
+            "run",
+            str(result.created_path),
+        ]
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
     print(f"Created editable Vyral application: {result.created_path}")
     print("Run it:")
-    print(f"  {sys.executable} {result.created_path}")
+    print(f"  {display_name} run {result.created_path}")
     print(f"Durable state will remain visible at: {result.state_root_path}")
     print("Rerun unchanged to observe idempotent replay with no dispatch.")
     print("After editing the work, increment RUN_VERSION to admit a new run.")
+    return 0
+
+
+def _run_main(argv: Sequence[str], display_name: str) -> int:
+    parser = argparse.ArgumentParser(
+        prog=f"{display_name} run",
+        description=(
+            "Run an explicit Python application with the active Vyral "
+            "runtime. This keeps source-checkout and installed commands "
+            "identical."
+        ),
+    )
+    parser.add_argument("path", help="Python application to execute.")
+    parser.add_argument(
+        "arguments",
+        nargs=argparse.REMAINDER,
+        help="Arguments passed to the application.",
+    )
+    arguments = parser.parse_args(argv)
+    target = Path(arguments.path).expanduser().resolve()
+    if target.suffix.casefold() != ".py":
+        parser.error("the application path must end with .py")
+    if not target.is_file():
+        parser.error(f"application does not exist: {target}")
+
+    previous_argv = sys.argv
+    previous_path = list(sys.path)
+    sys.argv = [str(target), *arguments.arguments]
+    sys.path.insert(0, str(target.parent))
+    try:
+        runpy.run_path(str(target), run_name="__main__")
+    finally:
+        sys.argv = previous_argv
+        sys.path[:] = previous_path
     return 0
 
 

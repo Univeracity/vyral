@@ -88,6 +88,7 @@ while IFS= read -r -d '' script; do
 done < <(find scripts deploy -type f -name '*.sh' -print0 | sort -z)
 printf 'release-shell-syntax=ok\n'
 python3 scripts/verify-publication-policy.py
+python3 scripts/verify-publication-cohort.py
 python3 scripts/test-audit-github-launch-controls.py
 python3 scripts/test-verify-oci-image-identity.py
 
@@ -107,6 +108,7 @@ jq empty qualification/adapter-qualification.schema.json qualification/adapter-q
 scripts/generate-adapter-qualification.sh "$QUALIFICATION_DIR/adapter-qualification.json"
 cp qualification/adapter-qualification.schema.json "$QUALIFICATION_DIR/adapter-qualification.schema.json"
 scripts/test-validate-google-execution-live.sh
+scripts/test-validate-aws-live-qualification.sh
 scripts/test-validate-aws-opensearch-live.sh
 scripts/test-scan-release-history.sh
 scripts/test-validate-canonical-mysql-benchmark-report.sh
@@ -117,6 +119,7 @@ python3 scripts/verify-ripgrep-retrieval-report.py \
 ripgrep_comparison="$ARTIFACT_ROOT/ripgrep-comparison.json"
 ripgrep_tampered="$ARTIFACT_ROOT/ripgrep-comparison-tampered.json"
 ripgrep_user_result="$ARTIFACT_ROOT/ripgrep-user-path.json"
+ripgrep_migration_result="$ARTIFACT_ROOT/ripgrep-migration-path.json"
 python3 scripts/benchmark-ripgrep-retrieval.py \
   --output "$ripgrep_comparison" \
   --noise-documents 60 \
@@ -150,6 +153,15 @@ jq -e '
     and (.sourceRevision | startswith("sha256:"))
   )
 ' "$ripgrep_user_result" >/dev/null
+python3 examples/python/retrieval_migration.py \
+  --json > "$ripgrep_migration_result"
+jq -e '
+  (.sourceNative.matches | length == 1)
+  and (.sourceNative.reorderedMatchCount == 0)
+  and (.indexed.results | length == 1)
+  and (.indexed.results[0].recordId == "execution.md")
+  and (.indexed.embeddingUsed == false)
+' "$ripgrep_migration_result" >/dev/null
 printf 'ripgrep-retrieval-admission-gate=ok\n'
 
 if [[ -n "${VYRAL_PUBLIC_HISTORY_DENYLIST_FILE:-}" || -n "${VYRAL_PUBLIC_HISTORY_DENYLIST:-}" ]]; then

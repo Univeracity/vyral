@@ -43,6 +43,9 @@ jobs:
           cache: pip
           cache-dependency-path: runtimes/python/pyproject.toml
 
+      - name: Verify the install-free source quickstart
+        run: python -I scripts/verify-source-quickstart.py
+
       - name: Install qualification tooling
         run: >-
           python -m pip install

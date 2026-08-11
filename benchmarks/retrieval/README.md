@@ -26,22 +26,22 @@ justified.
 | Ambiguous single terms, 2 cases | 1.00 | `all` | 1.00 |
 | Queries expected to return nothing, 2 cases | 1.00 | `all` | 1.00 |
 
-On this machine, ripgrep's warm p50/p95 was 16.734/33.398 ms. Indexed Vyral
-lexical `all` was 1.172/1.508 ms, and the prefix policy was 1.292/1.738 ms.
+On this machine, ripgrep's warm p50/p95 was 16.707/33.120 ms. Indexed Vyral
+lexical `all` was 1.152/1.421 ms, and the prefix policy was 1.202/1.524 ms.
 Vyral is decisively faster after indexing. The default lexical `any` policy had
-a 291.765 ms p95 because common fixture terms produced broad candidate sets;
+a 286.457 ms p95 because common fixture terms produced broad candidate sets;
 its term-retrieval recall was 1.00, but returned precision was 0.425.
 
 The tradeoff appears before the first query. The ripgrep adapter initialized in
-2.668 ms and used the existing source tree directly. Mirroring 2,016 documents
-into the local Vyral store took 29,158.337 ms and produced a 13,324,288-byte
+2.632 ms and used the existing source tree directly. Mirroring 2,016 documents
+into the local Vyral store took 26,510.524 ms and produced a 13,324,288-byte
 database for a 288,995-byte fixture corpus. These ratios are fixture-specific;
 the small generated documents emphasize per-record overhead and should not be
 generalized to larger records.
 
 After a source edit, ripgrep returned the new canary without an index refresh
-in 16.589 ms. Vyral correctly remained stale until the changed record was
-upserted, then returned it in 1.851 ms. Sensitive-path canaries were excluded,
+in 16.796 ms. Vyral correctly remained stale until the changed record was
+upserted, then returned it in 2.052 ms. Sensitive-path canaries were excluded,
 the absolute root was not disclosed, and the adapter emitted line citations
 bound to source SHA-256 revisions.
 

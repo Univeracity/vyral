@@ -36,60 +36,60 @@
     "absentBeforeEdit": true,
     "path": "live/freshness.md",
     "ripgrepVisibleWithoutIndexRefresh": true,
-    "ripgrepWriteToResultMs": 16.589,
-    "vyralPostRefreshQueryMs": 1.851,
-    "vyralRecordRefreshMs": 17.377,
+    "ripgrepWriteToResultMs": 16.796,
+    "vyralPostRefreshQueryMs": 2.052,
+    "vyralRecordRefreshMs": 15.431,
     "vyralStaleBeforeRecordRefresh": true,
-    "vyralStaleQueryMs": 1.452,
+    "vyralStaleQueryMs": 1.418,
     "vyralVisibleAfterRecordRefresh": true
   },
-  "generatedAtUtc": "2026-08-11T08:31:53.999398Z",
+  "generatedAtUtc": "2026-08-11T10:30:05.402797Z",
   "latencyMs": {
     "iterations": 30,
     "queriesPerIteration": 18,
     "variants": {
       "ripgrep-fixed": {
-        "coldFirstQueryMs": 17.152,
+        "coldFirstQueryMs": 33.288,
         "warmAllCasesMs": {
           "count": 540,
-          "max": 34.845,
-          "mean": 19.579,
-          "min": 16.212,
-          "p50": 16.734,
-          "p95": 33.398
+          "max": 34.168,
+          "mean": 18.323,
+          "min": 16.206,
+          "p50": 16.707,
+          "p95": 33.12
         }
       },
       "vyral-lexical-all": {
-        "coldFirstQueryMs": 1.591,
+        "coldFirstQueryMs": 1.124,
         "warmAllCasesMs": {
           "count": 540,
-          "max": 1.84,
-          "mean": 1.147,
-          "min": 0.699,
-          "p50": 1.172,
-          "p95": 1.508
+          "max": 1.98,
+          "mean": 1.106,
+          "min": 0.681,
+          "p50": 1.152,
+          "p95": 1.421
         }
       },
       "vyral-lexical-any": {
-        "coldFirstQueryMs": 2.231,
+        "coldFirstQueryMs": 2.539,
         "warmAllCasesMs": {
           "count": 540,
-          "max": 429.971,
-          "mean": 19.426,
-          "min": 0.701,
-          "p50": 1.492,
-          "p95": 291.765
+          "max": 400.225,
+          "mean": 19.099,
+          "min": 0.704,
+          "p50": 1.538,
+          "p95": 286.457
         }
       },
       "vyral-lexical-prefix": {
-        "coldFirstQueryMs": 1.117,
+        "coldFirstQueryMs": 1.186,
         "warmAllCasesMs": {
           "count": 540,
-          "max": 2.296,
-          "mean": 1.289,
-          "min": 0.744,
-          "p50": 1.292,
-          "p95": 1.738
+          "max": 2.142,
+          "mean": 1.218,
+          "min": 0.733,
+          "p50": 1.202,
+          "p95": 1.524
         }
       }
     }
@@ -1697,12 +1697,12 @@
   },
   "schemaVersion": "vyral.retrieval.ripgrep-comparison.v1",
   "setupMs": {
-    "ripgrepAdapterInitialize": 2.668,
-    "vyralRecordIngest": 29158.337,
-    "vyralStoreInitialize": 43.954,
-    "writeCorpus": 205.486
+    "ripgrepAdapterInitialize": 2.632,
+    "vyralRecordIngest": 26510.524,
+    "vyralStoreInitialize": 34.567,
+    "writeCorpus": 204.953
   },
-  "sourceCommit": "9931243b07d18f0c959a7182455fdb032cf15904",
+  "sourceCommit": "468ce979b81b772b56809a154f5dad242c4ca262",
   "sourceDirty": false,
   "storageBytes": {
     "sourceCorpus": 288995,

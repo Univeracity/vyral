@@ -42,7 +42,7 @@ Create a small editable application when you are ready to build:
 
 ```bash
 ./scripts/vyral init
-python ./vyral_app.py
+./scripts/vyral run ./vyral_app.py
 ```
 
 The installed command is simply `vyral`; `vyral-runtime` remains a compatibility
