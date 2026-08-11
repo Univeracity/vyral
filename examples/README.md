@@ -56,6 +56,16 @@ python3 examples/python/source_native_search.py \
   --root .
 ```
 
+Run the complete source-native to governed-index walkthrough:
+
+```bash
+python3 examples/python/retrieval_migration.py
+```
+
+It proves that an exact literal is immediately available without an index,
+then deliberately copies the same small corpus into Vyral and retrieves a
+reordered query through zero-embedding lexical `all` matching.
+
 The example searches only allowlisted `*.py` and `*.md` paths by default and
 prints root-relative line citations with source revisions. It does not expose a
 REST or MCP tool. See the

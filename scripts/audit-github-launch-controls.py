@@ -24,6 +24,11 @@ REQUIRED_CHECK_CONTEXTS = {
     "Review dependency changes",
     "Verify releasable artifacts",
 }
+REQUIRED_BRANCH_RULE_TYPES = {
+    "deletion",
+    "non_fast_forward",
+    "pull_request",
+}
 
 
 def _run(*arguments: str) -> subprocess.CompletedProcess[str]:
@@ -111,8 +116,45 @@ def _required_checks(protection: Any) -> set[str]:
     return output
 
 
+def _ruleset_rules(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, list):
+        return []
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def _ruleset_required_checks(rules: list[dict[str, Any]]) -> set[str]:
+    output: set[str] = set()
+    for rule in rules:
+        if rule.get("type") != "required_status_checks":
+            continue
+        parameters = rule.get("parameters")
+        if not isinstance(parameters, dict):
+            continue
+        checks = parameters.get("required_status_checks", [])
+        output.update(
+            str(item.get("context"))
+            for item in checks
+            if isinstance(item, dict) and item.get("context")
+        )
+    return output
+
+
+def _ruleset_protects_branch(rules: list[dict[str, Any]]) -> bool:
+    configured = {str(rule.get("type")) for rule in rules if rule.get("type")}
+    return REQUIRED_BRANCH_RULE_TYPES.issubset(configured)
+
+
 def _contains_required_checks(actual: set[str]) -> bool:
     return REQUIRED_CHECK_CONTEXTS.issubset(actual)
+
+
+def _uses_squash_only_merge_policy(repository: Any) -> bool:
+    return (
+        isinstance(repository, dict)
+        and repository.get("allow_squash_merge") is True
+        and repository.get("allow_merge_commit") is False
+        and repository.get("allow_rebase_merge") is False
+    )
 
 
 def audit(repository: str) -> dict[str, Any]:
@@ -134,16 +176,45 @@ def audit(repository: str) -> dict[str, Any]:
             },
         )
     )
+    controls.append(
+        _control(
+            "squash_only_merge_policy",
+            _uses_squash_only_merge_policy(repo),
+            state="pending",
+            evidence={
+                "allowMergeCommit": repo.get("allow_merge_commit"),
+                "allowRebaseMerge": repo.get("allow_rebase_merge"),
+                "allowSquashMerge": repo.get("allow_squash_merge"),
+            },
+        )
+    )
 
     protection_status, protection = _api(
         f"repos/{repository}/branches/{branch}/protection"
     )
-    checks = _required_checks(protection)
-    protection_unavailable = protection_status in {403, 404}
+    rules_status, rules_payload = _api(
+        f"repos/{repository}/rules/branches/{branch}"
+    )
+    rules = _ruleset_rules(rules_payload)
+    legacy_checks = _required_checks(protection)
+    ruleset_checks = _ruleset_required_checks(rules)
+    checks = legacy_checks | ruleset_checks
+    legacy_protected = protection_status == 200
+    ruleset_protected = (
+        rules_status == 200 and _ruleset_protects_branch(rules)
+    )
+    protected = legacy_protected or ruleset_protected
+    protection_unavailable = (
+        protection_status in {403, 404}
+        and rules_status in {403, 404}
+    )
+    configured_rule_types = sorted(
+        str(rule.get("type")) for rule in rules if rule.get("type")
+    )
     controls.append(
         _control(
             "protected_default_branch",
-            protection_status == 200,
+            protected,
             state=(
                 "unavailable"
                 if protection_unavailable
@@ -151,19 +222,25 @@ def audit(repository: str) -> dict[str, Any]:
             ),
             evidence={
                 "branch": branch,
-                "httpStatus": protection_status,
-                "message": (
-                    protection.get("message")
-                    if isinstance(protection, dict)
-                    else None
-                ),
+                "branchProtectionHttpStatus": protection_status,
+                "rulesetHttpStatus": rules_status,
+                "configuredRuleTypes": configured_rule_types,
+                "requiredRuleTypes": sorted(REQUIRED_BRANCH_RULE_TYPES),
+                "sources": [
+                    source
+                    for source, enabled in (
+                        ("branch_protection", legacy_protected),
+                        ("ruleset", ruleset_protected),
+                    )
+                    if enabled
+                ],
             },
         )
     )
     controls.append(
         _control(
             "required_release_checks",
-            protection_status == 200 and _contains_required_checks(checks),
+            protected and _contains_required_checks(checks),
             state=(
                 "unavailable"
                 if protection_unavailable
@@ -171,6 +248,8 @@ def audit(repository: str) -> dict[str, Any]:
             ),
             evidence={
                 "configured": sorted(checks),
+                "branchProtectionConfigured": sorted(legacy_checks),
+                "rulesetConfigured": sorted(ruleset_checks),
                 "requiredContexts": sorted(REQUIRED_CHECK_CONTEXTS),
             },
         )

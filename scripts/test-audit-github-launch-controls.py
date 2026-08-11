@@ -39,6 +39,45 @@ def main() -> int:
     if MODULE._contains_required_checks(expected_checks - {"Analyze go"}):
         raise SystemExit("The audit accepted an incomplete CodeQL matrix.")
 
+    rules = [
+        {"type": "deletion"},
+        {"type": "non_fast_forward"},
+        {"type": "pull_request", "parameters": {}},
+        {
+            "type": "required_status_checks",
+            "parameters": {
+                "required_status_checks": [
+                    {"context": context, "integration_id": 15368}
+                    for context in sorted(expected_checks)
+                ]
+            },
+        },
+    ]
+    if not MODULE._ruleset_protects_branch(rules):
+        raise SystemExit("Applicable ruleset protection was not recognized.")
+    if MODULE._ruleset_protects_branch(
+        [rule for rule in rules if rule["type"] != "pull_request"]
+    ):
+        raise SystemExit("An incomplete ruleset was accepted as branch protection.")
+    if MODULE._ruleset_required_checks(rules) != expected_checks:
+        raise SystemExit("Ruleset status-check contexts were not parsed.")
+    if not MODULE._uses_squash_only_merge_policy(
+        {
+            "allow_merge_commit": False,
+            "allow_rebase_merge": False,
+            "allow_squash_merge": True,
+        }
+    ):
+        raise SystemExit("The intended squash-only merge policy was rejected.")
+    if MODULE._uses_squash_only_merge_policy(
+        {
+            "allow_merge_commit": False,
+            "allow_rebase_merge": True,
+            "allow_squash_merge": True,
+        }
+    ):
+        raise SystemExit("A rebase-enabled repository passed squash-only policy.")
+
     response = subprocess.CompletedProcess(
         args=("gh", "api"),
         returncode=0,

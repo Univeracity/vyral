@@ -22,6 +22,13 @@ operational receipt deliberately leaves this checked-in maturity baseline unchan
 the Google adapter remains a separate review that must validate the receipt, cleanup evidence,
 provider scope, and the full level requirements below.
 
+The manual `AWS Live Qualification` workflow follows the same separation of duties. It uses a
+short-lived GitHub OIDC session and an isolated least-privilege role to exercise S3, DynamoDB, and
+SQS, then uploads only a redacted `aws-live-gate-<commit>` receipt. Raw provider logs, resource
+identifiers, account identifiers, and credentials are not published. The receipt proves the live
+gate and cleanup for that commit; it does not automatically promote an adapter or claim coverage
+for managed OpenSearch or a consumer environment.
+
 Generate the release copy with:
 
 ```bash

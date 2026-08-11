@@ -80,6 +80,9 @@ jobs:
           # This module intentionally has no go.sum yet; setup-go's cache lookup warns on it.
           cache: false
 
+      - name: Verify the install-free source quickstart
+        run: python -I scripts/verify-source-quickstart.py
+
       - name: Test JavaScript client
         working-directory: clients/javascript
         run: |
@@ -119,6 +122,7 @@ jobs:
           python3 scripts/verify-public-sdk-surface.py
           python3 scripts/verify-public-contract-schemas.py
           python3 scripts/verify-markdown-links.py
+          python3 scripts/verify-publication-cohort.py
           python3 scripts/verify-publication-policy.py
           python3 scripts/generate-sdk-types.py
           python3 scripts/sync-python-runtime-contracts.py

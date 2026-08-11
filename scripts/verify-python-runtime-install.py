@@ -294,7 +294,14 @@ def _starter_smoke(
         )
 
     first_started_at = perf_counter()
-    first = _command(str(python), str(target), capture_output=True)
+    first = _command(
+        str(python),
+        "-m",
+        "vyral_runtime",
+        "run",
+        str(target),
+        capture_output=True,
+    )
     first_run_ms = round((perf_counter() - first_started_at) * 1_000, 3)
     first_run_id = _starter_run_id(first.stdout, "first run")
     if not all(
@@ -313,7 +320,14 @@ def _starter_smoke(
         )
 
     replay_started_at = perf_counter()
-    replay = _command(str(python), str(target), capture_output=True)
+    replay = _command(
+        str(python),
+        "-m",
+        "vyral_runtime",
+        "run",
+        str(target),
+        capture_output=True,
+    )
     replay_run_ms = round((perf_counter() - replay_started_at) * 1_000, 3)
     replay_run_id = _starter_run_id(replay.stdout, "replay")
     if (
@@ -342,7 +356,14 @@ def _starter_smoke(
     with target.open("w", encoding="utf-8", newline="\n") as stream:
         stream.write(versioned_source)
     versioned_started_at = perf_counter()
-    versioned = _command(str(python), str(target), capture_output=True)
+    versioned = _command(
+        str(python),
+        "-m",
+        "vyral_runtime",
+        "run",
+        str(target),
+        capture_output=True,
+    )
     versioned_run_ms = round(
         (perf_counter() - versioned_started_at) * 1_000,
         3,

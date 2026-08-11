@@ -128,6 +128,17 @@ withheld, so direct source use or the editable install is the public pre-release
 path. Once a qualified wheel is published, the install command can be replaced
 with `python -m pip install vyral-runtime` without changing the local commands.
 
+From a source checkout, run the generated application through the same launcher
+that created it so no editable installation is required:
+
+```bash
+./scripts/vyral init
+./scripts/vyral run ./vyral_app.py
+```
+
+After installation, the equivalent commands are `vyral init` and
+`vyral run ./vyral_app.py`.
+
 The quickstart JSON includes measured `firstCitationMs`, `durableReceiptMs`,
 `restartRecoveryMs`, and `completedMs` milestones. Artifact qualification runs
 the installed wheel and sdist through the generated editable application, its
