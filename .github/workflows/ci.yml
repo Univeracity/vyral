@@ -118,6 +118,21 @@ jobs:
             echo "The ripgrep comparison verifier accepted altered metrics." >&2
             exit 1
           fi
+          user_result="$(mktemp)"
+          python3 examples/python/source_native_search.py \
+            RipgrepSearchAdapter \
+            --root . \
+            --limit 5 \
+            --json > "$user_result"
+          jq -e '
+            (.matches | length > 0)
+            and all(
+              .matches[];
+              (.sourceUri | startswith("vyral-source://ripgrep/"))
+              and (.sourceUri | contains("#L"))
+              and (.sourceRevision | startswith("sha256:"))
+            )
+          ' "$user_result" >/dev/null
 
       - name: Test Go worker client
         working-directory: clients/go

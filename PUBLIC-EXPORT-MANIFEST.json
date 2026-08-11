@@ -54,7 +54,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "3d47c7a4fc46186d4ed091a4f6a89c3c9f0b368afe458a43554bc247043da8e8"
+      "sha256": "e17a1e95ed15e26be2fc1afdb0192c0fb8f7c9f3a649914b07066b038eba687e"
     },
     {
       "mode": "644",
@@ -4189,5 +4189,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": true,
-  "treeSha256": "fb75e25a335be7dd10e5ae4095ec6b8220a860a03cfbd4ebc4b1004eb76051da"
+  "treeSha256": "1ca53fa5cd63c8344929484e31a9bb096a5696c89f45ab8d59335ec3d5760b18"
 }
