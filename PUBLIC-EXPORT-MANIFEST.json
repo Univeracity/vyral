@@ -244,12 +244,12 @@
     {
       "mode": "644",
       "path": "clients/javascript/src/index.js",
-      "sha256": "e370b8345c60ef6a576d9647cb9d84a19d6b6701d05970650acfc99618420cec"
+      "sha256": "cc6b5d8754cc0bbdd4c5846785dfc72eaae99e19f59b426a3c757849ec6cab7c"
     },
     {
       "mode": "644",
       "path": "clients/javascript/test/index.test.js",
-      "sha256": "6ea16e3fa8afb2048945914b3f8d2edfc9b2b02e652c03f84f0f645f3ca331fb"
+      "sha256": "7be3daee7bbbf344d5898fe9cadbd8ff030d4ac3c43f35dffe1a5bc5b84e0dcc"
     },
     {
       "mode": "644",
@@ -4274,5 +4274,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "f36264e7cede74c57674217ffca7673111eb93bee2d39249c8f211b5004cbc54"
+  "treeSha256": "f8e31ffb94e2b94cda04b26bba071b967e2ca65a2875460c31f356cec278664b"
 }

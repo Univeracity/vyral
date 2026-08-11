@@ -1372,6 +1372,14 @@ test("credentials require HTTPS except on loopback", async () => {
   );
 });
 
+test("base URL normalization removes trailing slashes without regex backtracking", () => {
+  const client = new VyralClient("https://vyral.example/api///", {
+    fetch: async () => new Response("{}")
+  });
+
+  assert.equal(client.baseUrl, "https://vyral.example/api");
+});
+
 test("shared transport options retry only safe or idempotent requests", async () => {
   const calls = [];
   const responses = [
