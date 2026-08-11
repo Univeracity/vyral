@@ -176,6 +176,7 @@ REQUIRED_FILES = {
     "scripts/test-verify-oci-image-identity.py",
     "scripts/test-python-runtime-platform-matrix.py",
     "scripts/test-run-dotnet-tests.sh",
+    "scripts/test-validate-azure-durable-functions-live.sh",
     "scripts/test-validate-aws-live-qualification.sh",
     "scripts/verify-python-runtime-external-worker.sh",
     "scripts/verify-python-runtime-install.py",

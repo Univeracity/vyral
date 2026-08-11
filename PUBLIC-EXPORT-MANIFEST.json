@@ -1,5 +1,5 @@
 {
-  "fileCount": 851,
+  "fileCount": 852,
   "files": [
     {
       "mode": "644",
@@ -64,7 +64,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "f8ff421804283c2f51f3045fd315160a6db167d2ce48475b2a2edb26a9fc30a1"
+      "sha256": "5110e43067c103576b9a15b3e47fd27e239ca22f7887b9033c2925b81aa6adef"
     },
     {
       "mode": "644",
@@ -1509,7 +1509,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "923be7737a25e9819109c4f30b561de481a5d8bf50be3a50242aacd3a8d2784e"
+      "sha256": "82ae45ed746f4d272c90801c192430fdaf8a2c66fe8c0d968d2d1d1ae8177fbf"
     },
     {
       "mode": "755",
@@ -1668,6 +1668,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/test-validate-azure-durable-functions-live.sh",
+      "sha256": "3db24b8801a40afdfc0c69a58dee0950f36c78fedc7170bd4101a5900c54fd7a"
+    },
+    {
+      "mode": "755",
       "path": "scripts/test-validate-canonical-mysql-benchmark-report.sh",
       "sha256": "a1dad72b1c39304d6b8fb15f5222203b5dd2209ddb5878458e199393eb2a9df0"
     },
@@ -1709,7 +1714,7 @@
     {
       "mode": "755",
       "path": "scripts/validate-azure-durable-functions-live.sh",
-      "sha256": "431ee62e7b5f2c20b946b0d5088dea04c95ad6f8f26194f2d601f32ab953ffbd"
+      "sha256": "e2bc12c20c118fca3c00435b2b805e3513935d355c63eb2508160eee43487f17"
     },
     {
       "mode": "755",
@@ -1894,7 +1899,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "a21092c6e90a3a2f9a19961777e3c558e1a055c38dd0543322b0f603584d7f8c"
+      "sha256": "57fb7abccf3d51fdb12d698f03d808c4852444c25716c0aa8f17e20aa2ef2acc"
     },
     {
       "mode": "755",
@@ -4259,5 +4264,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "10c0901c50b67826132264c3cd27cb812332beffc6c488397ed38d901c4ca18f"
+  "treeSha256": "c3a77a5f7245dc63518eccdc879cfcc83b140619f1e407df903cbdb3d0cdc25f"
 }

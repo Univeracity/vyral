@@ -93,6 +93,7 @@ python3 scripts/test-audit-github-launch-controls.py
 python3 scripts/test-classify-ci-changes.py
 python3 scripts/test-verify-oci-image-identity.py
 scripts/test-run-dotnet-tests.sh
+scripts/test-validate-azure-durable-functions-live.sh
 
 python3 scripts/verify-version-policy.py
 python3 scripts/verify-public-sdk-surface.py

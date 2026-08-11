@@ -191,6 +191,7 @@ jobs:
           python3 scripts/test-export-public-tree.py
           python3 scripts/test-python-runtime-platform-matrix.py
           scripts/test-run-dotnet-tests.sh
+          scripts/test-validate-azure-durable-functions-live.sh
           python3 scripts/verify-ripgrep-retrieval-report.py \
             benchmarks/retrieval/ripgrep-vs-vyral-local-2026-08-11.json \
             --require-admission
