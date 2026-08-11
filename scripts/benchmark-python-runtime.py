@@ -81,7 +81,14 @@ def main() -> int:
     parser.add_argument("--records", type=int, default=2_000)
     parser.add_argument("--dimensions", type=int, default=384)
     parser.add_argument("--jobs", type=int, default=20)
-    parser.add_argument("--max-seconds", type=float, default=120.0)
+    parser.add_argument(
+        "--max-seconds",
+        type=float,
+        help=(
+            "Optional wall-clock guard for a controlled runner. The benchmark "
+            "does not impose a cross-runner performance SLA by default."
+        ),
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -94,7 +101,7 @@ def main() -> int:
         parser.error("--dimensions must be between 8 and 4096")
     if not 1 <= arguments.jobs <= 100:
         parser.error("--jobs must be between 1 and 100")
-    if arguments.max_seconds <= 0:
+    if arguments.max_seconds is not None and arguments.max_seconds <= 0:
         parser.error("--max-seconds must be positive")
 
     tracemalloc.start()
@@ -264,17 +271,10 @@ def main() -> int:
                 "ragChunkCount": rag.chunk_count,
                 "peakTracedBytes": peak_bytes,
                 "limits": {
-                    "qualificationTimeoutSeconds": (
-                        arguments.max_seconds
-                    ),
+                    "qualificationTimeoutSeconds": arguments.max_seconds,
                     "performanceSla": False,
                 },
             }
-            if total_seconds > arguments.max_seconds:
-                raise RuntimeError(
-                    "Python runtime performance smoke exceeded "
-                    f"{arguments.max_seconds:g} seconds: {total_seconds:g}."
-                )
             if arguments.output is not None:
                 output = arguments.output.resolve()
                 output.parent.mkdir(parents=True, exist_ok=True)
@@ -283,6 +283,15 @@ def main() -> int:
                     encoding="utf-8",
                 )
             print(json.dumps(evidence, sort_keys=True))
+            if (
+                arguments.max_seconds is not None
+                and total_seconds > arguments.max_seconds
+            ):
+                raise RuntimeError(
+                    "Python runtime performance smoke exceeded the explicit "
+                    f"{arguments.max_seconds:g}-second runner guard: "
+                    f"{total_seconds:g}."
+                )
     return 0
 
 

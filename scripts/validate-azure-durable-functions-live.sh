@@ -26,6 +26,11 @@ require VYRAL_AZURE_COSMOS_CONNECTION_STRING
 require VYRAL_AZURE_COSMOS_DATABASE
 
 LOCATION="${VYRAL_AZURE_LIVE_LOCATION:-centralus}"
+EXPECTED_FUNCTION_COUNT="${VYRAL_AZURE_EXPECTED_FUNCTION_COUNT:-7}"
+if [[ ! "$EXPECTED_FUNCTION_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+  echo 'VYRAL_AZURE_EXPECTED_FUNCTION_COUNT must be a positive integer.' >&2
+  exit 2
+fi
 COSMOS_RESOURCE_GROUP="${VYRAL_AZURE_LIVE_COSMOS_RESOURCE_GROUP:-$VYRAL_AZURE_LIVE_RESOURCE_GROUP}"
 STAMP="$(date -u +%Y%m%d%H%M%S)"
 FUNCTION="vyral-wait-${STAMP}"
@@ -122,6 +127,7 @@ cleanup() {
       --argjson function_key_available "$FUNCTION_KEY_AVAILABLE" \
       --argjson endpoint_ready "$ENDPOINT_READY" \
       --argjson discovered_function_count "$DISCOVERED_FUNCTION_COUNT" \
+      --argjson expected_function_count "$EXPECTED_FUNCTION_COUNT" \
       --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
       '{
         schemaVersion: 1,
@@ -149,7 +155,8 @@ cleanup() {
           else {
             stage: $failure_stage,
             readinessHttpCode: $readiness_http_code,
-            discoveredFunctionCount: $discovered_function_count
+            discoveredFunctionCount: $discovered_function_count,
+            expectedFunctionCount: $expected_function_count
           }
           end
         ),
@@ -233,13 +240,13 @@ for _ in $(seq 1 72); do
   if [[ "$candidate_count" =~ ^[0-9]+$ ]]; then
     DISCOVERED_FUNCTION_COUNT="$candidate_count"
   fi
-  if (( DISCOVERED_FUNCTION_COUNT > 0 )); then
+  if (( DISCOVERED_FUNCTION_COUNT == EXPECTED_FUNCTION_COUNT )); then
     break
   fi
   sleep 5
 done
 echo "azure-durable-functions-live-discovery=count:${DISCOVERED_FUNCTION_COUNT}"
-(( DISCOVERED_FUNCTION_COUNT > 0 ))
+(( DISCOVERED_FUNCTION_COUNT == EXPECTED_FUNCTION_COUNT ))
 FUNCTIONS_DISCOVERED=true
 
 FAILURE_STAGE="function-key"

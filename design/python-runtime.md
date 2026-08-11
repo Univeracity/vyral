@@ -111,7 +111,9 @@ Executable evidence is split by concern:
   stores through the authenticated combined host, and restarts it twice.
 - `scripts/benchmark-python-runtime.py` records a bounded 2,000-record,
   384-dimension, 20-job local smoke; it is qualification evidence, not a
-  performance SLA.
+  performance SLA. It runs in the manual qualification workflow rather than
+  the release-integrity lane, and only enforces a wall-clock limit when a
+  controlled runner supplies one explicitly.
 - `.github/workflows/python-runtime-qualification.yml` is manual-only while the
   repository's automated expensive workflows are gated. It owns the 3×3
   platform matrix and packaged-host qualification. Every platform job uploads

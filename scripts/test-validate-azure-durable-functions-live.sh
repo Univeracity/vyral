@@ -58,13 +58,13 @@ case "$command" in
     printf 'DefaultEndpointsProtocol=https;AccountName=fixture;AccountKey=fixture;EndpointSuffix=core.windows.net\n'
     ;;
   "functionapp function list "*)
-    printf '%s\n' "${VYRAL_TEST_FUNCTION_COUNT:-4}"
+    printf '%s\n' "${VYRAL_TEST_FUNCTION_COUNT:-7}"
     ;;
   "functionapp keys list "*)
     printf '%s\n' '{"functionKeys":{"default":"test-function-key-never-log"},"masterKey":"test-master-key-never-log"}'
     ;;
   "cosmosdb sql container show "*)
-    if [[ "${VYRAL_TEST_FUNCTION_COUNT:-4}" == 0 ]]; then
+    if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 ]]; then
       exit 1
     fi
     ;;
@@ -197,16 +197,18 @@ run_case() {
   else
     [[ "$(jq -r '.failure.stage' "$receipt")" == "$expected_stage" ]]
     [[ "$(jq -r '.failure.discoveredFunctionCount' "$receipt")" == "$function_count" ]]
+    [[ "$(jq -r '.failure.expectedFunctionCount' "$receipt")" == 7 ]]
     [[ "$(jq -r '.cleanup.statusContainer' "$receipt")" == not-created ]]
   fi
 }
 
-run_case success 4 0 passed complete
+run_case success 7 0 passed complete
 run_case discovery-failure 0 1 failed function-discovery
+run_case incomplete-discovery 1 1 failed function-discovery
 
 if find "$work/temp" -mindepth 1 -print -quit | grep -q .; then
   echo 'Azure live script left temporary residue.' >&2
   exit 1
 fi
 
-printf 'azure-live-script=ok success-and-discovery-failure receipts-redacted=true cleanup=true\n'
+printf 'azure-live-script=ok complete-discovery-required=true receipts-redacted=true cleanup=true\n'
