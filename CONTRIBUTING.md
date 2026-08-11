@@ -25,5 +25,12 @@ Before submitting a change:
    published package, client, container, or release workflow.
 4. Update consumer-facing documentation and call out intentional capability limits.
 
+Pull-request CI is change-scoped: documentation-only changes keep the contract/export and release
+policy checks but do not rebuild unaffected language surfaces, while an unknown or central contract,
+workflow, or tooling change fails open to the complete suite. The protected `main` branch, release
+tags, and manual release rehearsals always rebuild the full package, consumer, SBOM, container,
+security, and regression evidence. This keeps feedback proportional without weakening the evidence
+attached to canonical or publishable commits.
+
 By contributing, you agree to follow the repository's [Code of Conduct](CODE_OF_CONDUCT.md) and
 license your contribution under the repository's Apache-2.0 license.

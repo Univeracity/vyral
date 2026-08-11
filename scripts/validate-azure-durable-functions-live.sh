@@ -38,9 +38,18 @@ STORAGE_CREATED=false
 STATUS_CONTAINER_CLEANUP="not-created"
 FUNCTION_CLEANUP="not-created"
 STORAGE_CLEANUP="not-created"
+ORDINARY_RUN_PASSED=false
+EXTERNAL_EVENT_PASSED=false
+TIMER_PASSED=false
+LIVE_ASSERTIONS_PASSED=false
+GATE_RESULT="failed"
 
 cleanup() {
+  local command_status="$?"
   local cleanup_failed=false
+  local final_status="$command_status"
+  local result="failed"
+  trap - EXIT
 
   if az cosmosdb sql container show \
     --resource-group "$COSMOS_RESOURCE_GROUP" \
@@ -80,12 +89,69 @@ cleanup() {
   fi
   rm -rf "$WORK_ROOT"
 
+  if [[ "$cleanup_failed" == true && "$final_status" -eq 0 ]]; then
+    final_status=1
+  fi
+  if [[ "$GATE_RESULT" == "passed" && "$final_status" -eq 0 ]]; then
+    result="passed"
+  fi
+
+  if [[ -n "${VYRAL_AZURE_LIVE_RECEIPT_PATH:-}" ]]; then
+    mkdir -p "$(dirname "$VYRAL_AZURE_LIVE_RECEIPT_PATH")"
+    jq -n \
+      --arg result "$result" \
+      --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg status_container_cleanup "$STATUS_CONTAINER_CLEANUP" \
+      --arg function_cleanup "$FUNCTION_CLEANUP" \
+      --arg storage_cleanup "$STORAGE_CLEANUP" \
+      --argjson ordinary "$ORDINARY_RUN_PASSED" \
+      --argjson event_wait "$EXTERNAL_EVENT_PASSED" \
+      --argjson timer "$TIMER_PASSED" \
+      --argjson assertions "$LIVE_ASSERTIONS_PASSED" \
+      --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
+      '{
+        schemaVersion: 1,
+        gate: "azure_blob_cosmos_durable_functions_live",
+        result: $result,
+        environmentClass: "live_managed",
+        testedAtUtc: $tested_at,
+        authentication: {
+          mode: "workload_identity",
+          shortLivedSession: true,
+          secretsRedacted: true
+        },
+        checks: {
+          ordinaryRun: $ordinary,
+          externalEventWait: $event_wait,
+          durableTimer: $timer,
+          liveAssertions: $assertions
+        },
+        cleanup: {
+          result: (if $cleanup_passed then "passed" else "failed" end),
+          statusContainer: $status_container_cleanup,
+          functionApp: $function_cleanup,
+          storageAccount: $storage_cleanup,
+          identifiersRedacted: true
+        },
+        isolation: {
+          runScopedResourceNames: true,
+          disposableResourceGroup: true,
+          identifiersRedacted: true
+        },
+        limitations: {
+          automaticQualificationPromotion: false,
+          consumerEnvironmentCovered: false
+        }
+      }' > "$VYRAL_AZURE_LIVE_RECEIPT_PATH"
+    chmod 0600 "$VYRAL_AZURE_LIVE_RECEIPT_PATH"
+  fi
+
   if [[ "$cleanup_failed" == true ]]; then
     echo "azure-durable-functions-live-cleanup=status-container:${STATUS_CONTAINER_CLEANUP} function:${FUNCTION_CLEANUP} storage:${STORAGE_CLEANUP}" >&2
   else
     echo "azure-durable-functions-live-cleanup=status-container:${STATUS_CONTAINER_CLEANUP} function:${FUNCTION_CLEANUP} storage:${STORAGE_CLEANUP}"
   fi
-  return 0
+  exit "$final_status"
 }
 trap cleanup EXIT
 
@@ -154,6 +220,7 @@ for _ in $(seq 1 72); do
   sleep 3
 done
 [[ "$smoke_status" == succeeded ]]
+ORDINARY_RUN_PASSED=true
 
 timeout_at="$(date -u -d '+10 minutes' +%Y-%m-%dT%H:%M:%SZ)"
 body="{\"idempotencyKey\":\"wait-smoke-${STAMP}\",\"payload\":{\"waitForEvent\":\"approval\",\"waitTimeoutAtUtc\":\"${timeout_at}\"}}"
@@ -178,6 +245,7 @@ for _ in $(seq 1 72); do
   sleep 3
 done
 [[ "$status" == succeeded ]]
+EXTERNAL_EVENT_PASSED=true
 
 timer_at="$(date -u -d '+90 seconds' +%Y-%m-%dT%H:%M:%SZ)"
 timer_body="{\"idempotencyKey\":\"timer-smoke-${STAMP}\",\"payload\":{\"waitForTimerAtUtc\":\"${timer_at}\"}}"
@@ -197,6 +265,7 @@ for _ in $(seq 1 72); do
   sleep 3
 done
 [[ "$timer_status" == succeeded ]]
+TIMER_PASSED=true
 
 VYRAL_AZURE_DURABLE_STATUS_CONTAINER="$STATUS_CONTAINER" \
 VYRAL_AZURE_DURABLE_SMOKE_RUN_ID="$smoke_run_id" \
@@ -204,4 +273,6 @@ VYRAL_AZURE_DURABLE_SMOKE_WAIT_RUN_ID="$run_id" \
 VYRAL_AZURE_DURABLE_SMOKE_TIMER_RUN_ID="$timer_run_id" \
 dotnet test tests/Vyral.Tests.Azure/Vyral.Tests.Azure.csproj --no-restore \
   --filter FullyQualifiedName~AzureDurableFunctionsSmokeLiveTests --logger 'console;verbosity=minimal'
+LIVE_ASSERTIONS_PASSED=true
+GATE_RESULT="passed"
 echo 'azure-durable-functions-live-gate=ok'

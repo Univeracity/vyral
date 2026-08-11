@@ -1,5 +1,5 @@
 {
-  "fileCount": 844,
+  "fileCount": 851,
   "files": [
     {
       "mode": "644",
@@ -58,13 +58,18 @@
     },
     {
       "mode": "644",
+      "path": ".github/workflows/azure-live-qualification.yml",
+      "sha256": "bb2ef8e209956ea0f65775e728c3f30e2ece7ab97fbb5c2e204800fe8b4da637"
+    },
+    {
+      "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "56c55a1fa8d81450b3332c67dad30974568fe431a3e91e76530153c57d52df74"
+      "sha256": "f8ff421804283c2f51f3045fd315160a6db167d2ce48475b2a2edb26a9fc30a1"
     },
     {
       "mode": "644",
       "path": ".github/workflows/codeql.yml",
-      "sha256": "38dadddb6550f4fdbb1a415ee3e0ded10cdf8ac468786acfbc9ced38f086f533"
+      "sha256": "d5c8ce5610f0143c2bf18b7628e0ab0a2588705483ee9453f2bbb72558aa97d2"
     },
     {
       "mode": "644",
@@ -89,12 +94,12 @@
     {
       "mode": "644",
       "path": ".github/workflows/python-runtime-qualification.yml",
-      "sha256": "31ad9f66d0d3207ab026809cc4f6c8d6d74459aa1218bced85134347e8a22868"
+      "sha256": "d0d5a1ab92b7986486ec5142d30f23ba9696ebc2f8e88366e17ab3a956aa4f91"
     },
     {
       "mode": "644",
       "path": ".github/workflows/release-integrity.yml",
-      "sha256": "0a2524a18809e11870189c69b30be0308de56b7b3c91264b34a1899493cd2036"
+      "sha256": "f3e40530a3ba714502a284864a863fdba1102fb9b237e83ce8a7df6847c974cc"
     },
     {
       "mode": "644",
@@ -119,7 +124,7 @@
     {
       "mode": "644",
       "path": "CONTRIBUTING.md",
-      "sha256": "41f886803f73966796f3cc7e391c6cce7179beff003c8012bf732f773d01ea85"
+      "sha256": "33814afacab97245ce196278f8ffb6a9b11072831f28f4920e06afdd02836036"
     },
     {
       "mode": "644",
@@ -139,7 +144,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "918e59fa888aab5ec1951d4522feda022dc324e938ca5ef4f3c715841ecfe16a"
+      "sha256": "03d8212a4b74f5be0c2a50a3974f9c5fcb6480d998c8ca538364bc354ad34bd2"
     },
     {
       "mode": "644",
@@ -614,7 +619,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "888945792fed15e89bd1241c6d828b758a6daaba9130a79eeeff74bd8fc375ab"
+      "sha256": "32cd01e988d448c5dd4a3665bc35f3026d7621795e3fee6ac51909e0099f3c50"
     },
     {
       "mode": "644",
@@ -1488,6 +1493,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/classify-ci-changes.py",
+      "sha256": "a6a78371d047e30aa05e24bad1fe75a9899a4f7b663693a27772a5d88f3575a5"
+    },
+    {
+      "mode": "755",
       "path": "scripts/download-benchmark-onnx-models.sh",
       "sha256": "6304add1341e0145746bb3c43078bc83be52b5e7f9e8ea38ca52fbc4f95a75a3"
     },
@@ -1499,7 +1509,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "d846346a72c2c748f070c01ca544c5be9824339b0be86263b7c5cd90b1d65bd9"
+      "sha256": "923be7737a25e9819109c4f30b561de481a5d8bf50be3a50242aacd3a8d2784e"
     },
     {
       "mode": "755",
@@ -1530,6 +1540,11 @@
       "mode": "755",
       "path": "scripts/run-canonical-mysql-conformance-native.sh",
       "sha256": "137f0610a71782c09de840c5c87731a7d2374a84b6e46ec4e47abcd06abd06fc"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/run-dotnet-tests.sh",
+      "sha256": "9901990b7be2cc317aa40c7efc5914816ce30ad3a228178e253eaf6de144f8df"
     },
     {
       "mode": "755",
@@ -1602,6 +1617,11 @@
       "sha256": "5c339c6e8d4d2dbf04074408f3b908051ec65105e7edba46e8a8ed8cb0f96c6a"
     },
     {
+      "mode": "755",
+      "path": "scripts/test-classify-ci-changes.py",
+      "sha256": "36897f07a9e39b058d6bb4b75b0c26d9d92af1cbca9d85726c1271063823aaa2"
+    },
+    {
       "mode": "644",
       "path": "scripts/test-export-public-tree.py",
       "sha256": "e834af5d61ce44dcd2ddcd3f0cfab37710aa30ed080122d41a6491427babe8c6"
@@ -1615,6 +1635,11 @@
       "mode": "644",
       "path": "scripts/test-python-runtime-platform-matrix.py",
       "sha256": "aac7fe630798498481afc5ba0ee7732ab578832a84399ebd27ffb84bd6804b7d"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/test-run-dotnet-tests.sh",
+      "sha256": "8fc4866e1947ceefc7e3753c29b227021f0e220458f57f93fe01f690536ff809"
     },
     {
       "mode": "755",
@@ -1684,7 +1709,12 @@
     {
       "mode": "755",
       "path": "scripts/validate-azure-durable-functions-live.sh",
-      "sha256": "eceef4d4328ab872c0c40c751fedad4a59cfe9b8c27e91749ea11f8d8c968fc3"
+      "sha256": "431ee62e7b5f2c20b946b0d5088dea04c95ad6f8f26194f2d601f32ab953ffbd"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/validate-azure-live-qualification.sh",
+      "sha256": "f13dc1d77abbddf2e4bab9502af06ad0b2ba5baefd04ec066e96803ec6a4c3fa"
     },
     {
       "mode": "755",
@@ -1777,6 +1807,11 @@
       "sha256": "b3915cbfede50c3715b528e14572be2870accd9ea067599a66fdc54094c630e4"
     },
     {
+      "mode": "755",
+      "path": "scripts/verify-pr-release-boundary.sh",
+      "sha256": "a1b8197fb142c67a090083e5f7196671655a72caf8fdb66a9b9d1f7921a0f761"
+    },
+    {
       "mode": "644",
       "path": "scripts/verify-public-contract-schemas.py",
       "sha256": "4128a0eea15c90e47cc298db8fd682420636519d0fc81cbf9de582b36c1ba524"
@@ -1799,7 +1834,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "49657eb43f9963eff79c10f760c419c719016a9389d047daaedcf29473e5393f"
+      "sha256": "e0d0b5bd3b8262a7427d99c3e8a4383ed844181718dcdccffeea396d06e4d36a"
     },
     {
       "mode": "755",
@@ -1859,7 +1894,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "35fa42e39f087c7a68ed50e357edbad3f9595ca01720d5c5a138a78ebca6d0c0"
+      "sha256": "a21092c6e90a3a2f9a19961777e3c558e1a055c38dd0543322b0f603584d7f8c"
     },
     {
       "mode": "755",
@@ -4224,5 +4259,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "1bb721ab03e70d9fefeaa9581469cb8755da58764705bca6a36b1e81acdd9aa4"
+  "treeSha256": "10c0901c50b67826132264c3cd27cb812332beffc6c488397ed38d901c4ca18f"
 }

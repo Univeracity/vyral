@@ -16,57 +16,105 @@ permissions:
   security-events: write
 
 jobs:
+  scope:
+    name: Select CodeQL languages
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      languages: ${{ steps.scope.outputs.languages }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed languages
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: >-
+          python3 scripts/classify-ci-changes.py
+          --event "$EVENT_NAME"
+          --base "$BASE_SHA"
+          --head "$HEAD_SHA"
+
   analyze:
     name: Analyze ${{ matrix.language }}
+    needs: scope
     # The repository variable is the emergency pause switch for hosted gates.
     # Manual dispatch remains available for controlled diagnostics.
     if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
           - language: csharp
+            scope: csharp
             build_mode: autobuild
           - language: javascript-typescript
+            scope: javascript
             build_mode: none
           - language: python
+            scope: python
             build_mode: none
           - language: go
+            scope: go
             build_mode: autobuild
     steps:
+      - name: Select this language
+        id: selection
+        env:
+          LANGUAGE_SCOPES: ${{ needs.scope.outputs.languages }}
+          LANGUAGE_SCOPE: ${{ matrix.scope }}
+        run: |
+          enabled="$(jq -r --arg scope "$LANGUAGE_SCOPE" '.[$scope]' <<<"$LANGUAGE_SCOPES")"
+          [[ "$enabled" == true || "$enabled" == false ]]
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+
+      - name: Report unaffected language
+        if: ${{ steps.selection.outputs.enabled != 'true' }}
+        run: echo 'codeql-language=not-affected'
+
       - name: Check out repository
+        if: ${{ steps.selection.outputs.enabled == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up .NET
-        if: matrix.language == 'csharp'
+        if: ${{ steps.selection.outputs.enabled == 'true' && matrix.language == 'csharp' }}
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.x
 
       - name: Set up Go
-        if: matrix.language == 'go'
+        if: ${{ steps.selection.outputs.enabled == 'true' && matrix.language == 'go' }}
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26.5"
           cache: false
 
       - name: Initialize CodeQL
+        if: ${{ steps.selection.outputs.enabled == 'true' }}
         uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build_mode }}
 
       - name: Analyze
+        if: ${{ steps.selection.outputs.enabled == 'true' }}
         uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           category: /language:${{ matrix.language }}
           output: artifacts/codeql/${{ matrix.language }}
-          upload: never
+          upload: always
           upload-database: false
 
-      - name: Upload local CodeQL evidence
-        if: always()
+      - name: Upload portable CodeQL evidence
+        if: ${{ always() && steps.selection.outputs.enabled == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: codeql-${{ matrix.language }}-${{ github.sha }}

@@ -2,6 +2,13 @@
 
 Each release candidate must be built from a reviewed commit in protected CI. Before publication:
 
+Pull requests run a fast release-boundary gate covering publication authorization, versions, public
+SDK and schema policy, secret and ownership scans, and the deterministic public export. They do not
+claim releasable-artifact evidence. Full package consumers, SBOM generation, runtime security,
+container qualification, vulnerability scanning, and deterministic regression suites run again on
+canonical `main`, release tags, and explicit release rehearsals. Only that full canonical run may be
+retained as release evidence.
+
 1. Create both ignored operator denylists described below and run
    `scripts/verify-public-export.sh --release` from a clean commit, then run
    `scripts/verify-release-artifacts.sh`; retain the public-export manifest, generated package artifacts, CycloneDX
