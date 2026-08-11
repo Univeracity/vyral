@@ -43,6 +43,13 @@ EXTERNAL_EVENT_PASSED=false
 TIMER_PASSED=false
 LIVE_ASSERTIONS_PASSED=false
 GATE_RESULT="failed"
+DEPLOYMENT_PASSED=false
+FUNCTIONS_DISCOVERED=false
+FUNCTION_KEY_AVAILABLE=false
+ENDPOINT_READY=false
+DISCOVERED_FUNCTION_COUNT=0
+READINESS_HTTP_CODE="not-attempted"
+FAILURE_STAGE="publish"
 
 cleanup() {
   local command_status="$?"
@@ -104,10 +111,17 @@ cleanup() {
       --arg status_container_cleanup "$STATUS_CONTAINER_CLEANUP" \
       --arg function_cleanup "$FUNCTION_CLEANUP" \
       --arg storage_cleanup "$STORAGE_CLEANUP" \
+      --arg failure_stage "$FAILURE_STAGE" \
+      --arg readiness_http_code "$READINESS_HTTP_CODE" \
       --argjson ordinary "$ORDINARY_RUN_PASSED" \
       --argjson event_wait "$EXTERNAL_EVENT_PASSED" \
       --argjson timer "$TIMER_PASSED" \
       --argjson assertions "$LIVE_ASSERTIONS_PASSED" \
+      --argjson deployment "$DEPLOYMENT_PASSED" \
+      --argjson functions_discovered "$FUNCTIONS_DISCOVERED" \
+      --argjson function_key_available "$FUNCTION_KEY_AVAILABLE" \
+      --argjson endpoint_ready "$ENDPOINT_READY" \
+      --argjson discovered_function_count "$DISCOVERED_FUNCTION_COUNT" \
       --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
       '{
         schemaVersion: 1,
@@ -121,11 +135,24 @@ cleanup() {
           secretsRedacted: true
         },
         checks: {
+          deployment: $deployment,
+          functionsDiscovered: $functions_discovered,
+          functionKeyAvailable: $function_key_available,
+          endpointReady: $endpoint_ready,
           ordinaryRun: $ordinary,
           externalEventWait: $event_wait,
           durableTimer: $timer,
           liveAssertions: $assertions
         },
+        failure: (
+          if $result == "passed" then null
+          else {
+            stage: $failure_stage,
+            readinessHttpCode: $readiness_http_code,
+            discoveredFunctionCount: $discovered_function_count
+          }
+          end
+        ),
         cleanup: {
           result: (if $cleanup_passed then "passed" else "failed" end),
           statusContainer: $status_container_cleanup,
@@ -160,6 +187,7 @@ dotnet publish samples/Vyral.Execution.AzureDurableFunctionsSmoke/Vyral.Executio
   --no-restore --configuration Release --output "$WORK_ROOT/publish" --nologo
 (cd "$WORK_ROOT/publish" && zip -qr "$WORK_ROOT/app.zip" .)
 
+FAILURE_STAGE="storage-provisioning"
 az storage account create --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$STORAGE" \
   --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --https-only true --min-tls-version TLS1_2 \
   --allow-blob-public-access false --only-show-errors --output none
@@ -167,45 +195,78 @@ STORAGE_CREATED=true
 STORAGE_CONNECTION="$(az storage account show-connection-string --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
   --name "$STORAGE" --query connectionString --output tsv)"
 
+FAILURE_STAGE="function-provisioning"
 az functionapp create --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
   --storage-account "$STORAGE" --flexconsumption-location "$LOCATION" --runtime dotnet-isolated \
   --runtime-version 10 --functions-version 4 --disable-app-insights true --https-only true \
   --only-show-errors --output none
 FUNCTION_CREATED=true
+FAILURE_STAGE="function-configuration"
 az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
   --settings "AzureWebJobsStorage=$STORAGE_CONNECTION" "VYRAL_AZURE_DURABLE_TASK_HUB=$HUB" \
   "VYRAL_AZURE_COSMOS_CONNECTION_STRING=$VYRAL_AZURE_COSMOS_CONNECTION_STRING" \
   "VYRAL_AZURE_COSMOS_DATABASE=$VYRAL_AZURE_COSMOS_DATABASE" \
   "VYRAL_AZURE_DURABLE_STATUS_CONTAINER=$STATUS_CONTAINER" --only-show-errors --output none
 
-# A newly created Flex app can expose SCM before its worker is ready. Retry the Kudu zip operation
-# instead of treating the transient 502 as a product failure.
-sleep 90
+# Azure CLI selects One Deploy for Flex Consumption even though the command retains its historic
+# config-zip name. A new app can transiently reject the operation before its deployment endpoint is
+# ready, so retry the operation instead of paying a fixed delay on every successful run.
+FAILURE_STAGE="deployment"
 deployed=false
-for _ in $(seq 1 4); do
+for _ in $(seq 1 6); do
   if az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
     --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none; then
     deployed=true
     break
   fi
-  sleep 30
+  sleep 20
 done
 [[ "$deployed" == true ]]
+DEPLOYMENT_PASSED=true
+echo 'azure-durable-functions-live-deployment=passed'
 
-function_key="$(az functionapp keys list --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
-  --name "$FUNCTION" --query functionKeys.default --output tsv)"
+FAILURE_STAGE="function-discovery"
+for _ in $(seq 1 72); do
+  candidate_count="$(az functionapp function list \
+    --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+    --name "$FUNCTION" --query 'length(@)' --output tsv --only-show-errors 2>/dev/null || true)"
+  if [[ "$candidate_count" =~ ^[0-9]+$ ]]; then
+    DISCOVERED_FUNCTION_COUNT="$candidate_count"
+  fi
+  if (( DISCOVERED_FUNCTION_COUNT > 0 )); then
+    break
+  fi
+  sleep 5
+done
+echo "azure-durable-functions-live-discovery=count:${DISCOVERED_FUNCTION_COUNT}"
+(( DISCOVERED_FUNCTION_COUNT > 0 ))
+FUNCTIONS_DISCOVERED=true
+
+FAILURE_STAGE="function-key"
+key_payload="$(az functionapp keys list --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+  --name "$FUNCTION" --output json --only-show-errors)"
+function_key="$(jq -r '.functionKeys.default // .masterKey // empty' <<<"$key_payload")"
+unset key_payload
+[[ -n "$function_key" ]]
+FUNCTION_KEY_AVAILABLE=true
 CURL_CONFIG="$WORK_ROOT/function-key.curlrc"
-printf 'header = "x-functions-key: %s"\n' "$function_key" > "$CURL_CONFIG"
+printf 'header = "x-functions-key: %s"\nconnect-timeout = 10\nmax-time = 30\n' \
+  "$function_key" > "$CURL_CONFIG"
 unset function_key
 base_url="https://${FUNCTION}.azurewebsites.net"
 http_code=""
+FAILURE_STAGE="endpoint-readiness"
 for _ in $(seq 1 72); do
   http_code="$(curl --config "$CURL_CONFIG" -sS -o /dev/null -w '%{http_code}' "$base_url/api/vyral-smoke/runs/not-a-run" || true)"
   [[ "$http_code" == 404 ]] && break
   sleep 5
 done
+READINESS_HTTP_CODE="${http_code:-unavailable}"
+echo "azure-durable-functions-live-readiness=http-${READINESS_HTTP_CODE}"
 [[ "$http_code" == 404 ]]
+ENDPOINT_READY=true
 
+FAILURE_STAGE="ordinary-run"
 smoke_body="{\"idempotencyKey\":\"ordinary-smoke-${STAMP}\",\"payload\":{}}"
 smoke_started="$(curl --config "$CURL_CONFIG" -sS --fail -X POST \
   "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' \
@@ -216,12 +277,15 @@ smoke_status=""
 for _ in $(seq 1 72); do
   smoke_status="$(curl --config "$CURL_CONFIG" -sS --fail \
     "$base_url/api/vyral-smoke/runs/$smoke_run_id" | jq -r .status)"
-  [[ "$smoke_status" == succeeded ]] && break
+  case "$smoke_status" in
+    succeeded | failed | rejected | cancelled | timed_out) break ;;
+  esac
   sleep 3
 done
 [[ "$smoke_status" == succeeded ]]
 ORDINARY_RUN_PASSED=true
 
+FAILURE_STAGE="external-event-wait"
 timeout_at="$(date -u -d '+10 minutes' +%Y-%m-%dT%H:%M:%SZ)"
 body="{\"idempotencyKey\":\"wait-smoke-${STAMP}\",\"payload\":{\"waitForEvent\":\"approval\",\"waitTimeoutAtUtc\":\"${timeout_at}\"}}"
 first="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$body")"
@@ -233,7 +297,9 @@ second="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-s
 status=""
 for _ in $(seq 1 48); do
   status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$run_id" | jq -r .status)"
-  [[ "$status" == waiting ]] && break
+  case "$status" in
+    waiting | failed | rejected | cancelled | timed_out) break ;;
+  esac
   sleep 3
 done
 [[ "$status" == waiting ]]
@@ -241,12 +307,15 @@ curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs/
   -H 'content-type: application/json' --data '{"approved":true}' >/dev/null
 for _ in $(seq 1 72); do
   status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$run_id" | jq -r .status)"
-  [[ "$status" == succeeded ]] && break
+  case "$status" in
+    succeeded | failed | rejected | cancelled | timed_out) break ;;
+  esac
   sleep 3
 done
 [[ "$status" == succeeded ]]
 EXTERNAL_EVENT_PASSED=true
 
+FAILURE_STAGE="durable-timer"
 timer_at="$(date -u -d '+90 seconds' +%Y-%m-%dT%H:%M:%SZ)"
 timer_body="{\"idempotencyKey\":\"timer-smoke-${STAMP}\",\"payload\":{\"waitForTimerAtUtc\":\"${timer_at}\"}}"
 timer_started="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$timer_body")"
@@ -255,18 +324,23 @@ timer_run_id="$(printf '%s' "$timer_started" | jq -r .id)"
 timer_status=""
 for _ in $(seq 1 48); do
   timer_status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id" | jq -r .status)"
-  [[ "$timer_status" == waiting ]] && break
+  case "$timer_status" in
+    waiting | failed | rejected | cancelled | timed_out) break ;;
+  esac
   sleep 3
 done
 [[ "$timer_status" == waiting ]]
 for _ in $(seq 1 72); do
   timer_status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id" | jq -r .status)"
-  [[ "$timer_status" == succeeded ]] && break
+  case "$timer_status" in
+    succeeded | failed | rejected | cancelled | timed_out) break ;;
+  esac
   sleep 3
 done
 [[ "$timer_status" == succeeded ]]
 TIMER_PASSED=true
 
+FAILURE_STAGE="live-assertions"
 VYRAL_AZURE_DURABLE_STATUS_CONTAINER="$STATUS_CONTAINER" \
 VYRAL_AZURE_DURABLE_SMOKE_RUN_ID="$smoke_run_id" \
 VYRAL_AZURE_DURABLE_SMOKE_WAIT_RUN_ID="$run_id" \
@@ -275,4 +349,5 @@ dotnet test tests/Vyral.Tests.Azure/Vyral.Tests.Azure.csproj --no-restore \
   --filter FullyQualifiedName~AzureDurableFunctionsSmokeLiveTests --logger 'console;verbosity=minimal'
 LIVE_ASSERTIONS_PASSED=true
 GATE_RESULT="passed"
+FAILURE_STAGE="complete"
 echo 'azure-durable-functions-live-gate=ok'
