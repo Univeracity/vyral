@@ -1,0 +1,57 @@
+name: Extropic Preview
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/extropic-preview.yml"
+      - "docs/guides/extropic-execution.md"
+      - "examples/python/extropic_torx_workload.py"
+      - "runtimes/python/pyproject.toml"
+      - "runtimes/python/src/vyral_runtime/integrations/extropic.py"
+      - "scripts/verify-python-extropic-torx.py"
+      - "scripts/verify-python-extropic-torx-live.py"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/extropic-preview.yml"
+      - "docs/guides/extropic-execution.md"
+      - "examples/python/extropic_torx_workload.py"
+      - "runtimes/python/pyproject.toml"
+      - "runtimes/python/src/vyral_runtime/integrations/extropic.py"
+      - "scripts/verify-python-extropic-torx.py"
+      - "scripts/verify-python-extropic-torx-live.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extropic-preview-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  torx-local-proof:
+    name: Prove Torx workload packaging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: runtimes/python/pyproject.toml
+
+      - name: Install Vyral with the pinned Torx proof line
+        run: >-
+          python -m pip install --disable-pip-version-check
+          --editable "runtimes/python[extropic-torx]"
+
+      - name: Run local and clean-process proofs
+        run: |
+          python -m py_compile scripts/verify-python-extropic-torx-live.py
+          python scripts/verify-python-extropic-torx.py

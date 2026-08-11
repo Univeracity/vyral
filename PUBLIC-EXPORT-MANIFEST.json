@@ -1,5 +1,5 @@
 {
-  "fileCount": 823,
+  "fileCount": 827,
   "files": [
     {
       "mode": "644",
@@ -70,6 +70,11 @@
       "mode": "644",
       "path": ".github/workflows/execution-runtime-consumer.yml",
       "sha256": "8d785b1fa0071a7c5a91ef7149ad9fc7618d22ab548464ab7613fa84301ffe29"
+    },
+    {
+      "mode": "644",
+      "path": ".github/workflows/extropic-preview.yml",
+      "sha256": "93c54dda7ffe6f206fb18795ba3bd54c68e742344bb8f6a960e83102f0a9f483"
     },
     {
       "mode": "644",
@@ -579,7 +584,7 @@
     {
       "mode": "644",
       "path": "docs/guides/extropic-execution.md",
-      "sha256": "92fd151ebb3d6d198e7b8d94384b49c46eec9ba823eb71cd08947be6ffa47609"
+      "sha256": "09e9c18f2f54f28da367906c197abbd192699d686387a147fdf114feff51f656"
     },
     {
       "mode": "644",
@@ -609,7 +614,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "2524b7193da3804fafc8c527739c42fd9e7cdb9bc942ed821670c6e0b1cae6ce"
+      "sha256": "2163d0dd9b99a47e3f9dda60d4afc13cc6e80724dd7bfa3f2e2678afeeda94ae"
     },
     {
       "mode": "644",
@@ -625,6 +630,11 @@
       "mode": "644",
       "path": "examples/python/consumer_workflows.py",
       "sha256": "f0a752881fc16225df22b6b13da0a45eef6a6140e0f5a2906200bc38ca0a9cba"
+    },
+    {
+      "mode": "644",
+      "path": "examples/python/extropic_torx_workload.py",
+      "sha256": "2da52e7ae1d9770ac861091b56f91944c48bcee1d414edcfe23c53d2c4270497"
     },
     {
       "mode": "644",
@@ -664,7 +674,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "2f89eedcacb8a7641ffec99cb106526b9891a3d1e6b3b1dd7c9f4ae0c3c15eaa"
+      "sha256": "f74eeb84a7bb500e7bfab63279a68737b0d0315d2e68fd2197b03a3996e407f2"
     },
     {
       "mode": "644",
@@ -684,7 +694,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/pyproject.toml",
-      "sha256": "a11bad821329f41857e22cea0f254737ce4a8cbe97e81ef6c0e48ce567e65bdf"
+      "sha256": "7c0de06cbfc930e2b7b3cb05804f97ff9c040d43561dbb0225f583bb175e9aae"
     },
     {
       "mode": "644",
@@ -1725,6 +1735,16 @@
       "mode": "755",
       "path": "scripts/verify-python-extropic-live.py",
       "sha256": "b33ff4b37582f669dddaa3170d048050514ffb13389cfa5ab795703e0acfa1c7"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-python-extropic-torx-live.py",
+      "sha256": "1de7729c6298580a8a44947d42e04b6a2c71a1a92de5362bcbbec807eae655b0"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/verify-python-extropic-torx.py",
+      "sha256": "8c9212515cfc9bff073e6555b0b92df806d2773c27d4864b0a2ce100a8299920"
     },
     {
       "mode": "755",
@@ -4119,5 +4139,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "ff7ab50f4fe171ffefd459c0abfbe314126dc3b5cfc32fd36045af32fb71efe7"
+  "treeSha256": "6ede7d4303711c80c351578da49700971ce01b18baa4729cf9566bc6e4561649"
 }
