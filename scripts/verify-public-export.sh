@@ -129,6 +129,36 @@ for relative in sorted(actual):
 print(f"public-export-manifest=ok files={len(actual)}")
 PY
 
+# The public repository commits its export manifest so benchmark provenance can prove descent from
+# the private canonical tree. Compare that checked-in evidence with the export we just built. Ignore
+# only sourceDirty: local --allow-dirty rehearsals intentionally set it on generated evidence, while
+# a committed manifest must always describe a clean source tree.
+if [[ -f "$ROOT/PUBLIC-EXPORT-MANIFEST.json" ]]; then
+  python3 - "$ROOT/PUBLIC-EXPORT-MANIFEST.json" "$first/PUBLIC-EXPORT-MANIFEST.json" <<'PY'
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+
+checked = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+generated = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+if checked.get("sourceDirty") is not False:
+    raise SystemExit("Checked-in public-export manifest must describe a clean source tree.")
+
+fields = ("schemaVersion", "fileCount", "files", "treeSha256")
+if any(checked.get(field) != generated.get(field) for field in fields):
+    raise SystemExit(
+        "Checked-in public-export manifest is stale; regenerate it from the current public tree."
+    )
+
+print("public-export-current-manifest=ok")
+PY
+else
+  printf 'public-export-current-manifest=not-applicable\n'
+fi
+
 while IFS= read -r -d '' json_file; do
   jq empty "$json_file"
 done < <(find "$first" -type f -name '*.json' -print0 | sort -z)
