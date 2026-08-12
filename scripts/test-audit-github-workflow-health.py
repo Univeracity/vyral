@@ -124,6 +124,36 @@ def _snapshot() -> dict[str, object]:
 
 
 def main() -> int:
+    workflow = (ROOT / ".github/workflows/ci-feedback.yml").read_text(
+        encoding="utf-8"
+    )
+    for required_hook in (
+        "workflow_run:",
+        'cron: "13 */3 * * *"',
+        "scripts/audit-github-workflow-health.py",
+        "github.event.repository.default_branch",
+        "VYRAL_CI_ALERT_URL",
+        "VYRAL_CI_HEARTBEAT_URL",
+        "steps.health.outputs.status == 'passed'",
+        "retention-days: 30",
+    ):
+        if required_hook not in workflow:
+            raise SystemExit(
+                f"CI feedback workflow is missing {required_hook!r}."
+            )
+    for monitored_workflow in (
+        "CI",
+        "CodeQL",
+        "Container Security",
+        "Release Integrity",
+        "Python Runtime Qualification",
+        "Temporal Container Qualification",
+    ):
+        if f"      - {monitored_workflow}\n" not in workflow:
+            raise SystemExit(
+                f"CI feedback no longer watches {monitored_workflow!r}."
+            )
+
     healthy = MODULE.evaluate_snapshot(_snapshot())
     if healthy["status"] != "passed" or healthy["summary"] != {
         "checkCount": 5,

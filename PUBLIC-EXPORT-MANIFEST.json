@@ -1624,7 +1624,7 @@
     {
       "mode": "755",
       "path": "scripts/test-audit-github-workflow-health.py",
-      "sha256": "28f077869f4c3e95a7ec3625af2598270a8f0d6a349a038cce2101acb2c76962"
+      "sha256": "704f0b9b65645569976195b05d2467165abf1de51bc78cd6eb1fc1570f8b8849"
     },
     {
       "mode": "755",
@@ -4294,5 +4294,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "09aed25335d39eb0bf0cdfb046f233a6e3eec4196c3a3f2ec0acb4780ffbf6de"
+  "treeSha256": "8ce60616abf3e7322040f36871e3c32e2bb97ed4b987e0e26abbb5763bb3035e"
 }
