@@ -60,11 +60,13 @@ jobs:
 
       - name: Audit current-head and schedule health
         if: ${{ github.event_name != 'workflow_run' }}
-        run: >-
-          python3 scripts/audit-github-workflow-health.py
-          --repository "$GITHUB_REPOSITORY"
-          --output "$REPORT_PATH"
-          --summary "$GITHUB_STEP_SUMMARY"
+        id: health
+        run: |
+          python3 scripts/audit-github-workflow-health.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --output "$REPORT_PATH" \
+            --summary "$GITHUB_STEP_SUMMARY"
+          echo "status=$(jq --raw-output '.status' "$REPORT_PATH")" >> "$GITHUB_OUTPUT"
 
       - name: Send a generic private alert
         if: ${{ failure() && env.VYRAL_CI_ALERT_URL != '' }}
@@ -83,7 +85,7 @@ jobs:
             "$VYRAL_CI_ALERT_URL"
 
       - name: Signal the external schedule heartbeat
-        if: ${{ success() && github.event_name != 'workflow_run' && env.VYRAL_CI_HEARTBEAT_URL != '' }}
+        if: ${{ success() && github.event_name != 'workflow_run' && steps.health.outputs.status == 'passed' && env.VYRAL_CI_HEARTBEAT_URL != '' }}
         run: >-
           curl --fail --silent --show-error --retry 3 --retry-all-errors
           "$VYRAL_CI_HEARTBEAT_URL"
