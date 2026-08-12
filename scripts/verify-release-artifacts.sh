@@ -101,6 +101,8 @@ python3 scripts/verify-public-sdk-surface.py
 python3 scripts/verify-public-contract-schemas.py
 python3 scripts/verify-markdown-links.py
 python3 scripts/generate-sdk-types.py
+VYRAL_FRESH_DEVELOPER_ARTIFACT_DIR="$QUALIFICATION_DIR/fresh-developer" \
+  scripts/verify-fresh-developer-path.sh
 VYRAL_PUBLIC_EXPORT_EVIDENCE_DIR="$ARTIFACT_ROOT/public-export" scripts/verify-public-export.sh
 scripts/scan-release-secrets.sh
 scripts/test-scan-release-secrets.sh

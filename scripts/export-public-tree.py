@@ -203,6 +203,7 @@ REQUIRED_FILES = {
     "scripts/verify-mcp-container.sh",
     "scripts/verify-mcp-load.py",
     "scripts/verify-execution-smoke-container.sh",
+    "scripts/verify-fresh-developer-path.sh",
     "scripts/verify-oci-image-identity.py",
     "scripts/verify-public-export.sh",
     "scripts/verify-pr-release-boundary.sh",
