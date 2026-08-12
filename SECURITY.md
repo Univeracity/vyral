@@ -24,8 +24,8 @@ examples, or test fixtures.
 The current server and external-worker container surfaces are rebuilt and scanned daily against
 fresh vulnerability intelligence, even when their source has not changed. High or critical
 findings and embedded secrets fail the scheduled gate, produce retained machine-readable evidence,
-and are uploaded to GitHub code scanning for maintainer triage. Pull requests that can change either
-image run the same focused gate before merge.
+and are uploaded to GitHub code scanning for maintainer triage. Every pull request runs the same
+focused gate before merge.
 
 This recurring scan complements the release-integrity gate: release integrity evaluates a commit
 at integration time, while continuous reassessment detects security intelligence that changes

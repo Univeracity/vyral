@@ -2,15 +2,6 @@ name: Container Security
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/container-security.yml"
-      - "Dockerfile"
-      - "Directory.Build.props"
-      - "Directory.Packages.props"
-      - "clients/go/**"
-      - "contracts/**"
-      - "src/**"
-      - "workers/execution-smoke-go/**"
   push:
     branches:
       - main
