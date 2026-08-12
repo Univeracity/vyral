@@ -74,6 +74,34 @@ the safety boundary and retained comparison evidence. Use indexed Vyral
 retrieval when queries need reordered terms, prefixes, record filters, tenant
 boundaries, or consistently lower post-index latency.
 
+## Portable cutover
+
+Run a hash-verified CanonicalStore export and restore between two independent
+local stores:
+
+```bash
+python3 examples/python/canonical_store_cutover.py
+```
+
+The example proves tenant-scoped documents, revisions, outbox state,
+transaction identity, and idempotent replay across the boundary. It is a local
+contract proof, not a provider qualification claim. The
+[portable cutover guide](../docs/guides/portable-cutovers.md) turns the same
+boundary into a provider-ready migration and rollback sequence.
+
+## Stateless MCP
+
+Route MCP discovery and catalog calls across two independent runtime instances:
+
+```bash
+python3 examples/python/stateless_mcp_round_robin.py
+```
+
+The example uses only the embedded runtime and ASGI contract. It proves that
+each request is self-describing, session-free, and safe to send to either
+compatible instance, while a routing-header/body mismatch is rejected. See the
+[gateway guide](../docs/guides/stateless-mcp.md) for the production boundary.
+
 ## Execution Runtime Sample
 
 The execution runtime sample is a .NET console app rather than an HTTP client script. It runs

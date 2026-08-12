@@ -1,5 +1,5 @@
 {
-  "fileCount": 860,
+  "fileCount": 865,
   "files": [
     {
       "mode": "644",
@@ -124,7 +124,7 @@
     {
       "mode": "644",
       "path": ".gitignore",
-      "sha256": "7b15c20e8f94c53e6c50a55dc511928718af35a1cd0e3c9104c10d1ad43ef969"
+      "sha256": "51d687b09eb7ce61a9476f938162aaf7d830292bde83c0dd38441197ae732a90"
     },
     {
       "mode": "644",
@@ -154,7 +154,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "abf87f5e0bbf08ae75939109c63c8c5999724c4508d56f6d95646ceec13eddfe"
+      "sha256": "c730dd5cd3ba9c73507331e94660eb308d585a9565bede3da82405487dbf252a"
     },
     {
       "mode": "644",
@@ -594,7 +594,7 @@
     {
       "mode": "644",
       "path": "docs/README.md",
-      "sha256": "2a846342f0e616eaefcc46ba817ab7ab73b9f7611be92b85e7407e70ef974d46"
+      "sha256": "08c15b04bed7b8d6883dd065279588b8b55156422075abee163f5cab0e2d29fb"
     },
     {
       "mode": "644",
@@ -623,8 +623,18 @@
     },
     {
       "mode": "644",
+      "path": "docs/guides/portable-cutovers.md",
+      "sha256": "1ea6238526cd2b728daaec3fc50e718137f4517892b4a3a0c75279abe1c156fc"
+    },
+    {
+      "mode": "644",
       "path": "docs/guides/source-native-retrieval.md",
       "sha256": "c6e22d6137d6d1544d752b722dc634c69f4429207cd298f2b590948528ba54a7"
+    },
+    {
+      "mode": "644",
+      "path": "docs/guides/stateless-mcp.md",
+      "sha256": "97bb80c695439d6723a242caf4ef48586d8e840bbe5c87c2822facc864079dc2"
     },
     {
       "mode": "644",
@@ -654,7 +664,7 @@
     {
       "mode": "644",
       "path": "examples/README.md",
-      "sha256": "a6b9159b28ace04cb37f1398e863235dd8ba87030e70899cedaf70ac5e5fd79f"
+      "sha256": "3202091cac845cf319a29dc25ee7eb5724c555f66d06fcea66ab2a53c194168a"
     },
     {
       "mode": "644",
@@ -665,6 +675,11 @@
       "mode": "644",
       "path": "examples/javascript/rag-quickstart.mjs",
       "sha256": "a2f6dab248bdc892a8beaecec9cd0935fddb1bfe782f4c07503b192c2ee2fe00"
+    },
+    {
+      "mode": "644",
+      "path": "examples/python/canonical_store_cutover.py",
+      "sha256": "5d3080b22dccf6dda10526e7a3dffe22a29723be4aaf637ec278c67ca9a990c4"
     },
     {
       "mode": "644",
@@ -695,6 +710,11 @@
       "mode": "644",
       "path": "examples/python/source_native_search.py",
       "sha256": "6078532d1b25733f3b0b9a4556cf5445c7e24f29b028e87389328c9dc7f6280b"
+    },
+    {
+      "mode": "644",
+      "path": "examples/python/stateless_mcp_round_robin.py",
+      "sha256": "f7226842b8a942ca6e52bd6d5241e11e51737dd58482757a44fcb8a2ebd5f4df"
     },
     {
       "mode": "644",
@@ -1524,7 +1544,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "ff0396c94d0ad1ff1bcd7dff1ff8ba8190b7608ca3d725cc937f1b7cc524f64b"
+      "sha256": "54d6b916ecfbdacf4943930c4187d20b9a19039da7d7b7e4e078628a64c817e9"
     },
     {
       "mode": "755",
@@ -1823,6 +1843,11 @@
     },
     {
       "mode": "755",
+      "path": "scripts/verify-fresh-developer-path.sh",
+      "sha256": "86dd17d563f72ae048928f9b081eee2903ef8d59e13c3dd93f2cf1b9cb5dfe1c"
+    },
+    {
+      "mode": "755",
       "path": "scripts/verify-lexical-http-quickstarts.sh",
       "sha256": "4e7bc7d534aaef9f553a337f23c032d6915641b725a9a4b416c09e122d6b486f"
     },
@@ -1939,7 +1964,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "bea2238088e30d0060a63fb4df4996bec973da92e24d1a957bc625d94c6dda32"
+      "sha256": "ffd65e6fca4da50b3cd61973aafd35cf53908d970c3ad45ceaebc9c0de5b4b24"
     },
     {
       "mode": "755",
@@ -4304,5 +4329,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "40387716b19185b663a8c1ae4928d6f9082d7daa4560e3f294bd684ea944d84c"
+  "treeSha256": "2c5c00d833bc35f891cfa3908b788f65bf5ec9257bd91f69e8772c2a6c7226d6"
 }
