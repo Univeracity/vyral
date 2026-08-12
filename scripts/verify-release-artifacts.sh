@@ -108,6 +108,8 @@ scripts/scan-release-ownership.sh
 scripts/test-scan-release-ownership.sh
 scripts/test-validate-npm-pack-layout.sh
 scripts/test-generate-adapter-qualification.sh
+python3 scripts/test-render-adapter-qualification.py
+python3 scripts/render-adapter-qualification.py --check
 jq empty qualification/adapter-qualification.schema.json qualification/adapter-qualification.json
 scripts/generate-adapter-qualification.sh "$QUALIFICATION_DIR/adapter-qualification.json"
 cp qualification/adapter-qualification.schema.json "$QUALIFICATION_DIR/adapter-qualification.schema.json"
