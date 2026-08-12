@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://openvyral.com/">
-    <img src="./docs/assets/vyral-logo-50.png" alt="Vyral logo" width="220">
+    <img src="./docs/assets/vyral-logo-50.png" alt="Vyral logo" width="148">
   </a>
 </p>
 
@@ -12,14 +12,24 @@
 </p>
 
 <p align="center">
-  Build locally. Change providers without rewriting your application.
+  <a href="LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-111111"></a>
+  <a href="https://github.com/Univeracity/vyral/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/Univeracity/vyral/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="docs/reference/stability.md"><img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-111111"></a>
+  <a href="runtimes/python"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/python-3.10%2B-111111"></a>
+  <a href="design/public-sdk-surface-and-stateless-mcp.md"><img alt="MCP 2026-07-28" src="https://img.shields.io/badge/MCP-2026--07--28-111111"></a>
+  <a href="#status"><img alt="Readiness is evidence-scoped" src="https://img.shields.io/badge/readiness-evidence--scoped-6b7280"></a>
 </p>
 
 <p align="center">
-  <a href="https://openvyral.com/">Website</a> ·
-  <a href="https://docs.openvyral.com/">Documentation</a> ·
-  <a href="ROADMAP.md">Roadmap</a>
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#core-capabilities">Capabilities</a> ·
+  <a href="#stateless-mcp">MCP</a> ·
+  <a href="#adapter-qualification">Evidence</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
+
+---
 
 Vyral is an open-source, local-first contract layer and runtime for applications
 that need **records and objects**, **retrieval and RAG**, **durable work**, and
@@ -429,7 +439,7 @@ are documented in the [release process](docs/maintainers/releasing.md).
 - CanonicalStore is intentionally narrower than a general relational database.
 - MCP is opt-in, and write tools require an explicit allowlist.
 
-## Contributing
+## Contributing and license
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), the
 [code of conduct](CODE_OF_CONDUCT.md), and the relevant contract or adapter
@@ -437,8 +447,13 @@ design before proposing a change. Public behavior should be represented in
 OpenAPI, the SDK catalog, conformance fixtures, and qualification evidence—not
 only in one implementation.
 
-## License
-
 Vyral is licensed under [Apache License 2.0](LICENSE). Third-party notices and
 project trademark guidance are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
 and [TRADEMARKS.md](TRADEMARKS.md).
+
+---
+
+<p align="center">
+  A <a href="https://univeracity.com">Univeracity</a> project ·
+  <a href="https://openvyral.com">openvyral.com</a>
+</p>
