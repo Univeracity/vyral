@@ -12,6 +12,7 @@ from .models import (
     CANONICAL_ARCHIVE_PROFILE,
     DEFAULT_ARCHIVE_CHUNK_BYTES,
     MAX_ARCHIVE_CHUNK_BYTES,
+    MAX_ARCHIVE_CHUNKS,
     MAX_DOCUMENT_BYTES,
     MAX_OUTBOX_PAYLOAD_BYTES,
     MAX_QUERY_LIMIT,
@@ -346,6 +347,12 @@ def create_canonical_archive(
             "match its contents."
         )
     payload = wire_json_bytes(snapshot.to_dict())
+    chunk_count = (len(payload) + chunk_bytes - 1) // chunk_bytes
+    if chunk_count > MAX_ARCHIVE_CHUNKS:
+        raise CanonicalValidationError(
+            "Canonical archive would exceed the "
+            f"{MAX_ARCHIVE_CHUNKS}-chunk limit; increase chunk_bytes."
+        )
     chunks = tuple(
         CanonicalTenantArchiveChunk(
             index=index,
@@ -383,6 +390,11 @@ def read_canonical_archive(
     if not archive.chunks:
         raise CanonicalIntegrityError(
             "Canonical archive contains no chunks."
+        )
+    if len(archive.chunks) > MAX_ARCHIVE_CHUNKS:
+        raise CanonicalIntegrityError(
+            "Canonical archive exceeds the "
+            f"{MAX_ARCHIVE_CHUNKS}-chunk limit."
         )
     expected = (
         selected.expected_content_hash.strip()

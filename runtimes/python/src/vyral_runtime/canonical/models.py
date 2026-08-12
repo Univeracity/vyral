@@ -20,6 +20,7 @@ MAX_SNAPSHOT_BYTES = 67_108_864
 DEFAULT_OUTBOX_RETRY_DELAY_SECONDS = 5.0
 DEFAULT_ARCHIVE_CHUNK_BYTES = 8 * 1024 * 1024
 MAX_ARCHIVE_CHUNK_BYTES = 16 * 1024 * 1024
+MAX_ARCHIVE_CHUNKS = 1_024
 CANONICAL_ARCHIVE_PROFILE = "vyral.canonical.archive.v1"
 CANONICAL_PREFLIGHT_PROFILE = (
     "vyral.canonical.data-plane-preflight.v1"
@@ -1397,6 +1398,14 @@ class CanonicalTenantArchive:
         if isinstance(value, cls):
             return value
         item = _mapping(value, "canonical tenant archive")
+        raw_chunks = _sequence(
+            item.get("chunks"), "archive.chunks"
+        )
+        if len(raw_chunks) > MAX_ARCHIVE_CHUNKS:
+            raise ValueError(
+                "archive.chunks must not contain more than "
+                f"{MAX_ARCHIVE_CHUNKS} chunks."
+            )
         return cls(
             profile=_text(
                 item.get("profile", CANONICAL_ARCHIVE_PROFILE),
@@ -1420,9 +1429,7 @@ class CanonicalTenantArchive:
                 CanonicalTenantArchiveChunk.from_value(
                     _mapping(raw, "archive.chunks[]")
                 )
-                for raw in _sequence(
-                    item.get("chunks"), "archive.chunks"
-                )
+                for raw in raw_chunks
             ),
         )
 

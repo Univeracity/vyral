@@ -989,7 +989,7 @@ only when:
 | MCP `2026-07-28` | The packaged Python host passes the pinned alpha.11 runner's complete frozen `--requirements 2026-07-28` profile with 189 checks and no failures; diagnostic fixtures remain explicitly test-only |
 | Clean installation without .NET | Wheel, sdist, server-extra, conformance, a pinned 77.5% combined line/branch regression floor, and strict typing gates pass locally; the manually gated Python 3.10–3.12 Linux/macOS/Windows matrix has a complete passing receipt |
 | Readiness honesty | Implemented profiles are available but remain prototype; topology is explicitly local single node and optional providers remain unavailable |
-| Security/recovery/bounded work | A 27-case installed-wheel adversarial gate and the `0.1.0` → `0.1.1` schema/combined-host restart rehearsal pass locally; combined-host startup/shutdown rollback, redaction, owned-runtime closure, and cancellation propagation are directly tested; independent security review remains a promotion gate |
+| Security/recovery/bounded work | A 28-case installed-wheel adversarial gate and the `0.1.0` → `0.1.1` schema/combined-host restart rehearsal pass locally; combined-host startup/shutdown rollback, archive chunk-count bounds, redaction, owned-runtime closure, and cancellation propagation are directly tested; independent security review remains a promotion gate |
 | Stability/qualification claim | The aggregate remains prototype and `fullLocalReady: false` |
 
 ## Immediate next actions

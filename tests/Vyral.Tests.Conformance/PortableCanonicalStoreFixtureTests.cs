@@ -17,6 +17,33 @@ public sealed class PortableCanonicalStoreFixtureTests
         new(JsonSerializerDefaults.Web);
 
     [Fact]
+    public void CanonicalArchiveRejectsExcessiveChunkCountsBeforeHashing()
+    {
+        var archive = new CanonicalTenantArchive
+        {
+            TenantId = "tenant-a",
+            ExportedAtUtc = DateTime.UnixEpoch,
+            SnapshotContentHash = "sha256:not-evaluated",
+            ContentHash = "sha256:not-evaluated",
+            Chunks = Enumerable.Range(0, CanonicalTenantArchive.MaxChunks + 1)
+                .Select(index => new CanonicalTenantArchiveChunk
+                {
+                    Index = index,
+                    Content = [0x01],
+                    Length = 1,
+                    ContentHash = "sha256:not-evaluated"
+                })
+                .ToList()
+        };
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            CanonicalTenantArchiveCodec.Read(
+                new CanonicalArchiveRestoreRequest { Archive = archive }));
+
+        Assert.Contains("chunk limit", error.Message);
+    }
+
+    [Fact]
     public async Task StrongCanonicalStoreMatchesThePortableFixture()
     {
         var manifestBytes = ReadResource(ManifestResource);

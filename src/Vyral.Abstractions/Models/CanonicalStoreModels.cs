@@ -661,6 +661,7 @@ public sealed class CanonicalTenantArchive
     public const string ProfileV1 = "vyral.canonical.archive.v1";
     public const int DefaultChunkBytes = 8 * 1024 * 1024;
     public const int MaxChunkBytes = 16 * 1024 * 1024;
+    public const int MaxChunks = 1_024;
 
     [JsonPropertyName("profile")]
     public string Profile { get; set; } = ProfileV1;
@@ -723,6 +724,9 @@ public static class CanonicalTenantArchiveCodec
         if (string.IsNullOrWhiteSpace(snapshot.ContentHash) || !string.Equals(snapshot.ContentHash, snapshotHash, StringComparison.Ordinal))
             throw new InvalidOperationException("Canonical archive source snapshot content hash does not match its contents.");
         var payload = JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonOptions);
+        var chunkCount = (payload.Length + (long)chunkBytes - 1) / chunkBytes;
+        if (chunkCount > CanonicalTenantArchive.MaxChunks)
+            throw new InvalidOperationException($"Canonical archive would exceed the {CanonicalTenantArchive.MaxChunks}-chunk limit; increase chunkBytes.");
         var archive = new CanonicalTenantArchive
         {
             TenantId = snapshot.TenantId,
@@ -753,6 +757,8 @@ public static class CanonicalTenantArchiveCodec
         if (!string.Equals(archive.Profile, CanonicalTenantArchive.ProfileV1, StringComparison.Ordinal))
             throw new InvalidOperationException($"Canonical archive profile '{archive.Profile}' is not supported.");
         if (archive.Chunks.Count == 0) throw new InvalidOperationException("Canonical archive contains no chunks.");
+        if (archive.Chunks.Count > CanonicalTenantArchive.MaxChunks)
+            throw new InvalidOperationException($"Canonical archive exceeds the {CanonicalTenantArchive.MaxChunks}-chunk limit.");
         var expectedArchiveHash = string.IsNullOrWhiteSpace(request.ExpectedContentHash) ? archive.ContentHash : request.ExpectedContentHash.Trim();
         var actualArchiveHash = ComputeArchiveHash(archive);
         if (string.IsNullOrWhiteSpace(expectedArchiveHash) || !string.Equals(expectedArchiveHash, actualArchiveHash, StringComparison.Ordinal))

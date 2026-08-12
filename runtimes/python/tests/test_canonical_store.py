@@ -33,11 +33,14 @@ from vyral_runtime.canonical import (  # noqa: E402
     CanonicalOutboxWrite,
     CanonicalRestoreRequest,
     CanonicalTransactionRequest,
+    CanonicalTenantArchive,
     CanonicalValidationError,
     CanonicalWritePrecondition,
+    MAX_ARCHIVE_CHUNKS,
     MAX_QUERY_LIMIT,
     SQLiteCanonicalStore,
     canonical_request_hash,
+    create_canonical_archive,
 )
 from vyral_runtime.canonical.conformance import (  # noqa: E402
     run_bundled_canonical_scenario,
@@ -458,6 +461,39 @@ class CanonicalStoreTests(unittest.TestCase):
             ).data["value"],  # type: ignore[index,union-attr]
         )
         self.assertTrue(reopened.commit(request).replayed)
+
+    def test_archive_chunk_count_is_bounded_before_decode_or_hashing(
+        self,
+    ) -> None:
+        self.store.commit(
+            upsert("tenant-a", "archive", "entity", "e-1", "one")
+        )
+        snapshot = self.store.export_tenant("tenant-a")
+        with self.assertRaisesRegex(
+            CanonicalValidationError, "chunk limit"
+        ):
+            create_canonical_archive(snapshot, chunk_bytes=1)
+
+        archive = self.store.export_tenant_archive("tenant-a")
+        first = archive.chunks[0]
+        too_many = replace(
+            archive,
+            chunks=tuple(
+                replace(first, index=index)
+                for index in range(MAX_ARCHIVE_CHUNKS + 1)
+            ),
+        )
+        with self.assertRaisesRegex(
+            CanonicalIntegrityError, "chunk limit"
+        ):
+            self.store.restore_tenant_archive(
+                CanonicalArchiveRestoreRequest(archive=too_many)
+            )
+
+        wire = archive.to_dict()
+        wire["chunks"] = [{}] * (MAX_ARCHIVE_CHUNKS + 1)
+        with self.assertRaisesRegex(ValueError, "must not contain more"):
+            CanonicalTenantArchive.from_value(wire)
 
     def test_migration_namespace_query_order_and_tenant_isolation(
         self,

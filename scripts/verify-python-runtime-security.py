@@ -479,6 +479,7 @@ def _direct_probes(root: Path) -> list[str]:
         ExecutionRunRequest,
         FileObjectStore,
         InMemoryExecutionWorkerTransport,
+        MAX_ARCHIVE_CHUNKS,
         MAX_COLLECTION_SNAPSHOT_RECORDS,
         ObjectWriteRequest,
         RecordValidationError,
@@ -608,6 +609,34 @@ def _direct_probes(root: Path) -> list[str]:
             "Canonical archive rejection mutated trusted state."
         )
     checks.append("canonical-corruption-is-atomic")
+
+    excessive_chunks = tuple(
+        type(first)(
+            index=index,
+            content=first.content,
+            length=first.length,
+            content_hash=first.content_hash,
+        )
+        for index in range(MAX_ARCHIVE_CHUNKS + 1)
+    )
+    oversized_archive = type(archive)(
+        profile=archive.profile,
+        tenant_id=archive.tenant_id,
+        exported_at_utc=archive.exported_at_utc,
+        snapshot_content_hash=archive.snapshot_content_hash,
+        content_hash=archive.content_hash,
+        chunks=excessive_chunks,
+    )
+    try:
+        canonical.restore_tenant_archive(
+            CanonicalArchiveRestoreRequest(archive=oversized_archive)
+        )
+    except CanonicalIntegrityError:
+        checks.append("canonical-archive-chunk-count-bound-enforced")
+    else:
+        raise RuntimeError(
+            "CanonicalStore accepted an excessive archive chunk count."
+        )
 
     oversized_payload = "x" * (1024 * 1024 + 1)
     try:
