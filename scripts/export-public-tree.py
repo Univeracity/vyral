@@ -131,6 +131,7 @@ REQUIRED_FILES = {
     ".github/workflows/azure-live-qualification.yml",
     ".github/workflows/ci.yml",
     ".github/workflows/codeql.yml",
+    ".github/workflows/container-security.yml",
     ".github/workflows/python-runtime-qualification.yml",
     ".github/workflows/release-integrity.yml",
     "benchmarks/retrieval/README.md",
