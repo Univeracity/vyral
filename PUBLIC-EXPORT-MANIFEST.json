@@ -1,5 +1,5 @@
 {
-  "fileCount": 858,
+  "fileCount": 860,
   "files": [
     {
       "mode": "644",
@@ -709,7 +709,7 @@
     {
       "mode": "644",
       "path": "qualification/README.md",
-      "sha256": "dc72562fe45928550130c661474035f2f92eef0ca9ae82b58967d2ad70ee0759"
+      "sha256": "aa213ab3b8f80c47c5644bf303b17ba19bda6ed3891bd370e3d48d811392a5b0"
     },
     {
       "mode": "644",
@@ -1524,7 +1524,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "659009175513d43b7d90832be3363e3b97ca224c61c1555b7c6b103d9d6bb4e9"
+      "sha256": "ff0396c94d0ad1ff1bcd7dff1ff8ba8190b7608ca3d725cc937f1b7cc524f64b"
     },
     {
       "mode": "755",
@@ -1540,6 +1540,11 @@
       "mode": "644",
       "path": "scripts/mcp-wire-proxy.py",
       "sha256": "4bb1ac4aa4a84f1a9258c01663ec0c63f95e8ad83b95b0700aeb3e71825655df"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/render-adapter-qualification.py",
+      "sha256": "9438b0b49becaeafa842ce2a7558706f915a74c9de7c5be4333ea6c51186aa05"
     },
     {
       "mode": "755",
@@ -1655,6 +1660,11 @@
       "mode": "644",
       "path": "scripts/test-python-runtime-platform-matrix.py",
       "sha256": "aac7fe630798498481afc5ba0ee7732ab578832a84399ebd27ffb84bd6804b7d"
+    },
+    {
+      "mode": "755",
+      "path": "scripts/test-render-adapter-qualification.py",
+      "sha256": "030546f5b79f5129a00ed1efd25741935041e3bb8375337a3a2cd1b087314c3e"
     },
     {
       "mode": "755",
@@ -1929,7 +1939,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "0424d5cf42eaf0bd3177faa6e682ece52632a52f6f75693c59e4b239639893a4"
+      "sha256": "bea2238088e30d0060a63fb4df4996bec973da92e24d1a957bc625d94c6dda32"
     },
     {
       "mode": "755",
@@ -4294,5 +4304,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "00c1608a65dd6e167988153785b05654232cce01ab5659f7bf244a85f2af84b3"
+  "treeSha256": "3a67e4d9f6eb26a5c31334defed9b61f23ed991422abf06edf1d4d04d4ba55f9"
 }
