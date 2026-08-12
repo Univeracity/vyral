@@ -78,7 +78,7 @@ and server instructions are in the
 | Embed Vyral in Python | [Python runtime](runtimes/python) |
 | Connect from Python, JavaScript, or Go | [Runtimes and clients](#choose-a-runtime-or-client) |
 | Build durable plugins and workflows | [Execution runtime](#execution-runtime) |
-| Inspect adapter maturity | [Qualification report](qualification/adapter-qualification.json) |
+| Inspect adapter maturity | [Qualification matrix](qualification/README.md) |
 
 ## Why Vyral
 
@@ -356,9 +356,10 @@ Start with the [execution design](design/execution-runtime.md),
 | Cloudflare R2 | Preview object-store adapter |
 
 An adapter is `live_qualified` only when the versioned
-[qualification report](qualification/adapter-qualification.json) records the
-required receipt. Availability, a successful build, or a package version alone
-does not establish that claim. Adapter authors should begin with
+[qualification matrix](qualification/README.md) records the required evidence.
+The matrix is generated from the canonical JSON report; availability, a
+successful build, or a package version alone does not establish that claim.
+Adapter authors should begin with the
 [adapter contributor guide](docs/contributing/adapter-contributor.md).
 
 ## Repository map
