@@ -1,108 +1,114 @@
 <p align="center">
-  <img src="./docs/assets/vyral-logo-50.png" alt="Vyral logo" width="220">
+  <a href="https://openvyral.com/">
+    <img src="./docs/assets/vyral-logo-50.png" alt="Vyral logo" width="220">
+  </a>
 </p>
 
 <h1 align="center">Vyral</h1>
 
 <p align="center">
-  <strong>Provider-portable application substrate</strong><br>
-  Records, retrieval, durable execution, and AI provider runs under one contract.
+  <strong>Own the contract layer.</strong><br>
+  Provider-portable records, retrieval, durable execution, and AI runs.
 </p>
 
 <p align="center">
-  Build locally. Re-home when economics, features, or policy require it.
+  Build locally. Change providers without rewriting your application.
 </p>
 
-Vyral is a local-first contract layer and runtime for applications that need
-**records and objects**, **lexical/vector/hybrid retrieval and RAG**,
-**source-native retrieval experiments**,
-**durable jobs**, and **provider-backed AI runs** without binding application
-code to a single cloud, vector store, orchestration engine, or model vendor.
+<p align="center">
+  <a href="https://openvyral.com/">Website</a> ·
+  <a href="https://docs.openvyral.com/">Documentation</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
+</p>
 
-Application code depends on Vyral contracts. Adapters implement those contracts
-for SQLite, Postgres/pgvector, Azure, AWS, Google Cloud, Cloudflare, Temporal,
-and others. Conformance tests and a versioned qualification matrix make adapter
-behavior explicit instead of assumed.
+Vyral is an open-source, local-first contract layer and runtime for applications
+that need **records and objects**, **retrieval and RAG**, **durable work**, and
+**provider-backed AI runs**. It keeps those capabilities behind stable,
+application-owned contracts instead of vendor SDKs.
+
+Start on a laptop with one command. When economics, features, policy, or scale
+change, adapters can move individual capabilities to SQLite,
+Postgres/pgvector, Azure, AWS, Google Cloud, Cloudflare, Temporal, and other
+providers without changing application code. Language-neutral conformance
+fixtures and a versioned qualification matrix make adapter behavior explicit
+instead of assumed.
 
 ## Quick start
 
-From a source checkout, run:
+Try the end-to-end local path from a source checkout:
 
 ```bash
 ./scripts/vyral
 ```
 
-That is the complete local path. It needs only Python 3.10 or newer—no package
-installation, .NET SDK, container runtime, cloud account, external service, or
-model download. It runs zero-embedding lexical retrieval with citations, admits
-durable work, closes and reopens the runtime, and completes the preserved run.
-State remains visible under `./.vyral/quickstart`.
+This is the only command required for the local demonstration. With Python 3.10
+or newer—and no package installation, .NET SDK, container runtime, cloud
+account, external service, or model download—it runs lexical retrieval with
+citations, admits durable work, reopens the runtime, and completes the
+preserved run. State remains inspectable under `./.vyral/quickstart`.
 
-Create a small editable application when you are ready to build:
+Create an editable application when you are ready to build:
 
 ```bash
 ./scripts/vyral init
 ./scripts/vyral run ./vyral_app.py
 ```
 
-The installed command is simply `vyral`; `vyral-runtime` remains a compatibility
-alias and the distribution name. Use `./scripts/vyral inspect` to explain the
-local providers and limitations. Windows users can invoke the source launcher
-with `python scripts/vyral`. Manual installation, custom state paths, JSON
-output, reset, and server instructions are in the
+The runtime command is `vyral`; `vyral-runtime` remains a compatibility alias
+and the distribution name. Use `./scripts/vyral inspect` to explain the local
+providers and limitations. Windows users can invoke the source launcher with
+`python scripts/vyral`. Installation, custom state paths, JSON output, reset,
+and server instructions are in the
 [Python runtime guide](runtimes/python).
 
 | You need… | Start here |
 | --- | --- |
-| Local RAG / retrieval substrate | [Quick start](#quick-start) |
-| Source-native, lexical, vector, or hybrid choice | [Retrieval guide](docs/guides/source-native-retrieval.md) |
-| Embedded Python runtime, no server or .NET | [Python runtime](runtimes/python) |
-| HTTP clients (Python / JavaScript) | [Client packages](#client-packages) |
-| Go external-worker client | [Go client](clients/go) |
-| Durable plugins and runtimes | [Execution runtime](#execution-runtime) |
-| Adapter maturity evidence | [Qualification report](qualification/adapter-qualification.json) |
-| Consumer handoff / ops checks | [Consumer handoff](docs/guides/consumer-handoff.md) |
-| Near-term project direction | [Public roadmap](ROADMAP.md) |
+| Try Vyral locally | [Quick start](#quick-start) |
+| Choose source-native, lexical, vector, or hybrid retrieval | [Retrieval guide](docs/guides/source-native-retrieval.md) |
+| Embed Vyral in Python | [Python runtime](runtimes/python) |
+| Connect from Python, JavaScript, or Go | [Runtimes and clients](#choose-a-runtime-or-client) |
+| Build durable plugins and workflows | [Execution runtime](#execution-runtime) |
+| Inspect adapter maturity | [Qualification report](qualification/adapter-qualification.json) |
 
 ## Why Vyral
 
-Provider-backed applications often start local, then accumulate vendor assumptions:
-storage shapes, search semantics, object layouts, embedding APIs, quotas, auth,
-and SDK-specific envelopes. Migration becomes a rewrite rather than a cutover.
+AI applications often start with a simple local path, then accumulate provider
+assumptions: storage shapes, search semantics, object layouts, embedding APIs,
+quotas, auth, and SDK-specific envelopes. A provider change becomes a product
+rewrite rather than an infrastructure decision.
 
 Vyral keeps the capability model application-owned:
 
 - **Records** — ids, partition keys, metadata, content, sources, vectors, and etags
 - **Objects** — large immutable payloads and manifests outside the record index
-- **Retrieval** — filters, lexical, vector, hybrid, profiles, evaluation, and experimental source-native search
+- **Retrieval** — source-native, lexical, vector, and hybrid search, profiles, and evaluation
 - **RAG** — deterministic chunk plans, dry-run/commit, manifests, context, and citations
-- **Provider runs** — one envelope for local, CLI, and ONNX-backed AI capabilities
+- **AI runs** — one envelope for local, CLI, ONNX-backed, and remote capabilities
 - **Execution** — durable runs and plugins with local and provider-backed adapters
 - **Evidence** — readiness, traces, conformance suites, and qualification levels
 
-Use Vyral when you want realistic local development and a rehearsed path to
-re-home storage, retrieval, or execution without rewriting the product surface.
+Vyral is most useful when an application needs to cross one or more provider
+seams without giving those providers ownership of its data and execution
+semantics.
 
-For local, current, structured sources that an application can safely access,
-searching the source directly is often the best first retrieval path: exact,
-immediately fresh, and free of index synchronization. Use indexed lexical
-retrieval when you need a governed record boundary, vectors when labeled tests
-show semantic recall is worth the added index, and hybrid or reranking only
-when the same evaluation demonstrates an improvement.
+Vyral does not assume vector search is always the answer. For current,
+structured sources that an application can safely access, direct source search
+is often the simplest first path. Indexed lexical, vector, hybrid, and reranked
+retrieval remain available when corpus shape and measured quality justify them.
 
 ## Status
 
-Vyral is an Apache-2.0, pre-1.0 project in active development. The local paths
-are usable and extensively tested, but adapter maturity varies and package
-publication is currently withheld. See the [stability policy](docs/reference/stability.md) for the
+Vyral is an Apache-2.0, pre-1.0 project in active development. Local paths are
+usable and tested, but adapter maturity varies and packages have not yet been
+published. See the [stability policy](docs/reference/stability.md) for the
 compatibility policy.
 
 | Surface | Current posture |
 | --- | --- |
 | .NET local server, SQLite, retrieval, and RAG | Primary supported implementation |
 | Python and JavaScript HTTP clients | Implemented and tested against the public SDK catalog |
-| Python-native embedded runtime and REST/MCP host | Prototype; implemented and clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
-| Source-native ripgrep integration | Experimental; retained local evidence supports bounded exact-literal search over authorized code/Markdown without a duplicate index; outside the stable wire/MCP contract |
+| Python-native embedded runtime and REST/MCP host | Prototype; clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
+| Source-native ripgrep integration | Experimental; bounded exact-literal search over authorized code and Markdown, outside the stable wire/MCP contract |
 | Stateless MCP `2026-07-28` endpoint | Preview; opt-in and REST-backed |
 | Local SQLite and Azure Durable execution | Preview; locally conformant |
 | AWS, Google, Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
@@ -132,7 +138,7 @@ node examples/javascript/rag-quickstart.mjs
 Set `VYRAL_URL` to use a different host. More complete retrieval, GraphRAG, AI,
 and execution examples live in [examples](examples) and [samples](samples).
 
-## Container
+### Container
 
 The server image is non-root, shell-free, and compatible with a read-only root
 filesystem. This local command keeps state in a Docker-managed volume:
@@ -157,7 +163,7 @@ ingress and a deployment-managed API key. See
 
 ## Choose a runtime or client
 
-| Goal | Source package |
+| Goal | Entry point |
 | --- | --- |
 | Run the full .NET server and provider adapters | `src/Vyral.Server` and packages under `src/` |
 | Run Vyral in a Python process | `vyral-runtime` in `runtimes/python` |
@@ -185,7 +191,7 @@ runtime implementations.
 | Retrieval | Structured filters, lexical/vector/hybrid search, fusion, profiles, reranking, diagnostics, and evaluation |
 | RAG | Deterministic ingestion, dry-run and durable admission, citations, bounded context, prompts, and GraphRAG expansion |
 | Graphs | Import/export, preflight, inspection, doctor, bounded traversal, assertions, reviews, and projections |
-| AI provider runs | Model discovery, capability guidance, extraction, embedding, reranking, quotas, artifacts, and normalized status |
+| AI runs | Model discovery, capability guidance, extraction, embedding, reranking, quotas, artifacts, and normalized status |
 | Durable execution | Idempotent admission, retries, cancellation, timers, waits, checkpoints, artifacts, leases, plugins, and external workers |
 | Operations | Health, readiness, traces, redacted diagnostics, conformance, qualification receipts, and release evidence |
 
@@ -287,9 +293,9 @@ resolves their graph-node identifiers, performs a bounded traversal, and
 returns a projection with provenance and budget diagnostics. Relationships add
 context; they do not replace retrieved source evidence.
 
-## AI provider runs
+## AI runs
 
-Provider runs normalize model discovery, capability guidance, request status,
+AI runs normalize model discovery, capability guidance, request status,
 artifacts, traces, and quota reporting across local, CLI, ONNX, and remote
 providers. Provider-specific behavior stays behind adapter boundaries and is
 surfaced through readiness and qualification evidence rather than silent
