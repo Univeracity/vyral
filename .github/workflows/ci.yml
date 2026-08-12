@@ -191,6 +191,7 @@ jobs:
       - name: Check scripts and JSON
         run: |
           python3 scripts/test-audit-github-launch-controls.py
+          python3 scripts/test-audit-github-workflow-health.py
           python3 scripts/test-classify-ci-changes.py
           python3 scripts/test-export-public-tree.py
           python3 scripts/test-python-runtime-platform-matrix.py

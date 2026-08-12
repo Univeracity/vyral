@@ -90,6 +90,7 @@ printf 'release-shell-syntax=ok\n'
 python3 scripts/verify-publication-policy.py
 python3 scripts/verify-publication-cohort.py
 python3 scripts/test-audit-github-launch-controls.py
+python3 scripts/test-audit-github-workflow-health.py
 python3 scripts/test-classify-ci-changes.py
 python3 scripts/test-verify-oci-image-identity.py
 scripts/test-run-dotnet-tests.sh

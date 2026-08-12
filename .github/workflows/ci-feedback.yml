@@ -1,0 +1,98 @@
+name: CI Feedback
+
+run-name: >-
+  CI feedback · ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name || 'scheduled health audit' }}
+
+on:
+  workflow_run:
+    workflows:
+      - AWS Live Qualification
+      - Azure Live Qualification
+      - CI
+      - CodeQL
+      - Container Security
+      - Dependency Review
+      - Execution Runtime Consumer
+      - Extropic Preview
+      - Google Live Qualification
+      - Python Runtime Qualification
+      - Release Integrity
+      - Temporal Container Qualification
+      - Temporal Live Qualification
+    types:
+      - completed
+  schedule:
+    - cron: "13 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: ci-feedback-${{ github.event_name }}-${{ github.event.workflow_run.id || 'health' }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit workflow health
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VYRAL_CI_ALERT_URL: ${{ secrets.VYRAL_CI_ALERT_URL }}
+      VYRAL_CI_HEARTBEAT_URL: ${{ secrets.VYRAL_CI_HEARTBEAT_URL }}
+      REPORT_PATH: artifacts/ci-feedback/workflow-health.json
+    steps:
+      - name: Check out the trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Audit the completed workflow
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: >-
+          python3 scripts/audit-github-workflow-health.py
+          --workflow-run-event "$GITHUB_EVENT_PATH"
+          --output "$REPORT_PATH"
+          --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Audit current-head and schedule health
+        if: ${{ github.event_name != 'workflow_run' }}
+        run: >-
+          python3 scripts/audit-github-workflow-health.py
+          --repository "$GITHUB_REPOSITORY"
+          --output "$REPORT_PATH"
+          --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Send a generic private alert
+        if: ${{ failure() && env.VYRAL_CI_ALERT_URL != '' }}
+        env:
+          SOURCE_RUN_URL: ${{ github.event.workflow_run.html_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+          SOURCE_WORKFLOW: ${{ github.event.workflow_run.name || 'CI Feedback' }}
+        run: |
+          payload="$(jq --null-input --compact-output \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg workflow "$SOURCE_WORKFLOW" \
+            --arg url "$SOURCE_RUN_URL" \
+            '{repository: $repository, workflow: $workflow, status: "attention_required", runUrl: $url}')"
+          curl --fail --silent --show-error --retry 3 --retry-all-errors \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$VYRAL_CI_ALERT_URL"
+
+      - name: Signal the external schedule heartbeat
+        if: ${{ success() && github.event_name != 'workflow_run' && env.VYRAL_CI_HEARTBEAT_URL != '' }}
+        run: >-
+          curl --fail --silent --show-error --retry 3 --retry-all-errors
+          "$VYRAL_CI_HEARTBEAT_URL"
+
+      - name: Upload redacted workflow-health evidence
+        if: ${{ always() && hashFiles('artifacts/ci-feedback/workflow-health.json') != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-feedback-${{ github.run_id }}
+          path: artifacts/ci-feedback/workflow-health.json
+          if-no-files-found: error
+          retention-days: 30

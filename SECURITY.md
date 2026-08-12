@@ -31,3 +31,14 @@ This recurring scan complements the release-integrity gate: release integrity ev
 at integration time, while continuous reassessment detects security intelligence that changes
 after an otherwise unchanged release. Suspected vulnerabilities should still be reported privately
 through the advisory form above rather than a public issue.
+
+Critical workflow completions also feed a separate CI-health control. Failures are surfaced
+immediately, while a three-hour audit verifies that the current default-branch commit has passing
+CI, CodeQL, and release-integrity jobs and that scheduled CodeQL and container reassessment remain
+fresh. The audit checks the expected job conclusions as well as the workflow conclusion so an
+automation pause or silently skipped job cannot be mistaken for passing evidence.
+
+Maintainers may configure `VYRAL_CI_ALERT_URL` as a private generic webhook and
+`VYRAL_CI_HEARTBEAT_URL` as an external dead-man endpoint. Alert payloads contain only the
+repository, workflow name, attention status, and GitHub run URL; findings and scan evidence remain
+inside GitHub. The heartbeat is sent only after the complete schedule-health policy passes.
