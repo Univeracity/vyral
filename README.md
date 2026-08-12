@@ -247,8 +247,15 @@ The packaged Python host runs the same frozen official requirements profile in
 the Python runtime qualification workflow; its conformance fixtures are enabled
 only for that gate.
 
-See the [stateless MCP design](design/public-sdk-surface-and-stateless-mcp.md)
-for routing, catalog policy, security boundaries, and acceptance criteria.
+See the request boundary work across two independent local instances:
+
+```bash
+python3 examples/python/stateless_mcp_round_robin.py
+```
+
+The [gateway guide](docs/guides/stateless-mcp.md) covers deployment checks. The
+[stateless MCP design](design/public-sdk-surface-and-stateless-mcp.md) defines
+routing, catalog policy, security boundaries, and acceptance criteria.
 
 ## Storage and retrieval
 
@@ -262,6 +269,16 @@ requests:
 | Objects | Filesystem | Google Cloud Storage, Cloudflare R2, Azure Blob Storage, S3 |
 | Retrieval | SQLite/local providers | pgvector and provider-shaped adapters |
 | Traces | SQLite | Firestore and deployment-specific sinks |
+
+Exercise the portable data boundary without cloud credentials:
+
+```bash
+python3 examples/python/canonical_store_cutover.py
+```
+
+The [portable cutover guide](docs/guides/portable-cutovers.md) extends that
+local proof into provider preflight, shadowing, cutover, rollback, and retained
+evidence.
 
 Retrieval supports structured filters, lexical, vector, and hybrid modes;
 configurable fusion and reranking; reusable profiles; and evaluation receipts.

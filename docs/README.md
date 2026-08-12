@@ -16,6 +16,10 @@ here so each document has a clear audience and owner.
   fail-closed dispatch of registered Python workloads to Extropic compute.
 - [Source-native and indexed retrieval](guides/source-native-retrieval.md) —
   choose and evaluate direct, lexical, vector, hybrid, and reranked retrieval.
+- [Portable cutovers](guides/portable-cutovers.md) — hash-verified canonical
+  migration, shadowing, cutover, rollback, and retained evidence.
+- [Stateless MCP behind a gateway](guides/stateless-mcp.md) — two-instance local
+  proof, header-aware routing, authorization, and production checks.
 - [Stability and versioning](reference/stability.md) — maturity labels, version
   lines, and compatibility promises.
 

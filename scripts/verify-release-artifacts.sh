@@ -126,6 +126,8 @@ ripgrep_comparison="$ARTIFACT_ROOT/ripgrep-comparison.json"
 ripgrep_tampered="$ARTIFACT_ROOT/ripgrep-comparison-tampered.json"
 ripgrep_user_result="$ARTIFACT_ROOT/ripgrep-user-path.json"
 ripgrep_migration_result="$ARTIFACT_ROOT/ripgrep-migration-path.json"
+canonical_cutover_result="$ARTIFACT_ROOT/canonical-cutover-path.json"
+stateless_mcp_result="$ARTIFACT_ROOT/stateless-mcp-path.json"
 python3 scripts/benchmark-ripgrep-retrieval.py \
   --output "$ripgrep_comparison" \
   --noise-documents 60 \
@@ -169,6 +171,51 @@ jq -e '
   and (.indexed.embeddingUsed == false)
 ' "$ripgrep_migration_result" >/dev/null
 printf 'ripgrep-retrieval-admission-gate=ok\n'
+
+python3 examples/python/canonical_store_cutover.py \
+  --json > "$canonical_cutover_result"
+jq -e '
+  (.schemaVersion == "vyral.canonical-cutover-example.v1")
+  and (.source.idempotentReplay == true)
+  and (.transfer.hashVerifiedRestore == true)
+  and (.transfer.chunkCount >= 1)
+  and (.target.documentCount == 1)
+  and (.target.revisionCount == 1)
+  and (.target.outboxEventCount == 1)
+  and (.target.transactionCount == 1)
+  and (.target.idempotentReplay == true)
+  and (.target.tenantIsolationPreserved == true)
+  and (.source.transactionId == .target.transactionId)
+' "$canonical_cutover_result" >/dev/null
+
+python3 examples/python/stateless_mcp_round_robin.py \
+  --json > "$stateless_mcp_result"
+jq -e '
+  (.protocolVersion == "2026-07-28")
+  and (.topology.instanceCount == 2)
+  and (.topology.sharedMcpSessionStore == false)
+  and (.requests | length == 4)
+  and all(
+    .requests[];
+    (.status == 200)
+    and (.methodVisibleBeforeBody == true)
+    and (.sessionHeaderPresent == false)
+  )
+  and (
+    [.requests[] | select(.method == "server/discover") | .target]
+    | unique
+    | length == 2
+  )
+  and (
+    [.requests[] | select(.method == "tools/list") | .target]
+    | unique
+    | length == 2
+  )
+  and (.catalogToolCount > 0)
+  and (.equivalentResultsAcrossInstances == true)
+  and (.headerBodyMismatchRejected == true)
+' "$stateless_mcp_result" >/dev/null
+printf 'portable-migration-and-stateless-mcp-examples=ok\n'
 
 if [[ -n "${VYRAL_PUBLIC_HISTORY_DENYLIST_FILE:-}" || -n "${VYRAL_PUBLIC_HISTORY_DENYLIST:-}" ]]; then
   scripts/scan-release-history.sh
