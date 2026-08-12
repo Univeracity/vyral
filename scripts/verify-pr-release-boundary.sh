@@ -15,9 +15,9 @@ if (( $# != 0 )); then
 fi
 
 # Pull requests prove that public/release policy and the deterministic source
-# export remain coherent. Expensive package-consumer, SBOM, container,
-# vulnerability, and full-regression evidence is rebuilt from canonical main,
-# tags, and explicit release rehearsals.
+# export remain coherent. The focused container-security workflow scans image-affecting changes
+# before merge; package-consumer, SBOM, qualification, and full-regression evidence is rebuilt from
+# canonical main, tags, and explicit release rehearsals.
 python3 scripts/verify-publication-policy.py
 python3 scripts/verify-publication-cohort.py
 python3 scripts/verify-version-policy.py

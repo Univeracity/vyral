@@ -1,0 +1,129 @@
+name: Container Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/container-security.yml"
+      - "Dockerfile"
+      - "Directory.Build.props"
+      - "Directory.Packages.props"
+      - "clients/go/**"
+      - "contracts/**"
+      - "src/**"
+      - "workers/execution-smoke-go/**"
+  schedule:
+    - cron: "37 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: container-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    name: Scan current container surfaces
+    # Manual dispatch remains available when the hosted-automation pause switch is active.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TRIVY_IMAGE: aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build current container surfaces
+        run: |
+          docker build \
+            --file Dockerfile \
+            --tag "vyral-server-security:${{ github.sha }}" \
+            .
+          docker build \
+            --file workers/execution-smoke-go/Dockerfile \
+            --tag "vyral-execution-smoke-security:${{ github.sha }}" \
+            .
+
+      - name: Scan with current vulnerability intelligence
+        run: |
+          mkdir -p artifacts/container-security "$RUNNER_TEMP/vyral-trivy-cache"
+          scan_image() {
+            local image="$1"
+            local report="$2"
+            docker run --rm \
+              --volume /var/run/docker.sock:/var/run/docker.sock \
+              --mount "type=bind,source=$RUNNER_TEMP/vyral-trivy-cache,target=/root/.cache/trivy" \
+              --mount "type=bind,source=$PWD/artifacts/container-security,target=/evidence" \
+              "$TRIVY_IMAGE" \
+              image --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 0 \
+              --format json --output "/evidence/$report.json" \
+              "$image"
+            docker run --rm \
+              --volume /var/run/docker.sock:/var/run/docker.sock \
+              --mount "type=bind,source=$RUNNER_TEMP/vyral-trivy-cache,target=/root/.cache/trivy" \
+              --mount "type=bind,source=$PWD/artifacts/container-security,target=/evidence" \
+              "$TRIVY_IMAGE" \
+              image --skip-db-update --scanners vuln,secret \
+              --severity HIGH,CRITICAL --exit-code 0 \
+              --format sarif --output "/evidence/$report.sarif" \
+              "$image"
+          }
+          scan_image \
+            "vyral-server-security:${{ github.sha }}" \
+            vyral-server
+          scan_image \
+            "vyral-execution-smoke-security:${{ github.sha }}" \
+            execution-smoke-worker
+
+      - name: Upload server findings to code scanning
+        if: ${{ always() && hashFiles('artifacts/container-security/vyral-server.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: artifacts/container-security/vyral-server.sarif
+          category: /container:vyral-server
+
+      - name: Upload worker findings to code scanning
+        if: ${{ always() && hashFiles('artifacts/container-security/execution-smoke-worker.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: artifacts/container-security/execution-smoke-worker.sarif
+          category: /container:execution-smoke-worker
+
+      - name: Upload portable scan evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-security-${{ github.sha }}
+          path: artifacts/container-security
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Enforce current security boundary
+        run: |
+          vulnerabilities="$(jq -s '[.[] | .Results[]?.Vulnerabilities[]?] | length' artifacts/container-security/*.json)"
+          secrets="$(jq -s '[.[] | .Results[]?.Secrets[]?] | length' artifacts/container-security/*.json)"
+          {
+            echo '## Container security'
+            echo
+            echo "High or critical vulnerabilities: $vulnerabilities"
+            echo "Embedded secrets: $secrets"
+            echo
+            echo 'The scheduled run evaluates unchanged images against fresh vulnerability intelligence.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$vulnerabilities" != 0 || "$secrets" != 0 ]]; then
+            jq -r '
+              .Results[]?
+              | .Vulnerabilities[]?
+              | [.Severity, .VulnerabilityID, .PkgName, .InstalledVersion, (.FixedVersion // "")]
+              | @tsv
+            ' artifacts/container-security/*.json
+            printf 'Container security boundary rejected current main.\n' >&2
+            exit 1
+          fi
+          printf 'container-security=ok vulnerabilities=0 secrets=0\n'

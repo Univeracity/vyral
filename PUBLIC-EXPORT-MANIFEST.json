@@ -1,5 +1,5 @@
 {
-  "fileCount": 854,
+  "fileCount": 855,
   "files": [
     {
       "mode": "644",
@@ -70,6 +70,11 @@
       "mode": "644",
       "path": ".github/workflows/codeql.yml",
       "sha256": "d5c8ce5610f0143c2bf18b7628e0ab0a2588705483ee9453f2bbb72558aa97d2"
+    },
+    {
+      "mode": "644",
+      "path": ".github/workflows/container-security.yml",
+      "sha256": "fd8957374a754138856c95d3fcd3c32253cf024a59729e234688c9812e8104b8"
     },
     {
       "mode": "644",
@@ -154,7 +159,7 @@
     {
       "mode": "644",
       "path": "SECURITY.md",
-      "sha256": "58d082f8d4f3946b35654a1119361d9ee05411d3b060afa3edd7d078276e0c1b"
+      "sha256": "bd8b2b6016359d65e0ebcad54e0482961581468046e22f308a852e26d8d0cbe6"
     },
     {
       "mode": "644",
@@ -1509,7 +1514,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "c4da2eb9c3ecdf1cac91a8f7404aede0f6e841a0461745cee917f8f586f33f51"
+      "sha256": "a088c239631afd18de8a6a7d8b92fb6e7dfcd2b817edbbe2555192e8740caa11"
     },
     {
       "mode": "755",
@@ -1824,7 +1829,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-pr-release-boundary.sh",
-      "sha256": "a1b8197fb142c67a090083e5f7196671655a72caf8fdb66a9b9d1f7921a0f761"
+      "sha256": "76dff9274c19a86c8a7f8bbf7f9effa15f52672cf3aababe36307c1a521415d3"
     },
     {
       "mode": "644",
@@ -1849,7 +1854,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "e0d0b5bd3b8262a7427d99c3e8a4383ed844181718dcdccffeea396d06e4d36a"
+      "sha256": "80d0a243564e52bbdfabe47352ba85d4ba57df4caf8f7988576b19c85dcbb3bf"
     },
     {
       "mode": "755",
@@ -4274,5 +4279,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "2e6aacc82e6db494126a625e79696750d75e92271f16072bfa977109df5efd08"
+  "treeSha256": "7d02ddf2e3cf1ab8815f2d3ddb56496d1602101b98e12aa4d9e458b5967d9b2d"
 }

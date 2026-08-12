@@ -16,6 +16,7 @@ AUTOMATION_GATE = (
 )
 GATED_WORKFLOWS = (
     "codeql.yml",
+    "container-security.yml",
     "dependency-review.yml",
     "execution-runtime-consumer.yml",
     "release-integrity.yml",
