@@ -589,7 +589,7 @@
     {
       "mode": "644",
       "path": "design/python-runtime.md",
-      "sha256": "4bd7586389342aee0088506029548f77754fd861314605cd34bca063f61c4f03"
+      "sha256": "8daa0acffdf840416ba53b0f914a03760c1d37ec12bbcc4f5c3190bf7c5908ec"
     },
     {
       "mode": "644",
@@ -889,12 +889,12 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/canonical/__init__.py",
-      "sha256": "f5274164c9fbfdd61961b6546d1e2b68a4387ba570102f31bf0ba6f4baba1710"
+      "sha256": "d328ca9cdd27cd554e0aba65980bb60fd7e2d037b12d61d9f5234c77cccccad1"
     },
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/canonical/codec.py",
-      "sha256": "5ab42824057a71699da596e2d92a531323982b29e6a3c172e13536768de43d16"
+      "sha256": "cf5ee160f38c2e6efaaf619f7ef5decad9fc16846726947744b8b9c0a8617e6c"
     },
     {
       "mode": "644",
@@ -904,7 +904,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/canonical/models.py",
-      "sha256": "ac00f0828068c1b6870ce0dc57c7a99652a33d44cbff93a908be81036b1aeb87"
+      "sha256": "5ae9f3af97919007bb25ab62993af42d6a2edbb1ecbd20896c28a9347d257cc1"
     },
     {
       "mode": "644",
@@ -1244,7 +1244,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_canonical_store.py",
-      "sha256": "fb9e52f155d2aacd760cafebf599c3bcabe2ebb37321722dc2d73fe95106ce22"
+      "sha256": "b61df6cce9877a806cdd8c2d60bfd5d09915632e38ba06be69da03da2a3e6cc8"
     },
     {
       "mode": "644",
@@ -1914,7 +1914,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-python-runtime-security.py",
-      "sha256": "0203084db30306bce445d480d3c1d578855b5b9ad0a65f3e649c9c405d794b52"
+      "sha256": "12d79acaf91736a09b75974df933185137840ba3f0bf093634a6ead4554ca49d"
     },
     {
       "mode": "644",
@@ -2074,7 +2074,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Abstractions/Models/CanonicalStoreModels.cs",
-      "sha256": "e31a9c218aefd63d11648e6c289ae0df4bcf6ae9234a8312c3518fedbb9e2b44"
+      "sha256": "3784abdc0ab7fe6ca6ace6e685bfed839de9bf9796597137b883533c8d2b9234"
     },
     {
       "mode": "644",
@@ -3769,7 +3769,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Conformance/PortableCanonicalStoreFixtureTests.cs",
-      "sha256": "701ab99cbad9f9738e4c928b4e951b9d66f4840c7a7bcfc16a211aa32fdcd8e0"
+      "sha256": "f5dc9d5cef3a1e279b649ec0ac343e6ffd473138c7673ddbb6669e3c6caf47c9"
     },
     {
       "mode": "644",
@@ -4294,5 +4294,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "8ce60616abf3e7322040f36871e3c32e2bb97ed4b987e0e26abbb5763bb3035e"
+  "treeSha256": "00c1608a65dd6e167988153785b05654232cce01ab5659f7bf244a85f2af84b3"
 }
