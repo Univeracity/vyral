@@ -38,6 +38,7 @@ from ..graph import (
 from ..retrieval import get_retrieval_profiles
 from ..runtime import VyralRuntime
 from .auth import HostAuthenticationError
+from .diagnostics import public_readiness_document
 
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
@@ -143,6 +144,7 @@ class McpApplicationConfig:
     resource_ttl_ms: int = 60_000
     task_ttl_ms: int = 86_400_000
     task_poll_interval_ms: int = 1_000
+    require_explicit_origins: bool = False
     enable_conformance_diagnostics: bool = False
 
     def __post_init__(self) -> None:
@@ -177,6 +179,12 @@ class McpApplicationConfig:
                 raise ValueError(
                     f"{name} must be between one and {maximum}."
                 )
+        if not isinstance(self.require_explicit_origins, bool):
+            raise TypeError("require_explicit_origins must be a boolean.")
+        if not isinstance(self.enable_conformance_diagnostics, bool):
+            raise TypeError(
+                "enable_conformance_diagnostics must be a boolean."
+            )
 
 
 @dataclass(frozen=True)
@@ -265,6 +273,7 @@ class StatelessMcpApplication:
             headers,
             self.config.allowed_origins,
             self.config.allowed_hosts,
+            self.config.require_explicit_origins,
         ):
             await _send_json(
                 send, 403, {"detail": "Origin is not allowed."}
@@ -349,14 +358,14 @@ class StatelessMcpApplication:
             result = await self._dispatch(
                 method, params, meta, headers
             )
-        except HostAuthenticationError as error:
+        except HostAuthenticationError:
             await self._error(
                 send,
                 401,
                 request_id,
                 -32000,
                 "Unauthorized",
-                {"detail": str(error)},
+                {"code": "vyral.authentication.required"},
             )
             return
         except _McpError as error:
@@ -369,13 +378,14 @@ class StatelessMcpApplication:
                 error.data,
             )
             return
-        except (TypeError, ValueError, LookupError) as error:
+        except (TypeError, ValueError, LookupError):
             await self._error(
                 send,
                 400,
                 request_id,
                 _INVALID_PARAMS,
-                str(error)[:4_096],
+                "Invalid parameters.",
+                {"code": "vyral.request.invalid_parameters"},
             )
             return
         except Exception:
@@ -813,7 +823,9 @@ class StatelessMcpApplication:
             }
             mime_type = "application/json"
         elif uri == "vyral://readiness/v1":
-            value = (await self.runtime.areadiness()).to_dict()
+            value = public_readiness_document(
+                await self.runtime.areadiness()
+            )
             mime_type = "application/json"
         elif uri == "vyral://open_api_contract/v1":
             value = self.runtime.contracts.openapi
@@ -1829,7 +1841,9 @@ def _validate_request(
             decoded = _decode_header_value(name_header)
         except ValueError as error:
             raise _McpError(
-                400, _HEADER_MISMATCH, str(error)
+                400,
+                _HEADER_MISMATCH,
+                "Header mismatch: Mcp-Name is invalid.",
             ) from error
         if decoded != name_source:
             raise _McpError(
@@ -1893,7 +1907,9 @@ def _validate_conformance_headers(
         decoded = _decode_header_value(header_value)
     except ValueError as error:
         raise _McpError(
-            400, _HEADER_MISMATCH, str(error)
+            400,
+            _HEADER_MISMATCH,
+            "Header mismatch: Mcp-Param-Value is invalid.",
         ) from error
     if decoded != body_value:
         raise _McpError(
@@ -1925,6 +1941,7 @@ def _request_origin_allowed(
     headers: Mapping[str, str],
     allowed_origins: frozenset[str],
     allowed_hosts: frozenset[str],
+    require_explicit_origins: bool = False,
 ) -> bool:
     host = headers.get("host")
     if host is not None and not _host_allowed(host, allowed_hosts):
@@ -1934,6 +1951,8 @@ def _request_origin_allowed(
         return True
     if origin in allowed_origins:
         return True
+    if require_explicit_origins:
+        return False
     try:
         parsed = urlsplit(origin)
     except ValueError:

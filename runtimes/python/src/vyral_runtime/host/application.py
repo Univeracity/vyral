@@ -172,10 +172,22 @@ def create_host_application(
     rest_config: RestApplicationConfig | None = None,
     mcp_config: McpApplicationConfig | None = None,
     api_key: str | None = None,
+    require_api_key: bool = False,
     execution_plugins: Iterable[StaticExecutionPlugin] = (),
     external_handlers: Iterable[ExecutionHandlerDescriptor] = (),
 ) -> VyralHostApplication:
-    """Create a host-owned local runtime and combined ASGI application."""
+    """Create a host-owned local runtime and combined ASGI application.
+
+    ``require_api_key`` is an opt-in construction guard for embedded hosts.
+    It prevents an accidental unauthenticated data plane, including on a
+    loopback bind. Anonymous REST diagnostics remain deliberately available.
+    """
+    if not isinstance(require_api_key, bool):
+        raise TypeError("require_api_key must be a boolean.")
+    if require_api_key and (api_key is None or not api_key.strip()):
+        raise ValueError(
+            "require_api_key requires a non-empty api_key."
+        )
     runtime = VyralRuntime(
         root_path,
         execution_plugins=execution_plugins,

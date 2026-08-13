@@ -227,6 +227,13 @@ class HostCliTests(unittest.TestCase):
             main(["--root", root, "--host", "0.0.0.0"])
         self.assertEqual(2, raised.exception.code)
 
+    def test_explicit_local_authentication_requires_a_key(self) -> None:
+        with tempfile.TemporaryDirectory() as root, patch.dict(
+            os.environ, {}, clear=True
+        ), self.assertRaises(SystemExit) as raised:
+            main(["--root", root, "--require-api-key"])
+        self.assertEqual(2, raised.exception.code)
+
     def test_port_must_be_in_tcp_range(self) -> None:
         with tempfile.TemporaryDirectory() as root, patch.dict(
             os.environ, {}, clear=True
@@ -292,6 +299,8 @@ class HostCliTests(unittest.TestCase):
                     "runtime.example",
                     "--allowed-origin",
                     "https://console.example",
+                    "--require-api-key",
+                    "--require-explicit-origin",
                 ]
             )
 
@@ -303,6 +312,7 @@ class HostCliTests(unittest.TestCase):
             "shared-secret",
             create.call_args.kwargs["api_key"],
         )
+        self.assertTrue(create.call_args.kwargs["require_api_key"])
         rest_config = create.call_args.kwargs["rest_config"]
         mcp_config = create.call_args.kwargs["mcp_config"]
         self.assertIn("runtime.example", rest_config.allowed_hosts)
@@ -318,12 +328,14 @@ class HostCliTests(unittest.TestCase):
             rest_config.allowed_origins,
             mcp_config.allowed_origins,
         )
+        self.assertTrue(mcp_config.require_explicit_origins)
         self.assertFalse(mcp_config.enable_conformance_diagnostics)
         run.assert_called_once_with(
             application,
             host="0.0.0.0",
             port=8443,
             log_level="warning",
+            access_log=False,
         )
 
     def test_conformance_diagnostics_require_loopback_bind(self) -> None:

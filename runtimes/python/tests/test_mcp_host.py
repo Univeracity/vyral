@@ -774,6 +774,75 @@ class StatelessMcpHostTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(200, status)
 
+    async def test_explicit_origin_mode_rejects_same_host_fallback(self) -> None:
+        app = StatelessMcpApplication(
+            self.runtime,
+            McpApplicationConfig(require_explicit_origins=True),
+        )
+        routing = {
+            "host": "127.0.0.1:5220",
+            "origin": "http://127.0.0.1:5220",
+        }
+        status, _, _ = await _request(
+            app,
+            _rpc("server/discover"),
+            header_overrides=routing,
+        )
+        self.assertEqual(403, status)
+
+        allowed = StatelessMcpApplication(
+            self.runtime,
+            McpApplicationConfig(
+                require_explicit_origins=True,
+                allowed_origins=frozenset(
+                    {"http://127.0.0.1:5220"}
+                ),
+            ),
+        )
+        status, _, _ = await _request(
+            allowed,
+            _rpc("server/discover"),
+            header_overrides=routing,
+        )
+        self.assertEqual(200, status)
+
+    async def test_readiness_resource_redacts_host_local_paths(self) -> None:
+        app = StatelessMcpApplication(self.runtime)
+        status, _, response = await _request(
+            app,
+            _rpc(
+                "resources/read",
+                params={"uri": "vyral://readiness/v1"},
+            ),
+        )
+        self.assertEqual(200, status)
+        assert isinstance(response, dict)
+        content = response["result"]["contents"][0]["text"]
+        self.assertIsInstance(content, str)
+        assert isinstance(content, str)
+        self.assertNotIn(str(self.root), content)
+        self.assertNotIn("databasePath", content)
+
+    async def test_dispatch_errors_do_not_expose_exception_text(self) -> None:
+        app = StatelessMcpApplication(self.runtime)
+        secret = "vyral-mcp-internal-secret"
+
+        async def invalid(*_arguments: object) -> dict[str, object]:
+            raise ValueError(secret)
+
+        app._dispatch = invalid  # type: ignore[assignment]
+        status, _, response = await _request(
+            app, _rpc("server/discover")
+        )
+        self.assertEqual(400, status)
+        assert isinstance(response, dict)
+        error = response["error"]
+        self.assertEqual("Invalid parameters.", error["message"])
+        self.assertEqual(
+            "vyral.request.invalid_parameters", error["data"]["code"]
+        )
+        self.assertNotIn(secret, json.dumps(response))
+
     async def test_task_is_durable_and_pollable_on_another_instance(
         self,
     ) -> None:

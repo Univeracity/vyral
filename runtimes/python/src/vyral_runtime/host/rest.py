@@ -30,6 +30,9 @@ from .rest_operations import (
 )
 
 
+_PROBLEM_TYPE_PREFIX = "https://openvyral.com/problems/"
+
+
 class RestAuthorizer(Protocol):
     async def authorize(
         self,
@@ -130,7 +133,13 @@ class VyralRestApplication:
             await self._lifespan(receive, send)
             return
         if scope.get("type") != "http":
-            await _send_problem(send, 404, "Not Found", "Not found.")
+            await _send_problem(
+                send,
+                404,
+                "Not Found",
+                "Not found.",
+                code="resource-not-found",
+            )
             return
         raw_headers = cast(
             list[tuple[bytes, bytes]], scope.get("headers", [])
@@ -139,6 +148,7 @@ class VyralRestApplication:
             await _send_problem(
                 send, 431, "Request Header Fields Too Large",
                 "Too many request headers.",
+                code="headers-too-large",
             )
             return
         if sum(len(name) + len(value) for name, value in raw_headers) > (
@@ -147,6 +157,7 @@ class VyralRestApplication:
             await _send_problem(
                 send, 431, "Request Header Fields Too Large",
                 "Request headers are too large.",
+                code="headers-too-large",
             )
             return
         headers = _headers(raw_headers)
@@ -156,7 +167,11 @@ class VyralRestApplication:
             and not _host_allowed(host, self.config.allowed_hosts)
         ):
             await _send_problem(
-                send, 403, "Forbidden", "Host is not allowed."
+                send,
+                403,
+                "Forbidden",
+                "Host is not allowed.",
+                code="host-not-allowed",
             )
             return
         origin = headers.get("origin")
@@ -165,7 +180,11 @@ class VyralRestApplication:
             and origin not in self.config.allowed_origins
         ):
             await _send_problem(
-                send, 403, "Forbidden", "Origin is not allowed."
+                send,
+                403,
+                "Forbidden",
+                "Origin is not allowed.",
+                code="origin-not-allowed",
             )
             return
         path = str(scope.get("path", ""))
@@ -181,10 +200,15 @@ class VyralRestApplication:
                     extra_headers=(
                         (b"allow", ", ".join(allowed).encode("ascii")),
                     ),
+                    code="method-not-allowed",
                 )
             else:
                 await _send_problem(
-                    send, 404, "Not Found", "Route was not found."
+                    send,
+                    404,
+                    "Not Found",
+                    "Route was not found.",
+                    code="route-not-found",
                 )
             return
         raw_query = scope.get("query_string", b"")
@@ -192,14 +216,22 @@ class VyralRestApplication:
             raw_query = b""
         if len(raw_query) > self.config.max_query_bytes:
             await _send_problem(
-                send, 414, "URI Too Long", "Query string is too large."
+                send,
+                414,
+                "URI Too Long",
+                "Query string is too large.",
+                code="query-too-large",
             )
             return
         try:
             query = _query(raw_query)
-        except (UnicodeDecodeError, ValueError) as error:
+        except (UnicodeDecodeError, ValueError):
             await _send_problem(
-                send, 400, "Bad Request", str(error)
+                send,
+                400,
+                "Bad Request",
+                "Query parameters are invalid.",
+                code="invalid-query",
             )
             return
         length = headers.get("content-length")
@@ -210,7 +242,11 @@ class VyralRestApplication:
                 parsed_length = -1
             if parsed_length < 0:
                 await _send_problem(
-                    send, 400, "Bad Request", "Invalid Content-Length."
+                    send,
+                    400,
+                    "Bad Request",
+                    "Invalid Content-Length.",
+                    code="invalid-content-length",
                 )
                 return
             if parsed_length > self.config.max_request_body_bytes:
@@ -219,6 +255,7 @@ class VyralRestApplication:
                     413,
                     "Content Too Large",
                     "Request body is too large.",
+                    code="request-body-too-large",
                 )
                 return
         try:
@@ -231,6 +268,7 @@ class VyralRestApplication:
                 413,
                 "Content Too Large",
                 "Request body is too large.",
+                code="request-body-too-large",
             )
             return
         try:
@@ -252,45 +290,77 @@ class VyralRestApplication:
                 body,
                 raw_body,
             )
-        except HostAuthenticationError as error:
+        except HostAuthenticationError:
             await _send_problem(
-                send, 401, "Unauthorized", str(error)
+                send,
+                401,
+                "Unauthorized",
+                "Valid Vyral API-key authentication is required.",
+                code="authentication-required",
             )
             return
-        except RestNotFoundError as error:
+        except RestNotFoundError:
             await _send_problem(
-                send, 404, "Not Found", str(error)
+                send,
+                404,
+                "Not Found",
+                "The requested resource was not found.",
+                code="resource-not-found",
             )
             return
-        except RestOperationUnavailableError as error:
+        except RestOperationUnavailableError:
             await _send_problem(
-                send, 501, "Not Implemented", str(error)
+                send,
+                501,
+                "Not Implemented",
+                "This operation is not available in the active runtime.",
+                code="operation-unavailable",
             )
             return
         except (
             ExecutionRuntimeConflictError,
             CollectionPolicyConflictError,
-        ) as error:
-            await _send_problem(send, 409, "Conflict", str(error))
-            return
-        except RecordPreconditionFailedError as error:
+        ):
             await _send_problem(
-                send, 412, "Precondition Failed", str(error)
+                send,
+                409,
+                "Conflict",
+                "The request conflicts with current state.",
+                code="request-conflict",
+            )
+            return
+        except RecordPreconditionFailedError:
+            await _send_problem(
+                send,
+                412,
+                "Precondition Failed",
+                "The request precondition was not met.",
+                code="precondition-failed",
             )
             return
         except (
             ExecutionRuntimeLeaseError,
             ExecutionRuntimePolicyError,
             PermissionError,
-        ) as error:
-            await _send_problem(send, 403, "Forbidden", str(error))
+        ):
+            await _send_problem(
+                send,
+                403,
+                "Forbidden",
+                "The request is not permitted.",
+                code="request-forbidden",
+            )
             return
         except (
             CollectionNotFoundError,
             LookupError,
-        ) as error:
+        ):
             await _send_problem(
-                send, 404, "Not Found", str(error)
+                send,
+                404,
+                "Not Found",
+                "The requested resource was not found.",
+                code="resource-not-found",
             )
             return
         except (
@@ -300,9 +370,13 @@ class VyralRestApplication:
             RecordValidationError,
             TypeError,
             ValueError,
-        ) as error:
+        ):
             await _send_problem(
-                send, 400, "Bad Request", str(error)[:4_096]
+                send,
+                400,
+                "Bad Request",
+                "The request is invalid.",
+                code="request-invalid",
             )
             return
         except Exception:
@@ -311,6 +385,7 @@ class VyralRestApplication:
                 500,
                 "Internal Server Error",
                 "The Vyral REST request failed.",
+                code="internal-error",
             )
             return
         await _send_result(send, result)
@@ -596,10 +671,11 @@ async def _send_problem(
     title: str,
     detail: str,
     *,
+    code: str = "request-failed",
     extra_headers: tuple[tuple[bytes, bytes], ...] = (),
 ) -> None:
     problem: dict[str, JSONValue] = {
-        "type": "about:blank",
+        "type": _PROBLEM_TYPE_PREFIX + code,
         "title": title,
         "status": status,
         "detail": detail,

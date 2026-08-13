@@ -30,7 +30,8 @@ retained as release evidence.
    diagnostics are generic core-schema rejections of the task extension envelope after their
    functional checks pass; the ninth is an unimplemented pending JSON-Schema diagnostic fixture.
    The Python runtime must likewise retain a passing frozen `2026-07-28` requirements receipt
-   produced from its packaged wheel; conformance diagnostics must remain explicitly test-only.
+   produced from its packaged wheel; conformance diagnostics must remain explicitly test-only
+   and `VYRAL_MCP_CONFORMANCE_DIAGNOSTICS` must not be present in a release deployment.
 4. Publish packages only through a trusted-publishing or OIDC-backed registry configuration. Do
    not place long-lived registry tokens in the repository or workflow files.
 5. Attach provenance/attestations and SBOMs to the published release; publish container images with

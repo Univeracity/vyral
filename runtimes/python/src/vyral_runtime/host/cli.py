@@ -96,6 +96,26 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
         ),
     )
     parser.add_argument(
+        "--access-log",
+        action="store_true",
+        help=(
+            "Emit Uvicorn request metadata. Disabled by default; request "
+            "bodies and credentials are never logged by the Vyral host."
+        ),
+    )
+    parser.add_argument(
+        "--require-api-key",
+        action="store_true",
+        default=(
+            os.environ.get("VYRAL_REQUIRE_API_KEY", "").strip().lower()
+            in {"1", "true", "yes", "on"}
+        ),
+        help=(
+            "Require VYRAL_API_KEY even on a loopback bind. May also be set "
+            "with VYRAL_REQUIRE_API_KEY=true."
+        ),
+    )
+    parser.add_argument(
         "--allowed-host",
         action="append",
         default=[],
@@ -111,6 +131,14 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
         help=(
             "Exact browser Origin allowed by REST and MCP. Repeat for "
             "multiple origins."
+        ),
+    )
+    parser.add_argument(
+        "--require-explicit-origin",
+        action="store_true",
+        help=(
+            "Reject a browser Origin unless it is passed with "
+            "--allowed-origin, including same-host origins."
         ),
     )
     parser.add_argument(
@@ -136,6 +164,10 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
     if not 1 <= arguments.port <= 65_535:
         parser.error("--port must be between 1 and 65535.")
     api_key = os.environ.get("VYRAL_API_KEY")
+    if arguments.require_api_key and not api_key:
+        parser.error(
+            "--require-api-key requires VYRAL_API_KEY."
+        )
     if not _loopback_bind(arguments.host) and not api_key:
         parser.error(
             "A non-loopback --host requires VYRAL_API_KEY."
@@ -183,6 +215,7 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
     application = create_host_application(
         str(Path(arguments.root).expanduser().resolve()),
         api_key=api_key,
+        require_api_key=arguments.require_api_key,
         rest_config=RestApplicationConfig(
             allowed_origins=allowed_origins,
             allowed_hosts=frozenset(allowed_hosts),
@@ -190,6 +223,9 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
         mcp_config=McpApplicationConfig(
             allowed_origins=allowed_origins,
             allowed_hosts=frozenset(allowed_hosts),
+            require_explicit_origins=(
+                arguments.require_explicit_origin
+            ),
             enable_conformance_diagnostics=(
                 arguments.mcp_conformance_diagnostics
             )
@@ -200,6 +236,7 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
         host=arguments.host,
         port=arguments.port,
         log_level=arguments.log_level,
+        access_log=arguments.access_log,
     )
     return 0
 

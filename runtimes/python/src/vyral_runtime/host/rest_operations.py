@@ -67,6 +67,7 @@ from ..local import (
 )
 from ..retrieval import get_retrieval_profiles
 from ..runtime import VyralRuntime
+from .diagnostics import public_readiness_document
 from .rest_registry import (
     REST_OPERATION_FAMILIES,
     RestOperationFamily,
@@ -259,7 +260,7 @@ class RestOperationDispatcher:
             return RestOperationResult(body=health)
         readiness = cast(
             dict[str, Any],
-            (await self.runtime.areadiness()).to_dict(),
+            public_readiness_document(await self.runtime.areadiness()),
         )
         checks = cast(list[dict[str, Any]], readiness["checks"])
         failed = [
@@ -291,7 +292,7 @@ class RestOperationDispatcher:
                             else item["status"]
                         ),
                         "message": item["message"],
-                        "details": item.get("details") or {},
+                        "details": {},
                     }
                     for item in checks
                 ],
