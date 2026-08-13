@@ -50,6 +50,15 @@ cat > "$work/bin/sleep" <<'SH'
 exit 0
 SH
 
+cat > "$work/bin/timeout" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${VYRAL_TEST_DEPLOYMENT_TIMEOUT:-false}" == true && "$*" == *"functionapp deployment source config-zip"* ]]; then
+  exit 124
+fi
+exec /usr/bin/timeout "$@"
+SH
+
 cat > "$work/bin/az" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -77,7 +86,9 @@ case "$command" in
     printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10.0"}}}'
     ;;
   "functionapp log deployment list "*)
-    if [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
+    if [[ "${VYRAL_TEST_DEPLOYMENT_TIMEOUT:-false}" == true ]]; then
+      printf '%s\n' '[]'
+    elif [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
       printf '%s\n' '[{"status":6,"message":"Deployment was successful but Reset all workers endpoint responded with Response status code 503 (Site Unavailable)."}]'
     elif [[ "${VYRAL_TEST_DEPLOYMENT_FAIL_ONCE:-false}" == true && ! -e "$VYRAL_TEST_STATE/deployment-failed-once" ]]; then
       touch "$VYRAL_TEST_STATE/deployment-failed-once"
@@ -197,7 +208,7 @@ case "$url" in
 esac
 SH
 
-chmod 0755 "$work/bin/az" "$work/bin/curl" "$work/bin/dotnet" "$work/bin/sleep" "$work/bin/zip"
+chmod 0755 "$work/bin/az" "$work/bin/curl" "$work/bin/dotnet" "$work/bin/sleep" "$work/bin/timeout" "$work/bin/zip"
 
 run_case() {
   local name="$1"
@@ -212,6 +223,8 @@ run_case() {
   local deployment_fail_once="${10:-false}"
   local expected_deployment_attempts="${11:-1}"
   local deployment_always_fail="${12:-false}"
+  local expected_deployment_failure_class="${13:-worker_reset_503}"
+  local deployment_timeout="${14:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -226,6 +239,7 @@ run_case() {
   VYRAL_TEST_SYNC_FAIL="$sync_fail" \
   VYRAL_TEST_DEPLOYMENT_FAIL_ONCE="$deployment_fail_once" \
   VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL="$deployment_always_fail" \
+  VYRAL_TEST_DEPLOYMENT_TIMEOUT="$deployment_timeout" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
   VYRAL_AZURE_COSMOS_CONNECTION_STRING='AccountEndpoint=https://fixture.invalid;AccountKey=fixture;' \
@@ -254,8 +268,12 @@ run_case() {
   [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10.0 ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.matchedExpectedDotnetIsolated10' "$receipt")" == true ]]
   if [[ "$expected_stage" == deployment ]]; then
-    [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 6 ]]
-    [[ "$(jq -r '.diagnostics.deploymentProviderFailureClass' "$receipt")" == worker_reset_503 ]]
+    if [[ "$expected_deployment_failure_class" == timeout ]]; then
+      [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == not-observed ]]
+    else
+      [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 6 ]]
+    fi
+    [[ "$(jq -r '.diagnostics.deploymentProviderFailureClass' "$receipt")" == "$expected_deployment_failure_class" ]]
     [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.attempted' "$receipt")" == true ]]
     [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.restartIssued' "$receipt")" == true ]]
     [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.masterKeyAvailable' "$receipt")" == true ]]
@@ -289,7 +307,8 @@ run_case() {
 
 run_case success 7 0 passed complete false
 run_case deployment-status-retry 7 0 passed complete false false false false true 2
-run_case deployment-status-failure 0 1 failed deployment false false false false false 6 true
+run_case deployment-status-failure 0 1 failed deployment false false false false false 3 true
+run_case deployment-command-timeout 0 1 failed deployment false false false false false 3 false timeout true
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
 run_case trigger-sync-recovery 1 0 passed complete true true

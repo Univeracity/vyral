@@ -1734,7 +1734,7 @@
     {
       "mode": "755",
       "path": "scripts/test-validate-azure-durable-functions-live.sh",
-      "sha256": "8a75b91250790b39db5239b8c7297062bc3d9a722d39f67eef343f3bc1586cd2"
+      "sha256": "631a5aeee7f1f1a02a7a936bc88875a01a4402c98f68e083716740736ecf4ba5"
     },
     {
       "mode": "755",
@@ -1779,7 +1779,7 @@
     {
       "mode": "755",
       "path": "scripts/validate-azure-durable-functions-live.sh",
-      "sha256": "b44f87324aedd4a6ec62032a1652f51337b146befd21a3aeb36d1198dc7b18a6"
+      "sha256": "caa80906c3324ee8f73a5b1dd2881e24445939e4faa9cad110abe718dd8aa58f"
     },
     {
       "mode": "755",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "8d6a52145ad22453164cb35b9a2199f445c9e7c7dbeae0586bba3bccb1d6bdb0"
+  "treeSha256": "a247c5530cef6a15ed8eedea4ffaadbbaeed5f377e7f6ef7c465a3e4d1fa3963"
 }
