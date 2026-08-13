@@ -364,7 +364,25 @@ for _ in $(seq 1 48); do
       unset trigger_sync_response
       unset subscription_id
       echo "azure-durable-functions-live-trigger-sync=failed code:${TRIGGER_SYNC_ERROR_CODE}" >&2
-      false
+      case "$TRIGGER_SYNC_ERROR_CODE" in
+        InvalidApiVersion | AuthorizationFailed | ResourceNotFound)
+          false
+          ;;
+        *)
+          # A newly deployed Flex host can reject an ARM sync request before worker indexing has
+          # settled. Restart only the disposable app, then preserve the full discovery window.
+          FAILURE_STAGE="function-discovery-host-restart"
+          HOST_RESTART_ATTEMPTED=true
+          az functionapp restart --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+            --name "$FUNCTION" --only-show-errors --output none
+          echo 'azure-durable-functions-live-host-restart=issued'
+          FAILURE_STAGE="function-discovery"
+          DISCOVERED_FUNCTION_COUNT=0
+          DISCOVERED_FUNCTION_NAMES_JSON='[]'
+          partial_inventory_observations=0
+          sleep 10
+          ;;
+      esac
     fi
     unset trigger_sync_response
     unset subscription_id
