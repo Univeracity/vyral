@@ -3594,7 +3594,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Aws/AwsDynamoExecutionLiveConformanceTests.cs",
-      "sha256": "ef0c8d4025bd087520d1d97ca2d97ada0d003255f3b0f2ba3f95901e6d51c1c6"
+      "sha256": "5cd4433fd8cded17fca4b3d91549fce746e5bcbc863f2be3c9560ae3a4dbcca0"
     },
     {
       "mode": "644",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "5d92e724303a2493affb5333e996e488098d7cf42f420a82cb18b1734a0425c1"
+  "treeSha256": "fe096ac84e516b409c36a6185375c4ee9ce12566ed3d529bdc58d0808cc9ee33"
 }
