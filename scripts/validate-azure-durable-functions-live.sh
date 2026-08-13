@@ -54,6 +54,8 @@ READINESS_HTTP_CODE="not-attempted"
 # Preserve the legacy receipt field so evidence from the earlier restart recovery remains comparable.
 HOST_RESTART_ATTEMPTED=false
 TRIGGER_SYNC_ATTEMPTED=false
+TRIGGER_SYNC_API_VERSION="2024-11-01"
+TRIGGER_SYNC_ERROR_CODE=""
 DISCOVERED_FUNCTION_NAMES_JSON='[]'
 DEPLOYMENT_ATTEMPTS=0
 FAILURE_STAGE="publish"
@@ -130,6 +132,8 @@ cleanup() {
       --argjson endpoint_ready "$ENDPOINT_READY" \
       --argjson host_restart_attempted "$HOST_RESTART_ATTEMPTED" \
       --argjson trigger_sync_attempted "$TRIGGER_SYNC_ATTEMPTED" \
+      --arg trigger_sync_api_version "$TRIGGER_SYNC_API_VERSION" \
+      --arg trigger_sync_error_code "$TRIGGER_SYNC_ERROR_CODE" \
       --argjson discovered_function_count "$DISCOVERED_FUNCTION_COUNT" \
       --argjson discovered_function_names "$DISCOVERED_FUNCTION_NAMES_JSON" \
       --argjson expected_function_count "$EXPECTED_FUNCTION_COUNT" \
@@ -159,6 +163,12 @@ cleanup() {
         },
         recovery: {
           partialInventoryTriggerSyncAttempted: $trigger_sync_attempted,
+          partialInventoryTriggerSyncApiVersion: (
+            if $trigger_sync_attempted then $trigger_sync_api_version else null end
+          ),
+          partialInventoryTriggerSyncErrorCode: (
+            if $trigger_sync_error_code == "" then null else $trigger_sync_error_code end
+          ),
           partialInventoryRestartAttempted: $host_restart_attempted
         },
         diagnostics: {
@@ -325,10 +335,17 @@ for _ in $(seq 1 48); do
     subscription_id="$(az account show --query id --output tsv --only-show-errors)"
     [[ -n "$subscription_id" ]]
     if ! az rest --method post \
-      --url "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${VYRAL_AZURE_LIVE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${FUNCTION}/syncfunctiontriggers?api-version=2016-08-01" \
+      --url "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${VYRAL_AZURE_LIVE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${FUNCTION}/syncfunctiontriggers?api-version=${TRIGGER_SYNC_API_VERSION}" \
       --only-show-errors --output none 2>"$WORK_ROOT/function-trigger-sync.log"; then
+      TRIGGER_SYNC_ERROR_CODE="$(
+        sed -nE 's/.*\\(([A-Za-z][A-Za-z0-9._-]{0,63})\\).*/\\1/p' \
+          "$WORK_ROOT/function-trigger-sync.log" | head -n 1
+      )"
+      if [[ -z "$TRIGGER_SYNC_ERROR_CODE" ]]; then
+        TRIGGER_SYNC_ERROR_CODE="unknown"
+      fi
       unset subscription_id
-      echo 'azure-durable-functions-live-trigger-sync=failed' >&2
+      echo "azure-durable-functions-live-trigger-sync=failed code:${TRIGGER_SYNC_ERROR_CODE}" >&2
       false
     fi
     unset subscription_id

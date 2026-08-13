@@ -64,7 +64,7 @@ case "$command" in
   "account show "*)
     printf 'test-subscription\n'
     ;;
-  "rest --method post --url "*"/syncfunctiontriggers?api-version=2016-08-01 "*)
+  "rest --method post --url "*"/syncfunctiontriggers?api-version=2024-11-01 "*)
     if [[ "${VYRAL_TEST_SYNC_FAIL:-false}" == true ]]; then
       exit 1
     fi
@@ -218,6 +218,11 @@ run_case() {
   [[ "$(jq -r '.cleanup.functionApp' "$receipt")" == deleted ]]
   [[ "$(jq -r '.cleanup.storageAccount' "$receipt")" == deleted ]]
   [[ "$(jq -r '.recovery.partialInventoryTriggerSyncAttempted' "$receipt")" == "$expected_sync" ]]
+  if [[ "$expected_sync" == true ]]; then
+    [[ "$(jq -r '.recovery.partialInventoryTriggerSyncApiVersion' "$receipt")" == 2024-11-01 ]]
+  else
+    [[ "$(jq -r '.recovery.partialInventoryTriggerSyncApiVersion' "$receipt")" == null ]]
+  fi
   [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == false ]]
   [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == 1 ]]
   [[ "$(jq -r '.diagnostics.packagedFunctionNames | length' "$receipt")" == 7 ]]
@@ -236,6 +241,9 @@ run_case() {
     [[ "$(jq -r '.failure.expectedFunctionCount' "$receipt")" == 7 ]]
     [[ "$(jq -r '.diagnostics.runtimeFunctionNames | length' "$receipt")" == "$function_count" ]]
     [[ "$(jq -r '.cleanup.statusContainer' "$receipt")" == not-created ]]
+    if [[ "$expected_stage" == function-discovery-trigger-sync ]]; then
+      [[ "$(jq -r '.recovery.partialInventoryTriggerSyncErrorCode' "$receipt")" == unknown ]]
+    fi
   fi
 }
 
