@@ -73,6 +73,16 @@ case "$command" in
   "functionapp restart "*)
     touch "$VYRAL_TEST_STATE/host-restart-issued"
     ;;
+  "functionapp log deployment list "*)
+    if [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
+      printf '%s\n' '[{"status":6}]'
+    elif [[ "${VYRAL_TEST_DEPLOYMENT_FAIL_ONCE:-false}" == true && ! -e "$VYRAL_TEST_STATE/deployment-failed-once" ]]; then
+      touch "$VYRAL_TEST_STATE/deployment-failed-once"
+      printf '%s\n' '[{"status":6}]'
+    else
+      printf '%s\n' '[{"status":4}]'
+    fi
+    ;;
   "cosmosdb sql container show "*)
     if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 && "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" != true ]]; then
       exit 1
@@ -196,6 +206,9 @@ run_case() {
   local recover_after_sync="${7:-false}"
   local sync_fail="${8:-false}"
   local expected_restart="${9:-false}"
+  local deployment_fail_once="${10:-false}"
+  local expected_deployment_attempts="${11:-1}"
+  local deployment_always_fail="${12:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -208,6 +221,8 @@ run_case() {
   VYRAL_TEST_FUNCTION_COUNT="$function_count" \
   VYRAL_TEST_RECOVER_AFTER_SYNC="$recover_after_sync" \
   VYRAL_TEST_SYNC_FAIL="$sync_fail" \
+  VYRAL_TEST_DEPLOYMENT_FAIL_ONCE="$deployment_fail_once" \
+  VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL="$deployment_always_fail" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
   VYRAL_AZURE_COSMOS_CONNECTION_STRING='AccountEndpoint=https://fixture.invalid;AccountKey=fixture;' \
@@ -231,7 +246,12 @@ run_case() {
     [[ "$(jq -r '.recovery.partialInventoryTriggerSyncRoute' "$receipt")" == null ]]
   fi
   [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
-  [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == 1 ]]
+  [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == "$expected_deployment_attempts" ]]
+  if [[ "$expected_stage" == deployment ]]; then
+    [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 6 ]]
+  else
+    [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 4 ]]
+  fi
   [[ "$(jq -r '.diagnostics.packagedFunctionNames | length' "$receipt")" == 7 ]]
   [[ "$(stat -c '%a' "$receipt")" == 600 ]]
   ! grep -Fq 'test-function-key-never-log' "$output"
@@ -255,6 +275,8 @@ run_case() {
 }
 
 run_case success 7 0 passed complete false
+run_case deployment-status-retry 7 0 passed complete false false false false true 2
+run_case deployment-status-failure 0 1 failed deployment false false false false false 6 true
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
 run_case trigger-sync-recovery 1 0 passed complete true true

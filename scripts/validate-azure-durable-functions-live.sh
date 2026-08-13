@@ -59,6 +59,7 @@ TRIGGER_SYNC_ROUTE="host-default-sync"
 TRIGGER_SYNC_ERROR_CODE=""
 DISCOVERED_FUNCTION_NAMES_JSON='[]'
 DEPLOYMENT_ATTEMPTS=0
+DEPLOYMENT_PROVIDER_STATUS="not-observed"
 FAILURE_STAGE="publish"
 
 cleanup() {
@@ -141,6 +142,7 @@ cleanup() {
       --argjson expected_function_count "$EXPECTED_FUNCTION_COUNT" \
       --argjson expected_function_names "$EXPECTED_FUNCTION_NAMES_JSON" \
       --argjson deployment_attempts "$DEPLOYMENT_ATTEMPTS" \
+      --arg deployment_provider_status "$DEPLOYMENT_PROVIDER_STATUS" \
       --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
       '{
         schemaVersion: 1,
@@ -178,6 +180,7 @@ cleanup() {
         },
         diagnostics: {
           deploymentAttempts: $deployment_attempts,
+          deploymentProviderStatus: $deployment_provider_status,
           packagedFunctionNames: $expected_function_names,
           runtimeFunctionNames: $discovered_function_names
         },
@@ -254,8 +257,8 @@ az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOUR
   "VYRAL_AZURE_DURABLE_STATUS_CONTAINER=$STATUS_CONTAINER" --only-show-errors --output none
 
 # Azure CLI selects One Deploy for Flex Consumption even though the command retains its historic
-# config-zip name. A new app can transiently reject the operation before its deployment endpoint is
-# ready, so retry the operation instead of paying a fixed delay on every successful run.
+# config-zip name. The CLI can return successfully before One Deploy finishes its provider-side
+# trigger synchronization, so require the deployment record itself to report success.
 FAILURE_STAGE="deployment"
 deployed=false
 deployment_diagnostic="$WORK_ROOT/deployment-attempt.log"
@@ -264,17 +267,28 @@ for _ in $(seq 1 6); do
   if az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
     --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none \
     2>"$deployment_diagnostic"; then
-    deployed=true
-    break
+    deployment_status="$(az functionapp log deployment list \
+      --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
+      --only-show-errors --output json 2>/dev/null | jq -r '
+        if type == "array" and length > 0 and (.[0].status? | type) == "number"
+        then .[0].status | tostring
+        else empty
+        end
+      ' 2>/dev/null || true)"
+    DEPLOYMENT_PROVIDER_STATUS="${deployment_status:-not-observed}"
+    if [[ "$deployment_status" == "4" ]]; then
+      deployed=true
+      break
+    fi
   fi
   sleep 20
 done
 if [[ "$deployed" != true ]]; then
-  echo "azure-durable-functions-live-deployment=failed attempts:${DEPLOYMENT_ATTEMPTS}" >&2
+  echo "azure-durable-functions-live-deployment=failed attempts:${DEPLOYMENT_ATTEMPTS} provider-status:${DEPLOYMENT_PROVIDER_STATUS}" >&2
   false
 fi
 DEPLOYMENT_PASSED=true
-echo "azure-durable-functions-live-deployment=passed attempts:${DEPLOYMENT_ATTEMPTS}"
+echo "azure-durable-functions-live-deployment=passed attempts:${DEPLOYMENT_ATTEMPTS} provider-status:${DEPLOYMENT_PROVIDER_STATUS}"
 
 FAILURE_STAGE="function-key"
 function_key=""
