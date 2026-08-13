@@ -77,13 +77,30 @@ retained as release evidence.
 The version lines and maturity promises are defined in the [stability policy](../reference/stability.md) and enforced by
 `scripts/verify-version-policy.py`. Source versions do not prove registry publication.
 
-The exact proposed first cohort is recorded in
+The exact authorized first cohort is recorded in
 [`packaging/publication-cohort.json`](../../packaging/publication-cohort.json).
-CI requires `publicationAuthorized: false` and rejects drift between that
-manifest and package metadata while the repository remains build-only.
-Changing the manifest alone never authorizes publication: a separate reviewed
-maintainer decision must introduce the exact protected-environment publishers,
-registry trust relationships, signed release tag, and release notes. The
+The manual [`Publish first cohort`](../../.github/workflows/publish-first-cohort.yml)
+workflow is the only source path allowed to publish it. It accepts only the
+reviewed `v0.3.0` cohort, and before packaging requires a GitHub-verified signed
+annotated tag at current `main` plus a successful canonical Release Integrity
+push run for that commit. Each registry job uses its own protected environment
+and least-privilege identity. It has no automatic trigger.
+
+Before dispatching it, configure the exact publisher tuple in the cohort
+manifest at each registry: `Univeracity/vyral`, workflow file
+`publish-first-cohort.yml`, and its named environment. NuGet, PyPI, and npm use
+GitHub Actions OIDC trusted publishing; NuGet additionally needs the
+`NUGET_USERNAME` environment variable for its short-lived-key exchange. The
+npm publisher must permit `npm publish` for that trusted publisher; its
+ isolated job supplies Node `22.14.0` and npm `11.5.1`, the minimum supported
+ by npm's OIDC flow. The
+container job uses only the repository-scoped `GITHUB_TOKEN` with
+`packages: write`. This source authorization is not a claim that any package is
+already available: absent registry trust or an environment approval, the manual
+job fails closed and publishes nothing.
+
+Prepare release notes before the dispatch and publish the GitHub release only
+after every authorized registry job has succeeded. The
 Python-native `vyral-runtime`, provider-specific packages, Temporal packages,
 and prototype integrations remain outside this cohort.
 

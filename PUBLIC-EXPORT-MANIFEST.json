@@ -1,5 +1,5 @@
 {
-  "fileCount": 867,
+  "fileCount": 868,
   "files": [
     {
       "mode": "644",
@@ -100,6 +100,11 @@
       "mode": "644",
       "path": ".github/workflows/google-live-qualification.yml",
       "sha256": "75ae0891dd5079a3002ec3081a662406df597c536d788cbc81742630d2382b46"
+    },
+    {
+      "mode": "644",
+      "path": ".github/workflows/publish-first-cohort.yml",
+      "sha256": "bcbcc74e88b0546499c4fb5dd530f1d210aa32ab256644db1124c3ce4fa023cf"
     },
     {
       "mode": "644",
@@ -644,7 +649,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "db0b6154adf51d1da778484d94cc2c23e099ae9f1a1c3d0d58bc2b83e8efbed9"
+      "sha256": "4e3a86983a26d2471edd6ccad2dac4b9a646bbe61c06e9e823bb45663e487ac7"
     },
     {
       "mode": "644",
@@ -729,7 +734,7 @@
     {
       "mode": "644",
       "path": "packaging/publication-cohort.json",
-      "sha256": "fbb6e176bc2fdeff3b8fb071ee34565577ce4e13d8bacdf392fb6e830ef684fc"
+      "sha256": "f82737219d176b906b1710411349b632eeb9003c6970452857417c1c29b7df2a"
     },
     {
       "mode": "644",
@@ -1554,7 +1559,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "5c8f4c06ba077bf89b0b07c8ca6a5c10771c0cd42ae1081bbeaa6e7e35f8ca34"
+      "sha256": "a2f976c66152485c09c322735e99cfe0899508641f1b2c9a02c5df9a8361c167"
     },
     {
       "mode": "755",
@@ -1909,12 +1914,12 @@
     {
       "mode": "644",
       "path": "scripts/verify-publication-cohort.py",
-      "sha256": "7855de2e76c8db7a456858c1a845d30424723fb0f6065a5d2a8cb646129f2385"
+      "sha256": "913a413a85ae9b76efaffb0c164113e66d8abd718628d5d99855b792da7e5171"
     },
     {
       "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "80d0a243564e52bbdfabe47352ba85d4ba57df4caf8f7988576b19c85dcbb3bf"
+      "sha256": "abaadfd4d853db8b1e2cc41917fc8a07f47a3a8ac27ab81cf34a27f81d6ca235"
     },
     {
       "mode": "755",
@@ -4339,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "6fafca10fe8b11702ba4a7962c81ab3b0579124681e9202f179e5eab0b396650"
+  "treeSha256": "64518f7bb4debf2d45bf3cd7ecec063105ddf411ef9fbdccf27e8085ed667cdc"
 }

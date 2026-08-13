@@ -136,6 +136,7 @@ REQUIRED_FILES = {
     ".github/workflows/ci-feedback.yml",
     ".github/workflows/codeql.yml",
     ".github/workflows/container-security.yml",
+    ".github/workflows/publish-first-cohort.yml",
     ".github/workflows/python-runtime-qualification.yml",
     ".github/workflows/release-integrity.yml",
     "benchmarks/retrieval/README.md",
