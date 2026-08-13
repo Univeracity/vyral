@@ -70,6 +70,9 @@ case "$command" in
     fi
     touch "$VYRAL_TEST_STATE/trigger-sync-issued"
     ;;
+  "functionapp restart "*)
+    touch "$VYRAL_TEST_STATE/host-restart-issued"
+    ;;
   "cosmosdb sql container show "*)
     if [[ "${VYRAL_TEST_FUNCTION_COUNT:-7}" != 7 && "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" != true ]]; then
       exit 1
@@ -120,7 +123,8 @@ done
 case "$url" in
   */admin/functions | */admin/functions/)
     function_count="${VYRAL_TEST_FUNCTION_COUNT:-7}"
-    if [[ "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" == true && -e "$VYRAL_TEST_STATE/trigger-sync-issued" ]]; then
+    if [[ "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" == true && \
+      ( -e "$VYRAL_TEST_STATE/trigger-sync-issued" || -e "$VYRAL_TEST_STATE/host-restart-issued" ) ]]; then
       function_count=7
     fi
     case "$function_count" in
@@ -191,6 +195,7 @@ run_case() {
   local expected_sync="$6"
   local recover_after_sync="${7:-false}"
   local sync_fail="${8:-false}"
+  local expected_restart="${9:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -225,7 +230,7 @@ run_case() {
     [[ "$(jq -r '.recovery.partialInventoryTriggerSyncApiVersion' "$receipt")" == null ]]
     [[ "$(jq -r '.recovery.partialInventoryTriggerSyncRoute' "$receipt")" == null ]]
   fi
-  [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == false ]]
+  [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
   [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == 1 ]]
   [[ "$(jq -r '.diagnostics.packagedFunctionNames | length' "$receipt")" == 7 ]]
   [[ "$(stat -c '%a' "$receipt")" == 600 ]]
@@ -253,7 +258,8 @@ run_case success 7 0 passed complete false
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
 run_case trigger-sync-recovery 1 0 passed complete true true
-run_case trigger-sync-failure 1 1 failed function-discovery-trigger-sync true false true
+run_case trigger-sync-failure-recovery 1 0 passed complete true true true true
+run_case trigger-sync-failure 1 1 failed function-discovery true false true true
 
 if find "$work/temp" -mindepth 1 -print -quit | grep -q .; then
   echo 'Azure live script left temporary residue.' >&2
