@@ -52,7 +52,7 @@ def main() -> None:
             "AWS DynamoDB and SQS execution runtime",
             "Azure Durable Functions execution runtime",
             "Local conformant",
-            "0 live-qualified",
+            "1 live-qualified",
             "[canonical JSON](adapter-qualification.json)",
         )
         if any(value not in rendered for value in required):

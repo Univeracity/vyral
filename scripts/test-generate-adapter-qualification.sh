@@ -12,9 +12,10 @@ jq -e '
   .schemaVersion == "1.0" and
   .summary.adapterCount == 5 and
   .summary.localConformantAdapterCount == 2 and
-  .summary.prototypeAdapterCount == 3 and
-  .summary.currentLiveQualifiedCapabilityClaims == 0 and
-  .summary.currentLiveQualifiedCapabilityPercentage == 0 and
+  .summary.prototypeAdapterCount == 2 and
+  .summary.liveQualifiedAdapterCount == 1 and
+  .summary.currentLiveQualifiedCapabilityClaims == 12 and
+  .summary.currentLiveQualifiedCapabilityPercentage == 18.75 and
   all(.adapters[]; .qualification.status == "current")
 ' "$work_root/current.json" >/dev/null
 
@@ -27,7 +28,11 @@ import sys
 from pathlib import Path
 
 source = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-source["adapters"][0]["qualification"]["level"] = "live_qualified"
+source["adapters"][0]["qualification"]["evidence"] = [
+    item
+    for item in source["adapters"][0]["qualification"]["evidence"]
+    if item["kind"] != "cleanup"
+]
 Path(sys.argv[2]).write_text(json.dumps(source), encoding="utf-8")
 PY
 if VYRAL_ADAPTER_QUALIFICATION_SOURCE="$work_root/invalid-live.json" \
