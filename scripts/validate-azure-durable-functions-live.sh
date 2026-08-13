@@ -397,37 +397,32 @@ for _ in $(seq 1 "$DEPLOYMENT_MAX_ATTEMPTS"); do
     az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
     --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 300 --only-show-errors --output none \
     2>"$deployment_diagnostic" || deployment_exit_code=$?
-  if [[ "$deployment_exit_code" -eq 0 ]]; then
-    deployment_records="$(az functionapp log deployment list \
-      --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
-      --only-show-errors --output json 2>/dev/null || true)"
-    deployment_status="$(jq -r '
-        if type == "array" and length > 0 and (.[0].status? | type) == "number"
-        then .[0].status | tostring
-        else empty
-        end
-      ' <<<"$deployment_records" 2>/dev/null || true)"
-    DEPLOYMENT_PROVIDER_STATUS="${deployment_status:-not-observed}"
-    if [[ "$deployment_status" == "4" ]]; then
-      DEPLOYMENT_PROVIDER_FAILURE_CLASS="none"
-      deployed=true
-      unset deployment_records deployment_exit_code
-      break
-    fi
-    provider_diagnostic="$(jq -r '[.. | strings] | join(" ")' <<<"$deployment_records" 2>/dev/null || true)"
-    if [[ -f "$deployment_diagnostic" ]]; then
-      provider_diagnostic+=" $(<"$deployment_diagnostic")"
-    fi
-    DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$provider_diagnostic")"
-    unset deployment_records provider_diagnostic
-  else
-    if [[ "$deployment_exit_code" -eq 124 ]]; then
-      DEPLOYMENT_PROVIDER_FAILURE_CLASS="timeout"
-    elif [[ -f "$deployment_diagnostic" ]]; then
-      DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$(<"$deployment_diagnostic")")"
-    fi
+  deployment_records="$(az functionapp log deployment list \
+    --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
+    --only-show-errors --output json 2>/dev/null || true)"
+  deployment_status="$(jq -r '
+      if type == "array" and length > 0 and (.[0].status? | type) == "number"
+      then .[0].status | tostring
+      else empty
+      end
+    ' <<<"$deployment_records" 2>/dev/null || true)"
+  DEPLOYMENT_PROVIDER_STATUS="${deployment_status:-not-observed}"
+  if [[ "$deployment_status" == "4" ]]; then
+    DEPLOYMENT_PROVIDER_FAILURE_CLASS="none"
+    deployed=true
+    unset deployment_records deployment_exit_code
+    break
   fi
-  unset deployment_exit_code
+  provider_diagnostic="$(jq -r '[.. | strings] | join(" ")' <<<"$deployment_records" 2>/dev/null || true)"
+  if [[ -f "$deployment_diagnostic" ]]; then
+    provider_diagnostic+=" $(<"$deployment_diagnostic")"
+  fi
+  if [[ "$deployment_exit_code" -eq 124 && "$DEPLOYMENT_PROVIDER_STATUS" == not-observed ]]; then
+    DEPLOYMENT_PROVIDER_FAILURE_CLASS="timeout"
+  else
+    DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$provider_diagnostic")"
+  fi
+  unset deployment_records deployment_exit_code provider_diagnostic
   sleep 20
 done
 if [[ "$deployed" != true ]]; then

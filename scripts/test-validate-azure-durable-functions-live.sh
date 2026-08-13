@@ -86,7 +86,9 @@ case "$command" in
     printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10.0"}}}'
     ;;
   "functionapp log deployment list "*)
-    if [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
+    if [[ "${VYRAL_TEST_DEPLOYMENT_TIMEOUT:-false}" == true ]]; then
+      printf '%s\n' '[]'
+    elif [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
       printf '%s\n' '[{"status":6,"message":"Deployment was successful but Reset all workers endpoint responded with Response status code 503 (Site Unavailable)."}]'
     elif [[ "${VYRAL_TEST_DEPLOYMENT_FAIL_ONCE:-false}" == true && ! -e "$VYRAL_TEST_STATE/deployment-failed-once" ]]; then
       touch "$VYRAL_TEST_STATE/deployment-failed-once"
