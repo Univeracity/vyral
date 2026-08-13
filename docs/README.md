@@ -18,6 +18,8 @@ here so each document has a clear audience and owner.
   choose and evaluate direct, lexical, vector, hybrid, and reranked retrieval.
 - [Portable cutovers](guides/portable-cutovers.md) — hash-verified canonical
   migration, shadowing, cutover, rollback, and retained evidence.
+- [Python host security](guides/python-host-security.md) — local and
+  browser-facing host trust boundaries, strict options, and gateway controls.
 - [Stateless MCP behind a gateway](guides/stateless-mcp.md) — two-instance local
   proof, header-aware routing, authorization, and production checks.
 - [Stability and versioning](reference/stability.md) — maturity labels, version

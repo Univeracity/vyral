@@ -259,6 +259,27 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
         raise RuntimeError(
             "The CLI accepted a non-loopback bind without authentication."
         )
+    strict_loopback = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "vyral_runtime.host",
+            "--root",
+            str(root / "strict-loopback-bind"),
+            "--host",
+            "127.0.0.1",
+            "--require-api-key",
+        ],
+        env=no_auth_environment,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if strict_loopback.returncode != 2:
+        raise RuntimeError(
+            "The CLI accepted an explicitly strict loopback bind without "
+            "authentication."
+        )
     wildcard_environment = no_auth_environment.copy()
     wildcard_environment["VYRAL_API_KEY"] = api_key
     wildcard = subprocess.run(
@@ -283,10 +304,13 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
     checks.extend(
         (
             "remote-bind-requires-authentication",
+            "strict-loopback-bind-requires-authentication",
             "wildcard-bind-requires-host-allowlist",
         )
     )
-    with _host(root, api_key, root / "security-host.log") as base_url:
+    log_path = root / "security-host.log"
+    body_marker = "vyral-request-body-must-not-log"
+    with _host(root, api_key, log_path) as base_url:
         _expect(200, base_url, "GET", "/health")
         checks.append("anonymous-health-only")
 
@@ -326,6 +350,22 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
             )
         )
 
+        invalid_body = _expect(
+            400,
+            base_url,
+            "POST",
+            "/collections",
+            api_key=api_key,
+            raw_body=(
+                b'{"name":"' + body_marker.encode("ascii") + b'",'
+            ),
+        )
+        if body_marker.encode("ascii") in invalid_body:
+            raise RuntimeError(
+                "REST validation exposed request content in its response."
+            )
+        checks.append("rest-errors-do-not-echo-request-content")
+
         _expect(
             403,
             base_url,
@@ -354,6 +394,25 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
                 "rest-query-limit",
             )
         )
+
+        for uri in ("vyral://health/v1", "vyral://readiness/v1"):
+            resource_body = _expect(
+                200,
+                base_url,
+                "POST",
+                "/mcp",
+                api_key=api_key,
+                payload=_mcp_message(
+                    "resources/read", params={"uri": uri}
+                ),
+                headers=_mcp_headers("resources/read", name=uri),
+            )
+            serialized = resource_body.decode("utf-8", errors="replace")
+            if str(root) in serialized or api_key in serialized:
+                raise RuntimeError(
+                    "MCP health or readiness exposed host-local state."
+                )
+        checks.append("mcp-health-and-readiness-redacted")
 
         list_message = _mcp_message("tools/list")
         list_headers = _mcp_headers("tools/list")
@@ -464,6 +523,13 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
                 "mcp-post-only",
             )
         )
+    log_text = log_path.read_text(encoding="utf-8", errors="replace")
+    for sensitive in (api_key, body_marker):
+        if sensitive in log_text:
+            raise RuntimeError(
+                "The default host logs exposed a request body or credential."
+            )
+    checks.append("host-default-logs-redact-bodies-and-credentials")
     return checks
 
 
@@ -494,17 +560,33 @@ def _direct_probes(root: Path) -> list[str]:
     checks: list[str] = []
     object_store = FileObjectStore(root / "object-probes")
     try:
-        object_store.put_object(
-            ObjectWriteRequest(
-                "security",
-                "../escape",
-                b"must-not-write",
+        try:
+            object_store.put_object(
+                ObjectWriteRequest(
+                    "security",
+                    "../escape",
+                    b"must-not-write",
+                )
             )
-        )
-    except ValueError:
-        checks.append("object-path-traversal-denied")
-    else:
-        raise RuntimeError("Object storage accepted a traversal key.")
+        except ValueError:
+            checks.append("object-path-traversal-denied")
+        else:
+            raise RuntimeError("Object storage accepted a traversal key.")
+        for unsafe_key in ("CON", "nested/NUL.txt", "result. "):
+            try:
+                object_store.put_object(
+                    ObjectWriteRequest(
+                        "security",
+                        unsafe_key,
+                        b"must-not-write",
+                    )
+                )
+            except ValueError:
+                continue
+            raise RuntimeError(
+                "Object storage accepted a Windows-ambiguous object key."
+            )
+        checks.append("object-platform-ambiguous-paths-denied")
     finally:
         object_store.close()
 

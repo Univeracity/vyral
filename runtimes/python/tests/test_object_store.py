@@ -145,6 +145,10 @@ class FileObjectStoreTests(unittest.TestCase):
             ObjectWriteRequest("valid-name", "../secret", b"x"),
             ObjectWriteRequest("valid-name", "/absolute", b"x"),
             ObjectWriteRequest("valid-name", "a//b", b"x"),
+            ObjectWriteRequest("valid-name", "CON", b"x"),
+            ObjectWriteRequest("valid-name", "nested/NUL.txt", b"x"),
+            ObjectWriteRequest("valid-name", "result. ", b"x"),
+            ObjectWriteRequest("com1", "a", b"x"),
             ObjectWriteRequest(
                 "valid-name",
                 "a",

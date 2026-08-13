@@ -340,6 +340,15 @@ class RestHostTests(unittest.IsolatedAsyncioTestCase):
         assert isinstance(problem, dict)
         self.assertEqual(405, problem["status"])
 
+        status, _, readiness = await _request(
+            self.app, "GET", "/readiness"
+        )
+        self.assertEqual(200, status)
+        assert isinstance(readiness, dict)
+        serialized = json.dumps(readiness)
+        self.assertNotIn(str(self.runtime.config.root_path), serialized)
+        self.assertNotIn("databasePath", serialized)
+
     async def test_execution_discovery_matches_public_envelopes(
         self,
     ) -> None:
@@ -942,6 +951,27 @@ class RestHostTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(400, status)
         assert isinstance(problem, dict)
         self.assertNotIn("Traceback", problem["detail"])
+
+    async def test_problem_details_use_stable_types_without_exception_text(
+        self,
+    ) -> None:
+        secret = "vyral-rest-internal-secret"
+
+        async def forbidden(*_arguments: object) -> object:
+            raise PermissionError(secret)
+
+        self.app._dispatcher.dispatch = forbidden  # type: ignore[assignment]
+        status, _, problem = await _request(
+            self.app, "GET", "/collections"
+        )
+        self.assertEqual(403, status)
+        assert isinstance(problem, dict)
+        self.assertEqual(
+            "https://openvyral.com/problems/request-forbidden",
+            problem["type"],
+        )
+        self.assertEqual("The request is not permitted.", problem["detail"])
+        self.assertNotIn(secret, json.dumps(problem))
 
     async def test_limits_and_origin_are_fail_closed(self) -> None:
         app = VyralRestApplication(

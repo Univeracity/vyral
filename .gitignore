@@ -47,6 +47,7 @@ docs/guides/*
 !docs/guides/portable-cutovers.md
 !docs/guides/source-native-retrieval.md
 !docs/guides/stateless-mcp.md
+!docs/guides/python-host-security.md
 !docs/maintainers/
 docs/maintainers/*
 !docs/maintainers/releasing.md

@@ -1,5 +1,5 @@
 {
-  "fileCount": 865,
+  "fileCount": 867,
   "files": [
     {
       "mode": "644",
@@ -124,7 +124,7 @@
     {
       "mode": "644",
       "path": ".gitignore",
-      "sha256": "51d687b09eb7ce61a9476f938162aaf7d830292bde83c0dd38441197ae732a90"
+      "sha256": "bfbbbbbe7c513010d57d287730d5488630c979ec722173abcc6143999dd53070"
     },
     {
       "mode": "644",
@@ -594,7 +594,7 @@
     {
       "mode": "644",
       "path": "docs/README.md",
-      "sha256": "08c15b04bed7b8d6883dd065279588b8b55156422075abee163f5cab0e2d29fb"
+      "sha256": "00f4c5c0e3725214931099e8fc37f9e9e6b99d7942a7f9e498ed38296a3f50af"
     },
     {
       "mode": "644",
@@ -628,6 +628,11 @@
     },
     {
       "mode": "644",
+      "path": "docs/guides/python-host-security.md",
+      "sha256": "f321c642397e02eb693aa0e757922d0b498b7e538a2070febb299f82109a4efc"
+    },
+    {
+      "mode": "644",
       "path": "docs/guides/source-native-retrieval.md",
       "sha256": "c6e22d6137d6d1544d752b722dc634c69f4429207cd298f2b590948528ba54a7"
     },
@@ -639,7 +644,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "32cd01e988d448c5dd4a3665bc35f3026d7621795e3fee6ac51909e0099f3c50"
+      "sha256": "db0b6154adf51d1da778484d94cc2c23e099ae9f1a1c3d0d58bc2b83e8efbed9"
     },
     {
       "mode": "644",
@@ -749,7 +754,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "4b068e93fa063c2fac3e1826cb3a7b3360b0b66743b2e1e0015c46eb8d9d3c00"
+      "sha256": "1b53d278ccb58700c8a4f870fba4cf7533b66738490c81224ede1f70a38d069b"
     },
     {
       "mode": "644",
@@ -1059,7 +1064,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/application.py",
-      "sha256": "df6da3833f2edbb2653e9265c121ef1efc38c289687ab0a8fbce3753628ced47"
+      "sha256": "c849cee8108659406fee9fc0f3f9b60abfd02af94aeb78a542b044f93a3dbdab"
     },
     {
       "mode": "644",
@@ -1069,22 +1074,27 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/cli.py",
-      "sha256": "e9d168517ba4fa3b73368af7982f5175c7104101eec498c69435a522d8e1e530"
+      "sha256": "892a66be47792a1564819cbc0b1d5b9bb9618e087e8dc6e3bf0e795a9607ead8"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/src/vyral_runtime/host/diagnostics.py",
+      "sha256": "0622b5ae4691952bd74c0fb88ab9c201108f5588630582fba0ffc47b42e0d63c"
     },
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/mcp.py",
-      "sha256": "f7af403fa820aac21921e837ce205dda5bfff73b04caf4d794910633f947bd18"
+      "sha256": "122a6d9910f7ca7f4d0ecece953cd74873e05924d5f9eba49a3f7db275f08e57"
     },
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/rest.py",
-      "sha256": "81164a27a09679a476577c52ebcc8354cc3487c2680baa924c7d340e939fcdbd"
+      "sha256": "9c847fecb8efe62d716958486e6fec257b275c6d80977840d463cc5952a8419b"
     },
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/rest_operations.py",
-      "sha256": "7edd606e046611d6af41af57ee4664b9a34595dfde2ad5bc028203cc63126889"
+      "sha256": "ce342174fe4a1d9135166406a573b7593765a3f9f1f3863c06b5965189cfdbcb"
     },
     {
       "mode": "644",
@@ -1134,7 +1144,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/local/object_store.py",
-      "sha256": "03c6a2d8319d9d86adb67f9a1633a5201a39ef7f29684957b30c8fd5ced53690"
+      "sha256": "195c7a838ab96c9cb3b8b0913b6eca1d1f6a3f126ac60fee4f93c6c09a4e6698"
     },
     {
       "mode": "644",
@@ -1299,12 +1309,12 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_host_application.py",
-      "sha256": "fb25e1653522cf41172dc6245e74bad5e0c82070017f25d4996d0b76928b8032"
+      "sha256": "59e0f967527c4f8513bf7cfae4bb144fe8c36ec56eea59baa71211911c8eabe6"
     },
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_host_cli.py",
-      "sha256": "1e81661bf783c45fa1f719a330ab435307ed2a9481c7e96319260d98581229ee"
+      "sha256": "7103eb141f5d3003e4244c52578bf758e02da1f49785779c3cef7209527abc81"
     },
     {
       "mode": "644",
@@ -1314,7 +1324,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_mcp_host.py",
-      "sha256": "a4be7912c25e81aad0df2960fac53799437e3772b36236bb903d5905aa782d94"
+      "sha256": "19c30df7f91f7cde5ef1456eb6c6dc35ba9e90fac7bda959508872a88d5e5ddf"
     },
     {
       "mode": "644",
@@ -1324,7 +1334,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_object_store.py",
-      "sha256": "b149ca5e551e41c4b42b62667e7c114f88b93a0bb824dc47a1ae8c0939857537"
+      "sha256": "d3ce216a6a2d8b2aa15e679ab015d5020cd6056b5bd6fb9e4b2864afcfd8d3b8"
     },
     {
       "mode": "644",
@@ -1349,7 +1359,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_rest_host.py",
-      "sha256": "c9dda10511b3ffd274ae9c109a8c5aef49e125416f7ca6efc4c84c8a7d1c1367"
+      "sha256": "2ba5133018aac8f75fe4eca5030dd7391447462c8c2c301ca525372fa072e751"
     },
     {
       "mode": "644",
@@ -1544,7 +1554,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "54d6b916ecfbdacf4943930c4187d20b9a19039da7d7b7e4e078628a64c817e9"
+      "sha256": "5c8f4c06ba077bf89b0b07c8ca6a5c10771c0cd42ae1081bbeaa6e7e35f8ca34"
     },
     {
       "mode": "755",
@@ -1944,12 +1954,12 @@
     {
       "mode": "644",
       "path": "scripts/verify-python-runtime-platform-matrix.py",
-      "sha256": "94395166aa3f64b2015b4531aef3196409cb3c101f52fe3501b220ce9becf88a"
+      "sha256": "a1e6ea0dff57a9540dae9102da1a1379a915dab630350e17a49a3c04989370f1"
     },
     {
       "mode": "644",
       "path": "scripts/verify-python-runtime-security.py",
-      "sha256": "12d79acaf91736a09b75974df933185137840ba3f0bf093634a6ead4554ca49d"
+      "sha256": "f344455944f65a0f684948444f93046a2ef7b3e93eb57e71e2a1d1244186ea33"
     },
     {
       "mode": "644",
@@ -1999,7 +2009,7 @@
     {
       "mode": "644",
       "path": "scripts/write-python-runtime-platform-receipt.py",
-      "sha256": "591b7834a89f73aeaab8793841b062aa28634fd5d188c50444945a1ebd0b6a74"
+      "sha256": "5094882dd2026fc7b6f723a2d99cdfb7a98c9c2175a6667c1b6a0e242df11720"
     },
     {
       "mode": "644",
@@ -4329,5 +4339,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "2c5c00d833bc35f891cfa3908b788f65bf5ec9257bd91f69e8772c2a6c7226d6"
+  "treeSha256": "6fafca10fe8b11702ba4a7962c81ab3b0579124681e9202f179e5eab0b396650"
 }

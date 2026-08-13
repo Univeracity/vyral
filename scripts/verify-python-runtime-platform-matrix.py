@@ -23,6 +23,7 @@ REQUIRED_GATES = {
     "unittest-discovery",
     "branch-coverage-regression-floor-77.5",
     "strict-mypy",
+    "platform-safe-object-paths",
     "wheel-build",
     "sdist-build",
     "clean-wheel-install",

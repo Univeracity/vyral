@@ -51,6 +51,16 @@ DEFAULT_OBJECT_LIST_LIMIT = 100
 MAX_OBJECT_LIST_LIMIT = 5000
 METADATA_SUFFIX = ".metadata.json"
 TEMP_DIRECTORY_NAME = ".vyral-tmp"
+_WINDOWS_RESERVED_COMPONENTS = frozenset(
+    {
+        "aux",
+        "con",
+        "nul",
+        "prn",
+        *(f"com{index}" for index in range(1, 10)),
+        *(f"lpt{index}" for index in range(1, 10)),
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -628,6 +638,8 @@ def _validate_container(container: str) -> None:
         )
     if "--" in container:
         raise ValueError("Container cannot contain consecutive '-' characters.")
+    if _is_windows_reserved_component(container):
+        raise ValueError("Container uses a Windows-reserved device name.")
 
 
 def _normalize_key(key: str, allow_trailing_slash: bool = False) -> str:
@@ -643,7 +655,23 @@ def _normalize_key(key: str, allow_trailing_slash: bool = False) -> str:
         raise ValueError(
             "Object key must be relative and cannot contain traversal segments."
         )
+    if any(
+        _is_windows_reserved_component(segment)
+        for segment in validation.split("/")
+    ):
+        raise ValueError(
+            "Object key cannot contain Windows-reserved device names."
+        )
     return normalized
+
+
+def _is_windows_reserved_component(component: str) -> bool:
+    """Reject names that alias devices or normalize ambiguously on Windows."""
+    normalized = component.rstrip(" .")
+    if normalized != component:
+        return True
+    stem = normalized.split(".", 1)[0].casefold()
+    return stem in _WINDOWS_RESERVED_COMPONENTS
 
 
 def _validate_metadata(metadata: Mapping[str, str] | None) -> None:

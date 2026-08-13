@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 import unittest
 from unittest.mock import patch
 
@@ -108,6 +108,20 @@ async def _lifespan(
 
 
 class CombinedHostApplicationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_strict_factory_rejects_an_accidentally_open_data_plane(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-combined-host-strict-"
+        ) as root:
+            with self.assertRaisesRegex(ValueError, "api_key"):
+                create_host_application(root, require_api_key=True)
+            with self.assertRaisesRegex(TypeError, "boolean"):
+                create_host_application(
+                    root,
+                    require_api_key=cast(bool, "true"),
+                )
+
     async def test_host_creation_verifies_bundled_assets(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="vyral-combined-host-assets-"

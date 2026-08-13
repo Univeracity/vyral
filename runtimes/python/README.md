@@ -344,9 +344,13 @@ API-key hosts accept `X-Vyral-Api-Key` or a bearer token. Localhost Host/Origin
 validation is enabled by default. A non-loopback CLI bind is rejected unless
 `VYRAL_API_KEY` is set; wildcard binds also require one or more explicit
 `--allowed-host` values. Browser deployments opt into exact origins with
-`--allowed-origin`. The SQLite/filesystem composition is a single-node topology
-even though each MCP request can be parsed and authorized without session
-affinity.
+`--allowed-origin`; add `--require-explicit-origin` to disable MCP's
+same-host browser fallback. Add `--require-api-key` when a loopback host must
+also fail closed without credentials. Request access logs are disabled by
+default. The SQLite/filesystem composition is a single-node topology even
+though each MCP request can be parsed and authorized without session affinity.
+See the [Python host security guide](../../docs/guides/python-host-security.md)
+before exposing a host beyond a single trusted user or process boundary.
 
 The baseline qualification corpus is 2,000 records with 384-dimensional exact
 vectors, a roughly 200-chunk RAG document, and 20 durable jobs. This is a
