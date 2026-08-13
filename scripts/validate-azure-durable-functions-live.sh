@@ -60,7 +60,88 @@ TRIGGER_SYNC_ERROR_CODE=""
 DISCOVERED_FUNCTION_NAMES_JSON='[]'
 DEPLOYMENT_ATTEMPTS=0
 DEPLOYMENT_PROVIDER_STATUS="not-observed"
+DEPLOYMENT_PROVIDER_FAILURE_CLASS="not-observed"
+FUNCTION_RUNTIME_NAME="not-observed"
+FUNCTION_RUNTIME_VERSION="not-observed"
+FUNCTION_RUNTIME_MATCHED=false
+POST_DEPLOYMENT_RECOVERY_ATTEMPTED=false
+POST_DEPLOYMENT_RESTART_ISSUED=false
+POST_DEPLOYMENT_MASTER_KEY_AVAILABLE=false
+POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON='[]'
+POST_DEPLOYMENT_RUNTIME_FUNCTION_COUNT=0
+POST_DEPLOYMENT_RUNTIME_FUNCTIONS_MATCHED=false
 FAILURE_STAGE="publish"
+
+classify_deployment_provider_failure() {
+  local diagnostic="$1"
+  local normalized
+  normalized="$(tr '[:upper:]' '[:lower:]' <<<"$diagnostic")"
+  case "$normalized" in
+    *reset*worker*503* | *reset*worker*site*unavailable*)
+      printf '%s\n' worker_reset_503
+      ;;
+    *site*unavailable* | *\ 503\ * | *status\ code\ 503*)
+      printf '%s\n' site_unavailable
+      ;;
+    *authorization* | *forbidden*)
+      printf '%s\n' authorization
+      ;;
+    *timeout*)
+      printf '%s\n' timeout
+      ;;
+    *)
+      printf 'provider_status_%s\n' "${DEPLOYMENT_PROVIDER_STATUS//[^A-Za-z0-9]/_}"
+      ;;
+  esac
+}
+
+probe_host_after_failed_deployment() {
+  POST_DEPLOYMENT_RECOVERY_ATTEMPTED=true
+  if ! az functionapp restart --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+    --name "$FUNCTION" --only-show-errors --output none; then
+    return
+  fi
+  POST_DEPLOYMENT_RESTART_ISSUED=true
+
+  local master_key=""
+  local key_payload=""
+  local admin_config="$WORK_ROOT/post-deployment-master-key.curlrc"
+  local admin_payload=""
+  local inventory_matches=false
+  for _ in $(seq 1 24); do
+    key_payload="$(az functionapp keys list --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+      --name "$FUNCTION" --output json --only-show-errors 2>/dev/null || true)"
+    master_key="$(jq -r '.masterKey // empty' <<<"$key_payload" 2>/dev/null || true)"
+    unset key_payload
+    if [[ -z "$master_key" ]]; then
+      sleep 5
+      continue
+    fi
+    POST_DEPLOYMENT_MASTER_KEY_AVAILABLE=true
+    printf 'header = "x-functions-key: %s"\nconnect-timeout = 10\nmax-time = 30\n' \
+      "$master_key" > "$admin_config"
+    chmod 0600 "$admin_config"
+    unset master_key
+    admin_payload="$(curl --config "$admin_config" -sS --fail --max-time 10 \
+      "https://${FUNCTION}.azurewebsites.net/admin/functions/" 2>/dev/null || true)"
+    POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON="$(jq -cer '
+      if type == "array" and all(.[]; (.name? | type) == "string")
+      then [.[].name] | sort
+      else []
+      end
+    ' <<<"$admin_payload" 2>/dev/null || echo '[]')"
+    POST_DEPLOYMENT_RUNTIME_FUNCTION_COUNT="$(jq -r 'length' <<<"$POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON")"
+    inventory_matches="$(jq -r --argjson expected "$EXPECTED_FUNCTION_NAMES_JSON" '
+      . == ($expected | sort)
+    ' <<<"$POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON" 2>/dev/null || echo false)"
+    unset admin_payload
+    if [[ "$inventory_matches" == true ]]; then
+      POST_DEPLOYMENT_RUNTIME_FUNCTIONS_MATCHED=true
+      break
+    fi
+    sleep 5
+  done
+}
 
 cleanup() {
   local command_status="$?"
@@ -143,6 +224,16 @@ cleanup() {
       --argjson expected_function_names "$EXPECTED_FUNCTION_NAMES_JSON" \
       --argjson deployment_attempts "$DEPLOYMENT_ATTEMPTS" \
       --arg deployment_provider_status "$DEPLOYMENT_PROVIDER_STATUS" \
+      --arg deployment_provider_failure_class "$DEPLOYMENT_PROVIDER_FAILURE_CLASS" \
+      --arg function_runtime_name "$FUNCTION_RUNTIME_NAME" \
+      --arg function_runtime_version "$FUNCTION_RUNTIME_VERSION" \
+      --argjson function_runtime_matched "$FUNCTION_RUNTIME_MATCHED" \
+      --argjson post_deployment_recovery_attempted "$POST_DEPLOYMENT_RECOVERY_ATTEMPTED" \
+      --argjson post_deployment_restart_issued "$POST_DEPLOYMENT_RESTART_ISSUED" \
+      --argjson post_deployment_master_key_available "$POST_DEPLOYMENT_MASTER_KEY_AVAILABLE" \
+      --argjson post_deployment_runtime_function_names "$POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON" \
+      --argjson post_deployment_runtime_function_count "$POST_DEPLOYMENT_RUNTIME_FUNCTION_COUNT" \
+      --argjson post_deployment_runtime_functions_matched "$POST_DEPLOYMENT_RUNTIME_FUNCTIONS_MATCHED" \
       --argjson cleanup_passed "$([[ "$cleanup_failed" == false ]] && echo true || echo false)" \
       '{
         schemaVersion: 1,
@@ -181,8 +272,22 @@ cleanup() {
         diagnostics: {
           deploymentAttempts: $deployment_attempts,
           deploymentProviderStatus: $deployment_provider_status,
+          deploymentProviderFailureClass: $deployment_provider_failure_class,
+          configuredRuntime: {
+            name: $function_runtime_name,
+            version: $function_runtime_version,
+            matchedExpectedDotnetIsolated10: $function_runtime_matched
+          },
           packagedFunctionNames: $expected_function_names,
-          runtimeFunctionNames: $discovered_function_names
+          runtimeFunctionNames: $discovered_function_names,
+          postDeploymentFailureRecovery: {
+            attempted: $post_deployment_recovery_attempted,
+            restartIssued: $post_deployment_restart_issued,
+            masterKeyAvailable: $post_deployment_master_key_available,
+            runtimeFunctionNames: $post_deployment_runtime_function_names,
+            runtimeFunctionCount: $post_deployment_runtime_function_count,
+            runtimeFunctionInventoryMatched: $post_deployment_runtime_functions_matched
+          }
         },
         failure: (
           if $result == "passed" then null
@@ -249,6 +354,23 @@ az functionapp create --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name
   --runtime-version 10 --functions-version 4 --disable-app-insights true --https-only true \
   --only-show-errors --output none
 FUNCTION_CREATED=true
+FAILURE_STAGE="function-runtime-configuration"
+runtime_configuration="$(az functionapp show --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+  --name "$FUNCTION" --only-show-errors --output json)"
+FUNCTION_RUNTIME_NAME="$(jq -r '
+  .functionAppConfig.runtime.name? // .properties.functionAppConfig.runtime.name? // empty
+' <<<"$runtime_configuration")"
+FUNCTION_RUNTIME_VERSION="$(jq -r '
+  .functionAppConfig.runtime.version? // .properties.functionAppConfig.runtime.version? // empty
+' <<<"$runtime_configuration")"
+unset runtime_configuration
+FUNCTION_RUNTIME_NAME="${FUNCTION_RUNTIME_NAME:-not-observed}"
+FUNCTION_RUNTIME_VERSION="${FUNCTION_RUNTIME_VERSION:-not-observed}"
+if [[ "$FUNCTION_RUNTIME_NAME" != dotnet-isolated || "$FUNCTION_RUNTIME_VERSION" != 10 ]]; then
+  echo "azure-durable-functions-live-runtime=invalid name:${FUNCTION_RUNTIME_NAME} version:${FUNCTION_RUNTIME_VERSION}" >&2
+  false
+fi
+FUNCTION_RUNTIME_MATCHED=true
 FAILURE_STAGE="function-configuration"
 az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
   --settings "AzureWebJobsStorage=$STORAGE_CONNECTION" "VYRAL_AZURE_DURABLE_TASK_HUB=$HUB" \
@@ -267,23 +389,35 @@ for _ in $(seq 1 6); do
   if az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
     --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none \
     2>"$deployment_diagnostic"; then
-    deployment_status="$(az functionapp log deployment list \
+    deployment_records="$(az functionapp log deployment list \
       --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
-      --only-show-errors --output json 2>/dev/null | jq -r '
+      --only-show-errors --output json 2>/dev/null || true)"
+    deployment_status="$(jq -r '
         if type == "array" and length > 0 and (.[0].status? | type) == "number"
         then .[0].status | tostring
         else empty
         end
-      ' 2>/dev/null || true)"
+      ' <<<"$deployment_records" 2>/dev/null || true)"
     DEPLOYMENT_PROVIDER_STATUS="${deployment_status:-not-observed}"
     if [[ "$deployment_status" == "4" ]]; then
+      DEPLOYMENT_PROVIDER_FAILURE_CLASS="none"
       deployed=true
+      unset deployment_records
       break
     fi
+    provider_diagnostic="$(jq -r '[.. | strings] | join(" ")' <<<"$deployment_records" 2>/dev/null || true)"
+    if [[ -f "$deployment_diagnostic" ]]; then
+      provider_diagnostic+=" $(<"$deployment_diagnostic")"
+    fi
+    DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$provider_diagnostic")"
+    unset deployment_records provider_diagnostic
+  elif [[ -f "$deployment_diagnostic" ]]; then
+    DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$(<"$deployment_diagnostic")")"
   fi
   sleep 20
 done
 if [[ "$deployed" != true ]]; then
+  probe_host_after_failed_deployment
   echo "azure-durable-functions-live-deployment=failed attempts:${DEPLOYMENT_ATTEMPTS} provider-status:${DEPLOYMENT_PROVIDER_STATUS}" >&2
   false
 fi

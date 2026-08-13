@@ -73,9 +73,12 @@ case "$command" in
   "functionapp restart "*)
     touch "$VYRAL_TEST_STATE/host-restart-issued"
     ;;
+  "functionapp show "*)
+    printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10"}}}'
+    ;;
   "functionapp log deployment list "*)
     if [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
-      printf '%s\n' '[{"status":6}]'
+      printf '%s\n' '[{"status":6,"message":"Deployment was successful but Reset all workers endpoint responded with Response status code 503 (Site Unavailable)."}]'
     elif [[ "${VYRAL_TEST_DEPLOYMENT_FAIL_ONCE:-false}" == true && ! -e "$VYRAL_TEST_STATE/deployment-failed-once" ]]; then
       touch "$VYRAL_TEST_STATE/deployment-failed-once"
       printf '%s\n' '[{"status":6}]'
@@ -247,10 +250,20 @@ run_case() {
   fi
   [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
   [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == "$expected_deployment_attempts" ]]
+  [[ "$(jq -r '.diagnostics.configuredRuntime.name' "$receipt")" == dotnet-isolated ]]
+  [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10 ]]
+  [[ "$(jq -r '.diagnostics.configuredRuntime.matchedExpectedDotnetIsolated10' "$receipt")" == true ]]
   if [[ "$expected_stage" == deployment ]]; then
     [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 6 ]]
+    [[ "$(jq -r '.diagnostics.deploymentProviderFailureClass' "$receipt")" == worker_reset_503 ]]
+    [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.attempted' "$receipt")" == true ]]
+    [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.restartIssued' "$receipt")" == true ]]
+    [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.masterKeyAvailable' "$receipt")" == true ]]
+    [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.runtimeFunctionCount' "$receipt")" == "$function_count" ]]
   else
     [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 4 ]]
+    [[ "$(jq -r '.diagnostics.deploymentProviderFailureClass' "$receipt")" == none ]]
+    [[ "$(jq -r '.diagnostics.postDeploymentFailureRecovery.attempted' "$receipt")" == false ]]
   fi
   [[ "$(jq -r '.diagnostics.packagedFunctionNames | length' "$receipt")" == 7 ]]
   [[ "$(stat -c '%a' "$receipt")" == 600 ]]
