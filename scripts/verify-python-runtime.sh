@@ -50,8 +50,8 @@ python3 -m build \
   --outdir "$work_root/dist" \
   runtimes/python
 
-wheel="$(find "$work_root/dist" -maxdepth 1 -type f -name 'vyral_runtime-0.1.1-*.whl' -print -quit)"
-sdist="$work_root/dist/vyral_runtime-0.1.1.tar.gz"
+wheel="$(find "$work_root/dist" -maxdepth 1 -type f -name 'vyral-0.1.1-*.whl' -print -quit)"
+sdist="$work_root/dist/vyral-0.1.1.tar.gz"
 if [[ -z "$wheel" || ! -f "$sdist" ]]; then
   echo "Python runtime build did not produce the expected wheel and source distribution." >&2
   exit 1

@@ -104,7 +104,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/publish-first-cohort.yml",
-      "sha256": "bcbcc74e88b0546499c4fb5dd530f1d210aa32ab256644db1124c3ce4fa023cf"
+      "sha256": "81336400c7b4f12c0260679ecd797b282f1c891603ba06c69d313a8e8f3d2f07"
     },
     {
       "mode": "644",
@@ -159,12 +159,12 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "c730dd5cd3ba9c73507331e94660eb308d585a9565bede3da82405487dbf252a"
+      "sha256": "b138114a15687becad641aa3fede2d9dc7b02c961aefef86bec32ed2b8ca82fb"
     },
     {
       "mode": "644",
       "path": "ROADMAP.md",
-      "sha256": "b3e774ad8d3400205ed7708bee6c1ebaf144e5a8c8ad43200165545201e22803"
+      "sha256": "c871bf96152b06ebe9c593400e1115e9fd0635bc2da553c8a05863c10f8a9660"
     },
     {
       "mode": "644",
@@ -594,7 +594,7 @@
     {
       "mode": "644",
       "path": "design/python-runtime.md",
-      "sha256": "8daa0acffdf840416ba53b0f914a03760c1d37ec12bbcc4f5c3190bf7c5908ec"
+      "sha256": "7f7361e9e1d35ebf89734120ca696bafd5ca837d956fa3c35dd0cd97c5cde2cd"
     },
     {
       "mode": "644",
@@ -649,7 +649,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "4e3a86983a26d2471edd6ccad2dac4b9a646bbe61c06e9e823bb45663e487ac7"
+      "sha256": "8d45e682aecbbc854a4780f1ac9e50299a22ebc1f2373bf1f8d2d7878a915368"
     },
     {
       "mode": "644",
@@ -659,7 +659,7 @@
     {
       "mode": "644",
       "path": "docs/reference/stability.md",
-      "sha256": "138aa6d3dab86077ed8ae4e6ba87c022b442daf435d059871f58980a6d55da65"
+      "sha256": "74965d1db6728637991441f4af0da9b22320be8aa791ebc45bb057c0e67ebc59"
     },
     {
       "mode": "644",
@@ -734,7 +734,7 @@
     {
       "mode": "644",
       "path": "packaging/publication-cohort.json",
-      "sha256": "f82737219d176b906b1710411349b632eeb9003c6970452857417c1c29b7df2a"
+      "sha256": "5d23dbb69481cf0ba0a1088f247943feac2ab486f6cd86ee12316a7867a4ca36"
     },
     {
       "mode": "644",
@@ -759,7 +759,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "1b53d278ccb58700c8a4f870fba4cf7533b66738490c81224ede1f70a38d069b"
+      "sha256": "953fb3073e6d6d5c7db698a24971c94d0d7573c6d724c25dd12b6f9b6971ec18"
     },
     {
       "mode": "644",
@@ -779,7 +779,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/pyproject.toml",
-      "sha256": "7c0de06cbfc930e2b7b3cb05804f97ff9c040d43561dbb0225f583bb175e9aae"
+      "sha256": "28b292a7ecf9c14afc46d4a90a00bd67d1072406716daa16e02be44f0ba41b3e"
     },
     {
       "mode": "644",
@@ -1079,7 +1079,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/host/cli.py",
-      "sha256": "892a66be47792a1564819cbc0b1d5b9bb9618e087e8dc6e3bf0e795a9607ead8"
+      "sha256": "2fbd664ba87dc54749bf522b321df356727cc6d4c7ffa75fd50332f2c9e716e5"
     },
     {
       "mode": "644",
@@ -1114,7 +1114,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/integrations/extropic.py",
-      "sha256": "b2068cd5495d763c3f7831300afb144bbffa4e83f3cd0713cfd7522792050fbe"
+      "sha256": "1bd04070cfd4083bc1e8d2f66706a1ffe9711aa39d949dbcb628b7629b3d1b1c"
     },
     {
       "mode": "644",
@@ -1914,7 +1914,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-publication-cohort.py",
-      "sha256": "913a413a85ae9b76efaffb0c164113e66d8abd718628d5d99855b792da7e5171"
+      "sha256": "a293de175a68f1ff70112e0928a6da54a0e038c2e562f0c312c02833d12b6e8e"
     },
     {
       "mode": "644",
@@ -1924,7 +1924,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-external-worker-integration.py",
-      "sha256": "53b814fd9f47360558424c24253c33ad382bfe5681e476c7a029d0865773e2fd"
+      "sha256": "d8833544944d2a8ab017c3b0153c1f7acd01428b432f23cab199c774508523df"
     },
     {
       "mode": "755",
@@ -1949,7 +1949,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime-install.py",
-      "sha256": "857db8f58f699da296fc13e8c8117e11e5741d03cc551dfe73a3cd4b3278dba9"
+      "sha256": "0e707ece4586fc9ca2723bc248a5200aafeaa0323ed660cbeb2ffb89824df5ca"
     },
     {
       "mode": "755",
@@ -1974,12 +1974,12 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime.sh",
-      "sha256": "7c8362e518ffbc810174972e9340f5d69cf9325211a33d42612227b2d2e13827"
+      "sha256": "bb4288dd6ff53a5d89ab3055a143375740b94843011c523971659c2e6b2a7889"
     },
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "ffd65e6fca4da50b3cd61973aafd35cf53908d970c3ad45ceaebc9c0de5b4b24"
+      "sha256": "b4f4e397cf826e60d11cd43d8c8066a9776fc32acce93a0d7086444b6c652ac2"
     },
     {
       "mode": "755",
@@ -2014,7 +2014,7 @@
     {
       "mode": "644",
       "path": "scripts/write-python-runtime-platform-receipt.py",
-      "sha256": "5094882dd2026fc7b6f723a2d99cdfb7a98c9c2175a6667c1b6a0e242df11720"
+      "sha256": "6e12a9bcdb73e435389a38b69e4007f5d522489a4c6e5e4dcef31341b01083dc"
     },
     {
       "mode": "644",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "64518f7bb4debf2d45bf3cd7ecec063105ddf411ef9fbdccf27e8085ed667cdc"
+  "treeSha256": "b3dcc5b86dffbaf54fa428fdcfdb1c7204e940273a158b410afae3502884a17a"
 }

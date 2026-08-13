@@ -50,9 +50,11 @@ together.
 
 Source versions do not assert registry availability. The first publication
 cohort is intentionally small: core contracts, local runtime, local execution,
-the server container, and the Python and JavaScript HTTP clients. Cloud and
-Temporal adapters must be labeled `preview` or `prototype` in package and
-release notes until current live evidence supports a stronger claim.
+the server container, and the JavaScript HTTP client. The Python runtime is
+designated for publication as `vyral`; the separate lightweight `vyral-client`
+remains outside that cohort. Cloud and Temporal adapters must be labeled
+`preview` or `prototype` in package and release notes until current live
+evidence supports a stronger claim.
 
 ## Current surface classification
 

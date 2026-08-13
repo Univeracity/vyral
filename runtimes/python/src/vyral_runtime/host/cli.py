@@ -210,7 +210,7 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
     except ImportError as error:
         raise RuntimeError(
             "Serving Vyral requires the 'server' extra: "
-            "pip install 'vyral-runtime[server]'."
+            "pip install 'vyral[server]'."
         ) from error
     application = create_host_application(
         str(Path(arguments.root).expanduser().resolve()),
