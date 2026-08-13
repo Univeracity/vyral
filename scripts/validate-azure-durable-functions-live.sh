@@ -61,6 +61,8 @@ DISCOVERED_FUNCTION_NAMES_JSON='[]'
 DEPLOYMENT_ATTEMPTS=0
 DEPLOYMENT_PROVIDER_STATUS="not-observed"
 DEPLOYMENT_PROVIDER_FAILURE_CLASS="not-observed"
+DEPLOYMENT_MAX_ATTEMPTS=3
+DEPLOYMENT_COMMAND_TIMEOUT_SECONDS=330
 FUNCTION_RUNTIME_NAME="not-observed"
 FUNCTION_RUNTIME_VERSION="not-observed"
 FUNCTION_RUNTIME_MATCHED=false
@@ -382,15 +384,20 @@ az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOUR
 
 # Azure CLI selects One Deploy for Flex Consumption even though the command retains its historic
 # config-zip name. The CLI can return successfully before One Deploy finishes its provider-side
-# trigger synchronization, so require the deployment record itself to report success.
+# trigger synchronization, so require the deployment record itself to report success. Bound each
+# attempt and the retry count so a provider outage still reaches the recovery probe and receipt
+# before the protected job times out.
 FAILURE_STAGE="deployment"
 deployed=false
 deployment_diagnostic="$WORK_ROOT/deployment-attempt.log"
-for _ in $(seq 1 6); do
+for _ in $(seq 1 "$DEPLOYMENT_MAX_ATTEMPTS"); do
   DEPLOYMENT_ATTEMPTS=$((DEPLOYMENT_ATTEMPTS + 1))
-  if az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
-    --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 600 --only-show-errors --output none \
-    2>"$deployment_diagnostic"; then
+  deployment_exit_code=0
+  timeout --signal=TERM --kill-after=30s "${DEPLOYMENT_COMMAND_TIMEOUT_SECONDS}s" \
+    az functionapp deployment source config-zip --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
+    --name "$FUNCTION" --src "$WORK_ROOT/app.zip" --timeout 300 --only-show-errors --output none \
+    2>"$deployment_diagnostic" || deployment_exit_code=$?
+  if [[ "$deployment_exit_code" -eq 0 ]]; then
     deployment_records="$(az functionapp log deployment list \
       --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
       --only-show-errors --output json 2>/dev/null || true)"
@@ -404,7 +411,7 @@ for _ in $(seq 1 6); do
     if [[ "$deployment_status" == "4" ]]; then
       DEPLOYMENT_PROVIDER_FAILURE_CLASS="none"
       deployed=true
-      unset deployment_records
+      unset deployment_records deployment_exit_code
       break
     fi
     provider_diagnostic="$(jq -r '[.. | strings] | join(" ")' <<<"$deployment_records" 2>/dev/null || true)"
@@ -413,9 +420,14 @@ for _ in $(seq 1 6); do
     fi
     DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$provider_diagnostic")"
     unset deployment_records provider_diagnostic
-  elif [[ -f "$deployment_diagnostic" ]]; then
-    DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$(<"$deployment_diagnostic")")"
+  else
+    if [[ "$deployment_exit_code" -eq 124 ]]; then
+      DEPLOYMENT_PROVIDER_FAILURE_CLASS="timeout"
+    elif [[ -f "$deployment_diagnostic" ]]; then
+      DEPLOYMENT_PROVIDER_FAILURE_CLASS="$(classify_deployment_provider_failure "$(<"$deployment_diagnostic")")"
+    fi
   fi
+  unset deployment_exit_code
   sleep 20
 done
 if [[ "$deployed" != true ]]; then
