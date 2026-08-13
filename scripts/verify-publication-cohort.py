@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the inert first-publication cohort and its package metadata."""
+"""Verify the authorized first-publication cohort and its package metadata."""
 
 from __future__ import annotations
 
@@ -84,6 +84,47 @@ EXCLUDED = {
     "vyral-runtime",
     "prototype integrations",
 }
+AUTHORIZATION = {
+    "mode": "manual-protected-environment",
+    "releaseTag": "v0.3.0",
+    "workflow": ".github/workflows/publish-first-cohort.yml",
+    "requirements": (
+        "a GitHub-verified signed annotated release tag that resolves to current main",
+        "a successful canonical Release Integrity push run for that exact commit",
+        "the exact registry trust relationship for every publisher below",
+        "a manual dispatch from main through the named protected environment",
+    ),
+    "publishers": (
+        (
+            "nuget",
+            "https://api.nuget.org/v3/index.json",
+            "publish-first-cohort.yml",
+            "publish-nuget",
+            "GitHub Actions OIDC trusted publishing",
+        ),
+        (
+            "pypi",
+            "https://upload.pypi.org/legacy/",
+            "publish-first-cohort.yml",
+            "publish-pypi",
+            "GitHub Actions OIDC trusted publishing",
+        ),
+        (
+            "npm",
+            "https://registry.npmjs.org/",
+            "publish-first-cohort.yml",
+            "publish-npm",
+            "GitHub Actions OIDC trusted publishing",
+        ),
+        (
+            "container",
+            "https://ghcr.io",
+            "publish-first-cohort.yml",
+            "publish-container",
+            "repository-scoped GitHub Actions GITHUB_TOKEN",
+        ),
+    ),
+}
 
 
 def _dotnet_identity(path: Path) -> tuple[str, str]:
@@ -150,10 +191,9 @@ def main() -> int:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if manifest.get("schemaVersion") != "vyral.publication-cohort.v1":
         raise SystemExit("Publication cohort schemaVersion is invalid.")
-    if manifest.get("publicationAuthorized") is not False:
+    if manifest.get("publicationAuthorized") is not True:
         raise SystemExit(
-            "The repository must remain build-only until an explicit release "
-            "authorization changes the publication policy."
+            "The first publication cohort must remain explicitly authorized."
         )
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list):
@@ -179,6 +219,32 @@ def main() -> int:
     if not isinstance(excluded, list) or set(excluded) != EXCLUDED:
         raise SystemExit("Publication cohort exclusions are incomplete.")
 
+    authorization = manifest.get("authorization")
+    if not isinstance(authorization, dict):
+        raise SystemExit("Publication cohort authorization is missing.")
+    if (
+        authorization.get("mode") != AUTHORIZATION["mode"]
+        or authorization.get("releaseTag") != AUTHORIZATION["releaseTag"]
+        or authorization.get("workflow") != AUTHORIZATION["workflow"]
+    ):
+        raise SystemExit("Publication cohort authorization boundary changed.")
+    if tuple(authorization.get("requirements", ())) != AUTHORIZATION["requirements"]:
+        raise SystemExit("Publication authorization requirements changed.")
+    publishers = authorization.get("publishers")
+    actual_publishers = tuple(
+        (
+            item.get("ecosystem"),
+            item.get("registry"),
+            item.get("workflowFile"),
+            item.get("environment"),
+            item.get("authentication"),
+        )
+        for item in publishers
+        if isinstance(item, dict)
+    ) if isinstance(publishers, list) else ()
+    if actual_publishers != AUTHORIZATION["publishers"]:
+        raise SystemExit("Publication registry-publisher boundary changed.")
+
     for ecosystem, name, version, relative, _environment, _maturity in EXPECTED:
         source = ROOT / relative
         if not source.is_file():
@@ -196,8 +262,9 @@ def main() -> int:
             )
 
     print(
-        "publication-cohort=ok mode=build-only "
-        f"artifacts={len(EXPECTED)} excluded={len(EXCLUDED)}"
+        "publication-cohort=ok mode=authorized-first-cohort "
+        f"artifacts={len(EXPECTED)} publishers={len(AUTHORIZATION['publishers'])} "
+        f"excluded={len(EXCLUDED)}"
     )
     return 0
 

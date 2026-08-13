@@ -1,6 +1,6 @@
 {
   "schemaVersion": "vyral.publication-cohort.v1",
-  "publicationAuthorized": false,
+  "publicationAuthorized": true,
   "artifacts": [
     {
       "ecosystem": "nuget",
@@ -74,5 +74,46 @@
     "vyral-runtime",
     "prototype integrations"
   ],
-  "authorizationBoundary": "A reviewed maintainer decision must replace the build-only publication policy and authorize exact registry publishers. Changing this file alone never authorizes a push."
+  "authorization": {
+    "mode": "manual-protected-environment",
+    "releaseTag": "v0.3.0",
+    "workflow": ".github/workflows/publish-first-cohort.yml",
+    "requirements": [
+      "a GitHub-verified signed annotated release tag that resolves to current main",
+      "a successful canonical Release Integrity push run for that exact commit",
+      "the exact registry trust relationship for every publisher below",
+      "a manual dispatch from main through the named protected environment"
+    ],
+    "publishers": [
+      {
+        "ecosystem": "nuget",
+        "registry": "https://api.nuget.org/v3/index.json",
+        "workflowFile": "publish-first-cohort.yml",
+        "environment": "publish-nuget",
+        "authentication": "GitHub Actions OIDC trusted publishing"
+      },
+      {
+        "ecosystem": "pypi",
+        "registry": "https://upload.pypi.org/legacy/",
+        "workflowFile": "publish-first-cohort.yml",
+        "environment": "publish-pypi",
+        "authentication": "GitHub Actions OIDC trusted publishing"
+      },
+      {
+        "ecosystem": "npm",
+        "registry": "https://registry.npmjs.org/",
+        "workflowFile": "publish-first-cohort.yml",
+        "environment": "publish-npm",
+        "authentication": "GitHub Actions OIDC trusted publishing"
+      },
+      {
+        "ecosystem": "container",
+        "registry": "https://ghcr.io",
+        "workflowFile": "publish-first-cohort.yml",
+        "environment": "publish-container",
+        "authentication": "repository-scoped GitHub Actions GITHUB_TOKEN"
+      }
+    ]
+  },
+  "authorizationBoundary": "This reviewed authorization permits only the listed first cohort through the named manual workflow. It does not claim registry availability and never causes a push without the external trust relationships and protected-environment dispatch."
 }

@@ -1,0 +1,280 @@
+name: Publish first cohort
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Signed annotated release tag for the authorized first cohort
+        required: true
+        type: choice
+        options:
+          - v0.3.0
+      confirm:
+        description: I have configured the exact trusted publishers and reviewed the release notes
+        required: true
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: publish-first-cohort-v0.3.0
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release authority
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      source_sha: ${{ steps.authority.outputs.source_sha }}
+    steps:
+      - name: Check out protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Require the signed current release tag and canonical evidence
+        id: authority
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONFIRM" = "true"
+          test "$RELEASE_TAG" = "v0.3.0"
+          git fetch --force --tags origin
+          test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
+          source_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          test "$source_sha" = "$(git rev-parse origin/main)"
+          tag_object="$(git rev-parse "refs/tags/${RELEASE_TAG}")"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/tags/$tag_object" \
+            | jq -e '.verification.verified == true' >/dev/null
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/release-integrity.yml/runs?head_sha=$source_sha&event=push&status=success&per_page=20" \
+            | jq -e '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == "main")] | length > 0' >/dev/null
+          printf 'source_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build authorized artifacts
+    needs: validate
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the authorized release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.source_sha }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Build and verify only the authorized distributions
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check build==1.3.0
+          python3 scripts/verify-publication-cohort.py
+          dotnet restore Vyral.sln
+          mkdir -p artifacts/publish/nuget artifacts/publish/npm artifacts/publish/pypi
+          for project in \
+            src/Vyral.Abstractions/Vyral.Abstractions.csproj \
+            src/Vyral.Local/Vyral.Local.csproj \
+            src/Vyral.Primitives/Vyral.Primitives.csproj \
+            src/Vyral.Execution/Vyral.Execution.csproj \
+            src/Vyral.Execution.Local/Vyral.Execution.Local.csproj; do
+            dotnet pack "$project" --configuration Release --no-restore \
+              --output artifacts/publish/nuget
+          done
+          python -m build --outdir artifacts/publish/pypi clients/python
+          (
+            cd clients/javascript
+            npm ci --ignore-scripts
+            npm run check
+            npm run typecheck
+            npm test
+            npm pack --pack-destination ../../artifacts/publish/npm
+          )
+          for package in \
+            Vyral.Abstractions.0.3.0 \
+            Vyral.Local.0.3.0 \
+            Vyral.Primitives.0.2.0 \
+            Vyral.Execution.0.2.0 \
+            Vyral.Execution.Local.0.2.0; do
+            test -s "artifacts/publish/nuget/${package}.nupkg"
+            test -s "artifacts/publish/nuget/${package}.snupkg"
+          done
+          test -s artifacts/publish/pypi/vyral_client-0.3.0-py3-none-any.whl
+          test -s artifacts/publish/pypi/vyral_client-0.3.0.tar.gz
+          test -s artifacts/publish/npm/vyral-client-0.3.0.tgz
+
+      - name: Retain immutable publication distributions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: first-cohort-v0.3.0
+          path: artifacts/publish
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-nuget:
+    name: Publish NuGet first cohort
+    needs: build
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-nuget
+    permissions:
+      id-token: write
+    steps:
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download the authorized distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: first-cohort-v0.3.0
+          path: dist
+
+      - name: Exchange the GitHub OIDC token for a short-lived NuGet key
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: ${{ vars.NUGET_USERNAME }}
+
+      - name: Publish only the authorized NuGet packages
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          for package in \
+            Vyral.Abstractions.0.3.0 \
+            Vyral.Local.0.3.0 \
+            Vyral.Primitives.0.2.0 \
+            Vyral.Execution.0.2.0 \
+            Vyral.Execution.Local.0.2.0; do
+            dotnet nuget push "dist/nuget/${package}.nupkg" \
+              --api-key "$NUGET_API_KEY" \
+              --skip-duplicate \
+              --source https://api.nuget.org/v3/index.json
+            dotnet nuget push "dist/nuget/${package}.snupkg" \
+              --api-key "$NUGET_API_KEY" \
+              --skip-duplicate \
+              --source https://api.nuget.org/v3/index.json
+          done
+
+  publish-pypi:
+    name: Publish PyPI first cohort
+    needs: build
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-pypi
+      url: https://pypi.org/p/vyral-client
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the authorized distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: first-cohort-v0.3.0
+          path: dist
+
+      - name: Publish the Python client with its PyPI attestation
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: dist/pypi
+
+  publish-npm:
+    name: Publish npm first cohort
+    needs: build
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-npm
+      url: https://www.npmjs.com/package/@vyral/client
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Set up a trusted-publishing-compatible Node and npm CLI
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.14.0"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install the minimum trusted-publishing npm CLI
+        run: |
+          npm install --global --ignore-scripts npm@11.5.1
+          test "$(npm --version)" = "11.5.1"
+
+      - name: Download the authorized distribution
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: first-cohort-v0.3.0
+          path: dist
+
+      - name: Publish the JavaScript client with provenance
+        working-directory: dist/npm
+        run: npm publish vyral-client-0.3.0.tgz --access public --provenance
+
+  publish-container:
+    name: Publish server container
+    needs:
+      - validate
+      - build
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-container
+      url: https://github.com/Univeracity/vyral/pkgs/container/vyral-server
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Check out the authorized release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.source_sha }}
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build, attest, and publish the authorized server image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          sbom: true
+          provenance: mode=max
+          build-args: |
+            VYRAL_IMAGE_VERSION=0.3.0
+            VYRAL_IMAGE_REVISION=${{ needs.validate.outputs.source_sha }}
+          tags: ghcr.io/univeracity/vyral-server:0.3.0
+          labels: |
+            org.opencontainers.image.source=https://github.com/Univeracity/vyral
+            org.opencontainers.image.version=0.3.0
+            org.opencontainers.image.revision=${{ needs.validate.outputs.source_sha }}

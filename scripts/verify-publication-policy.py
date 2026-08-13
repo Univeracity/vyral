@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify that source remains build-only and publication fails closed."""
+"""Verify that first-cohort publishing is manual, bounded, and fail-closed."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ GATED_WORKFLOWS = (
     "release-integrity.yml",
     "temporal-container-qualification.yml",
 )
+PUBLISH_WORKFLOW = "publish-first-cohort.yml"
 PUBLISH_PATTERNS = {
     "JavaScript package publish": re.compile(
         r"\b(?:npm\s+publish|pnpm\s+publish|yarn\s+npm\s+publish)\b",
@@ -69,28 +70,75 @@ def main() -> int:
         elif AUTOMATION_GATE not in text:
             errors.append(f"{name} no longer fails closed behind the automation gate")
 
-    all_workflows = "\n".join(workflow_text.values())
     cohort = json.loads(
         _read(ROOT / "packaging" / "publication-cohort.json")
     )
-    if cohort.get("publicationAuthorized") is not False:
+    if cohort.get("publicationAuthorized") is not True:
         errors.append(
-            "publication-cohort.json must remain explicitly unauthorized "
-            "while source policy is build-only"
+            "publication-cohort.json must explicitly authorize the reviewed "
+            "first cohort"
         )
-    if re.search(
-        r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
-        all_workflows,
-        re.IGNORECASE,
-    ):
-        errors.append("a workflow enables VYRAL_ENABLE_AUTOMATED_WORKFLOWS in source")
-    for label, pattern in PUBLISH_PATTERNS.items():
-        for name, text in workflow_text.items():
+    publisher = workflow_text.get(PUBLISH_WORKFLOW)
+    if publisher is None:
+        errors.append("the authorized first-cohort publisher workflow is missing")
+        publisher = ""
+    for name, text in workflow_text.items():
+        if name == PUBLISH_WORKFLOW:
+            continue
+        if re.search(
+            r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
+            text,
+            re.IGNORECASE,
+        ):
+            errors.append(f"{name} enables VYRAL_ENABLE_AUTOMATED_WORKFLOWS in source")
+        for label, pattern in PUBLISH_PATTERNS.items():
             if pattern.search(text):
                 errors.append(
-                    f"{name} contains {label}; source policy is build-only until "
-                    "a reviewed protected-environment publisher is authorized"
+                    f"{name} contains {label}; only {PUBLISH_WORKFLOW} may publish"
                 )
+
+    for requirement in (
+        "workflow_dispatch:",
+        "release_tag:",
+        "v0.3.0",
+        "confirm:",
+        "type: boolean",
+        "refs/heads/main",
+        "git cat-file -t \"refs/tags/${RELEASE_TAG}\"",
+        ".verification.verified == true",
+        "release-integrity.yml/runs?head_sha=",
+        "name: publish-nuget",
+        "name: publish-pypi",
+        "name: publish-npm",
+        "name: publish-container",
+        "node-version: \"22.14.0\"",
+        "npm@11.5.1",
+        "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
+        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
+        "npm publish vyral-client-0.3.0.tgz --access public --provenance",
+        "docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8",
+        "ghcr.io/univeracity/vyral-server:0.3.0",
+    ):
+        if requirement not in publisher:
+            errors.append(
+                f"{PUBLISH_WORKFLOW} is missing authorization hook {requirement!r}"
+            )
+    if re.search(r"^  push:\s*$", publisher, re.MULTILINE):
+        errors.append(f"{PUBLISH_WORKFLOW} must not have an automatic push trigger")
+    for label in (
+        "JavaScript package publish",
+        "NuGet push",
+        "registry or release publishing action",
+    ):
+        pattern = PUBLISH_PATTERNS[label]
+        if not pattern.search(publisher):
+            errors.append(f"{PUBLISH_WORKFLOW} is missing expected {label}")
+    if re.search(
+        r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
+        publisher,
+        re.IGNORECASE,
+    ):
+        errors.append(f"{PUBLISH_WORKFLOW} enables VYRAL_ENABLE_AUTOMATED_WORKFLOWS in source")
 
     release_workflow = workflow_text.get("release-integrity.yml", "")
     for evidence_hook in (
@@ -181,7 +229,7 @@ def main() -> int:
         else "frozen-requirements-missing"
     )
     print(
-        "publication-policy=ok mode=build-only "
+        "publication-policy=ok mode=authorized-first-cohort "
         f"gatedWorkflows={len(GATED_WORKFLOWS)} "
         f"pythonRuntimeMcp={python_status}"
     )
