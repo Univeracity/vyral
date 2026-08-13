@@ -159,7 +159,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "b138114a15687becad641aa3fede2d9dc7b02c961aefef86bec32ed2b8ca82fb"
+      "sha256": "9627183379f4ed1f00b39e7ad64795d3f5003534b0ea19e4af5e6394462e3fad"
     },
     {
       "mode": "644",
@@ -739,12 +739,12 @@
     {
       "mode": "644",
       "path": "qualification/README.md",
-      "sha256": "aa213ab3b8f80c47c5644bf303b17ba19bda6ed3891bd370e3d48d811392a5b0"
+      "sha256": "9e315a16de19dd110beadcf30c8a8783819187c71509ce642df9a92688a0497c"
     },
     {
       "mode": "644",
       "path": "qualification/adapter-qualification.json",
-      "sha256": "8a8ec18bafff9c0e59a00cf60258ae32d26a797d4d01598abcb602712eb9b270"
+      "sha256": "171fc587c9fca81270823a5334a10425b134670c85aa7af91cc194776cd52d19"
     },
     {
       "mode": "644",
@@ -1689,7 +1689,7 @@
     {
       "mode": "755",
       "path": "scripts/test-generate-adapter-qualification.sh",
-      "sha256": "0f11bd169668a7e880e55c5daa991e05280051d9e2627989b06c5a0cfb30afc6"
+      "sha256": "1d26ad558f29f9b11098b8e6bb54a3a227be1c93714c899607fe6b983a0a5e02"
     },
     {
       "mode": "644",
@@ -1699,7 +1699,7 @@
     {
       "mode": "755",
       "path": "scripts/test-render-adapter-qualification.py",
-      "sha256": "030546f5b79f5129a00ed1efd25741935041e3bb8375337a3a2cd1b087314c3e"
+      "sha256": "5d32abc29aa8788797ec79525045c5d8567badfd34c9540e13ea1a6eaedcf577"
     },
     {
       "mode": "755",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "fe096ac84e516b409c36a6185375c4ee9ce12566ed3d529bdc58d0808cc9ee33"
+  "treeSha256": "e8b0464800d1256ead22e09410abcf3190fc57f9b96f9aa7b7ff80febc5ea3e8"
 }

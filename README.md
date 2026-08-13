@@ -367,7 +367,7 @@ Start with the [execution design](design/execution-runtime.md),
 | Local SQLite records, objects, retrieval, and execution | Reference path; deterministic conformance |
 | PostgreSQL/pgvector and CanonicalStore | Implemented; live deployment evidence remains environment-specific |
 | Azure storage and Durable Functions | Preview; local gates and opt-in live qualification |
-| AWS storage and execution | Preview/prototype; opt-in live qualification |
+| AWS storage and execution | Live qualified for isolated S3, DynamoDB, and SQS; managed OpenSearch remains subject to end-user validation |
 | Google storage and execution | Preview/prototype; opt-in live qualification |
 | Temporal coordinator and projection | Prototype; disposable and operator-provisioned qualification gates |
 | Cloudflare R2 | Preview object-store adapter |
