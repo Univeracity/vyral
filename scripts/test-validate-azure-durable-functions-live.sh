@@ -64,7 +64,7 @@ case "$command" in
   "account show "*)
     printf 'test-subscription\n'
     ;;
-  "rest --method post --url "*"/syncfunctiontriggers?api-version=2024-11-01 "*)
+  "rest --method post --url "*"/host/default/sync?api-version=2024-11-01 "*)
     if [[ "${VYRAL_TEST_SYNC_FAIL:-false}" == true ]]; then
       exit 1
     fi
@@ -220,8 +220,10 @@ run_case() {
   [[ "$(jq -r '.recovery.partialInventoryTriggerSyncAttempted' "$receipt")" == "$expected_sync" ]]
   if [[ "$expected_sync" == true ]]; then
     [[ "$(jq -r '.recovery.partialInventoryTriggerSyncApiVersion' "$receipt")" == 2024-11-01 ]]
+    [[ "$(jq -r '.recovery.partialInventoryTriggerSyncRoute' "$receipt")" == host-default-sync ]]
   else
     [[ "$(jq -r '.recovery.partialInventoryTriggerSyncApiVersion' "$receipt")" == null ]]
+    [[ "$(jq -r '.recovery.partialInventoryTriggerSyncRoute' "$receipt")" == null ]]
   fi
   [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == false ]]
   [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == 1 ]]
