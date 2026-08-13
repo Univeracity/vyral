@@ -2454,7 +2454,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Execution.AzureDurable.Functions/AzureDurableFunctionsBridge.cs",
-      "sha256": "480d13e9f382db29fdab0ebf1b7508eb6deb692f05c88f2f634ce72a9597e0aa"
+      "sha256": "32bf12a8a57a742caef86662e9a6988408e7ff62afa1e8e6e42a3ea014bc2982"
     },
     {
       "mode": "644",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "a247c5530cef6a15ed8eedea4ffaadbbaeed5f377e7f6ef7c465a3e4d1fa3963"
+  "treeSha256": "0859d1dda7cbf26aa805343fd18719abf7e7839aa27bd47b69697482782ad2ee"
 }

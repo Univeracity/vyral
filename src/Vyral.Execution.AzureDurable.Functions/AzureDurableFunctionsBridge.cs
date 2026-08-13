@@ -1,6 +1,5 @@
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
-using DurableTask.Core.Exceptions;
 using System.Text.Json.Nodes;
 using Vyral.Execution;
 using Vyral.Execution.AzureDurable;
@@ -77,11 +76,30 @@ public sealed class AzureDurableFunctionsScheduler : IAzureDurableExecutionOrche
                 options,
                 ct);
         }
-        catch (OrchestrationAlreadyExistsException)
+        catch (Exception exception) when (IsOrchestrationAlreadyExists(exception))
         {
             // The provider has already accepted a prior attempt to schedule this active Vyral run.
             // Treat it as the successful idempotent outcome, rather than stranding a replayed run.
         }
+    }
+
+    // Keep the bridge on the public Durable Task client surface. Referencing the legacy
+    // DurableTask.Core exception type directly adds a second host-load dependency even though
+    // the provider communicates this idempotent condition through the client exception itself.
+    private static bool IsOrchestrationAlreadyExists(Exception exception)
+    {
+        for (var candidate = exception.GetType(); candidate is not null; candidate = candidate.BaseType)
+        {
+            if (string.Equals(
+                    candidate.FullName,
+                    "DurableTask.Core.Exceptions.OrchestrationAlreadyExistsException",
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public async Task TerminateAsync(string instanceId, string reason, CancellationToken ct = default)
