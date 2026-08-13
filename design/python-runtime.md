@@ -333,9 +333,9 @@ catalog. Prefix matching is not an ownership mechanism.
 The existing `vyral-client` distribution remains the thin remote client with
 its current dependency-light posture.
 
-The runtime ships as a separate distribution. `vyral-runtime` is the working
-distribution name; the final registry and import name must be verified during
-Phase 0 before publication. The logical modules are:
+The runtime ships as the `vyral` distribution. Its import package remains
+`vyral_runtime`, preserving a clear distinction from the lightweight
+`vyral-client` remote SDK. The logical modules are:
 
 ```text
 contracts       generated wire types, codecs, constants, and semantic validators

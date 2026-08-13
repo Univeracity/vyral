@@ -21,7 +21,7 @@ remain authoritative in the [stability policy](docs/reference/stability.md).
 - Establish at least one recurring, operator-owned live adapter qualification
   path and publish only redacted receipts.
 - Complete Python 3.10–3.12 qualification on Linux, macOS, and Windows, plus an
-  independent security sign-off, before promoting `vyral-runtime` from
+  independent security sign-off, before promoting `vyral` from
   `prototype`.
 - Strengthen upgrade, receipt replay, cancellation, lease-expiry, concurrent
   write, and disaster-recovery scenarios across maintained runtime dialects.

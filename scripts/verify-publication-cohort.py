@@ -54,11 +54,11 @@ EXPECTED = (
     ),
     (
         "pypi",
-        "vyral-client",
-        "0.3.0",
-        "clients/python/pyproject.toml",
+        "vyral",
+        "0.1.1",
+        "runtimes/python/pyproject.toml",
         "publish-pypi",
-        "public",
+        "prototype",
     ),
     (
         "npm",
@@ -81,7 +81,7 @@ EXCLUDED = {
     "cloud-provider packages",
     "provider-specific execution adapters",
     "Temporal packages",
-    "vyral-runtime",
+    "vyral-client",
     "prototype integrations",
 }
 AUTHORIZATION = {

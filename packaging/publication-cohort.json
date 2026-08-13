@@ -44,11 +44,11 @@
     },
     {
       "ecosystem": "pypi",
-      "name": "vyral-client",
-      "version": "0.3.0",
-      "source": "clients/python/pyproject.toml",
+      "name": "vyral",
+      "version": "0.1.1",
+      "source": "runtimes/python/pyproject.toml",
       "environment": "publish-pypi",
-      "maturity": "public"
+      "maturity": "prototype"
     },
     {
       "ecosystem": "npm",
@@ -71,7 +71,7 @@
     "cloud-provider packages",
     "provider-specific execution adapters",
     "Temporal packages",
-    "vyral-runtime",
+    "vyral-client",
     "prototype integrations"
   ],
   "authorization": {

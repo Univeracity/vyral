@@ -268,8 +268,8 @@ def main() -> int:
     )
     arguments = parser.parse_args()
     artifact_root = arguments.artifact_directory.resolve()
-    wheels = sorted(artifact_root.glob("vyral_runtime-*.whl"))
-    sdists = sorted(artifact_root.glob("vyral_runtime-*.tar.gz"))
+    wheels = sorted(artifact_root.glob("vyral-[0-9]*.whl"))
+    sdists = sorted(artifact_root.glob("vyral-[0-9]*.tar.gz"))
     if len(wheels) != 1 or len(sdists) != 1:
         parser.error(
             "artifact directory must contain exactly one runtime wheel and sdist"

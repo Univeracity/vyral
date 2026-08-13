@@ -504,11 +504,11 @@ from pathlib import Path
 import sys
 
 artifacts = Path(sys.argv[1])
-wheels = list(artifacts.glob("*.whl"))
-sdists = list(artifacts.glob("*.tar.gz"))
+wheels = list(artifacts.glob("vyral-0.1.1-*.whl"))
+sdists = list(artifacts.glob("vyral-0.1.1.tar.gz"))
 if len(wheels) != 1 or len(sdists) != 1:
     raise SystemExit(
-        "Expected one Python runtime wheel and one source distribution."
+        "Expected one vyral runtime wheel and one source distribution."
     )
 
 with zipfile.ZipFile(wheels[0]) as wheel:

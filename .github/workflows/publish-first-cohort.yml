@@ -105,7 +105,7 @@ jobs:
             dotnet pack "$project" --configuration Release --no-restore \
               --output artifacts/publish/nuget
           done
-          python -m build --outdir artifacts/publish/pypi clients/python
+          python -m build --outdir artifacts/publish/pypi runtimes/python
           (
             cd clients/javascript
             npm ci --ignore-scripts
@@ -123,8 +123,8 @@ jobs:
             test -s "artifacts/publish/nuget/${package}.nupkg"
             test -s "artifacts/publish/nuget/${package}.snupkg"
           done
-          test -s artifacts/publish/pypi/vyral_client-0.3.0-py3-none-any.whl
-          test -s artifacts/publish/pypi/vyral_client-0.3.0.tar.gz
+          test -s artifacts/publish/pypi/vyral-0.1.1-py3-none-any.whl
+          test -s artifacts/publish/pypi/vyral-0.1.1.tar.gz
           test -s artifacts/publish/npm/vyral-client-0.3.0.tgz
 
       - name: Retain immutable publication distributions
@@ -188,7 +188,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: publish-pypi
-      url: https://pypi.org/p/vyral-client
+      url: https://pypi.org/p/vyral
     permissions:
       id-token: write
     steps:
@@ -198,7 +198,7 @@ jobs:
           name: first-cohort-v0.3.0
           path: dist
 
-      - name: Publish the Python client with its PyPI attestation
+      - name: Publish the Python runtime with its PyPI attestation
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: dist/pypi

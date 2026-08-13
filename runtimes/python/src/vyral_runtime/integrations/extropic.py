@@ -408,7 +408,7 @@ class ExtropicSdkBackend:
             sdk = importlib.import_module("extro_sim")
         except ImportError as exc:
             raise ExtropicDependencyError(
-                "Install vyral-runtime[extropic] to use Extropic execution."
+                "Install vyral[extropic] to use Extropic execution."
             ) from exc
         version = str(getattr(sdk, "__version__", ""))
         if not version.startswith("0.5."):

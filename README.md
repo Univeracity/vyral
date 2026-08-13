@@ -64,8 +64,8 @@ Create an editable application when you are ready to build:
 ./scripts/vyral run ./vyral_app.py
 ```
 
-The runtime command is `vyral`; `vyral-runtime` remains a compatibility alias
-and the distribution name. Use `./scripts/vyral inspect` to explain the local
+The runtime distribution and command are both `vyral`; `vyral-runtime` remains
+a compatibility command alias. Use `./scripts/vyral inspect` to explain the local
 providers and limitations. Windows users can invoke the source launcher with
 `python scripts/vyral`. Installation, custom state paths, JSON output, reset,
 and server instructions are in the
@@ -176,8 +176,8 @@ ingress and a deployment-managed API key. See
 | Goal | Entry point |
 | --- | --- |
 | Run the full .NET server and provider adapters | `src/Vyral.Server` and packages under `src/` |
-| Run Vyral in a Python process | `vyral-runtime` in `runtimes/python` |
-| Host REST and MCP from Python | `vyral-runtime[server]` |
+| Run Vyral in a Python process | `vyral` in `runtimes/python` |
+| Host REST and MCP from Python | `vyral[server]` |
 | Call a running host from Python | `vyral-client` in `clients/python` |
 | Call a running host from JavaScript | `@vyral/client` in `clients/javascript` |
 | Implement an external worker in Go | `clients/go` |

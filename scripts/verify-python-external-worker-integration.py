@@ -413,7 +413,7 @@ def parse_arguments(values: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=Path(sys.executable),
         help=(
-            "Python executable containing vyral-runtime[server] when "
+            "Python executable containing vyral[server] when "
             "--server-kind=python."
         ),
     )

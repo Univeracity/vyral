@@ -1,4 +1,4 @@
-# vyral-runtime
+# vyral
 
 Python-first implementation of Vyral's portable local runtime.
 
@@ -123,10 +123,10 @@ work to admit a new run. Use `--path` or `--root` when you need non-default code
 or state locations.
 
 Use `--json` with `init`, `quickstart`, or `inspect` for machine-readable
-output. `vyral-runtime` remains a compatibility alias. Package publication is
-withheld, so direct source use or the editable install is the public pre-release
-path. Once a qualified wheel is published, the install command can be replaced
-with `python -m pip install vyral-runtime` without changing the local commands.
+output. `vyral-runtime` remains a compatibility command alias. No wheel has
+yet been published, so direct source use or the editable install is the public
+pre-release path. Once the authorized wheel is available, install it with
+`python -m pip install vyral` without changing the local commands.
 
 From a source checkout, run the generated application through the same launcher
 that created it so no editable installation is required:
@@ -278,12 +278,12 @@ complete lifecycle and current boundaries.
 | Goal | Install |
 | --- | --- |
 | Talk to a running .NET or Python Vyral host | `vyral-client` |
-| Run Vyral in-process without a server or .NET | `vyral-runtime` |
-| Run a Python-hosted REST and MCP endpoint | `vyral-runtime[server]` |
-| Rehearse the current Extropic/Torx proof locally | `vyral-runtime[extropic-torx]` (Python 3.11+) |
+| Run Vyral in-process without a server or .NET | `vyral` |
+| Run a Python-hosted REST and MCP endpoint | `vyral[server]` |
+| Rehearse the current Extropic/Torx proof locally | `vyral[extropic-torx]` (Python 3.11+) |
 
 The existing `vyral-client` distribution remains the supported lightweight
-client for a running Vyral server. `vyral-runtime` is a separate distribution
+client for a running Vyral server. `vyral` is a separate runtime distribution
 and does not depend on or route its embedded behavior through that client.
 
 ## Embedded models and wire JSON
@@ -334,7 +334,7 @@ construction fast without weakening host startup or qualification evidence.
 Install the server extra and choose an explicit durable directory:
 
 ```bash
-python -m pip install "vyral-runtime[server]"
+python -m pip install "vyral[server]"
 export VYRAL_API_KEY="replace-with-a-secret"
 vyral serve --root ./.vyral --host 127.0.0.1 --port 5220
 ```
@@ -366,11 +366,11 @@ From the repository root:
 ```bash
 scripts/verify-python-runtime.sh
 python3 scripts/verify-python-external-worker-integration.py
-scripts/verify-python-runtime-external-worker.sh path/to/vyral_runtime.whl
-scripts/verify-python-runtime-mcp-conformance.sh path/to/vyral_runtime.whl
-python3 scripts/verify-python-runtime-security.py path/to/vyral_runtime.whl
+scripts/verify-python-runtime-external-worker.sh path/to/vyral.whl
+scripts/verify-python-runtime-mcp-conformance.sh path/to/vyral.whl
+python3 scripts/verify-python-runtime-security.py path/to/vyral.whl
 python3 scripts/verify-python-runtime-upgrade.py \
-  path/to/vyral_runtime-0.1.0.whl path/to/vyral_runtime-0.1.1.whl
+  path/to/vyral-0.1.0.whl path/to/vyral-0.1.1.whl
 python3 scripts/benchmark-python-runtime.py
 dotnet test tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj \
   --filter 'PortableRuntimeGoldenFixtureTests|PortableExternalWorkerLifecycleFixtureTests'
