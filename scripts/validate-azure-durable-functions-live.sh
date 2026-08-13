@@ -55,6 +55,7 @@ READINESS_HTTP_CODE="not-attempted"
 HOST_RESTART_ATTEMPTED=false
 TRIGGER_SYNC_ATTEMPTED=false
 TRIGGER_SYNC_API_VERSION="2024-11-01"
+TRIGGER_SYNC_ROUTE="host-default-sync"
 TRIGGER_SYNC_ERROR_CODE=""
 DISCOVERED_FUNCTION_NAMES_JSON='[]'
 DEPLOYMENT_ATTEMPTS=0
@@ -133,6 +134,7 @@ cleanup() {
       --argjson host_restart_attempted "$HOST_RESTART_ATTEMPTED" \
       --argjson trigger_sync_attempted "$TRIGGER_SYNC_ATTEMPTED" \
       --arg trigger_sync_api_version "$TRIGGER_SYNC_API_VERSION" \
+      --arg trigger_sync_route "$TRIGGER_SYNC_ROUTE" \
       --arg trigger_sync_error_code "$TRIGGER_SYNC_ERROR_CODE" \
       --argjson discovered_function_count "$DISCOVERED_FUNCTION_COUNT" \
       --argjson discovered_function_names "$DISCOVERED_FUNCTION_NAMES_JSON" \
@@ -165,6 +167,9 @@ cleanup() {
           partialInventoryTriggerSyncAttempted: $trigger_sync_attempted,
           partialInventoryTriggerSyncApiVersion: (
             if $trigger_sync_attempted then $trigger_sync_api_version else null end
+          ),
+          partialInventoryTriggerSyncRoute: (
+            if $trigger_sync_attempted then $trigger_sync_route else null end
           ),
           partialInventoryTriggerSyncErrorCode: (
             if $trigger_sync_error_code == "" then null else $trigger_sync_error_code end
@@ -334,20 +339,34 @@ for _ in $(seq 1 48); do
     TRIGGER_SYNC_ATTEMPTED=true
     subscription_id="$(az account show --query id --output tsv --only-show-errors)"
     [[ -n "$subscription_id" ]]
+    trigger_sync_response="$WORK_ROOT/function-trigger-sync.response"
     if ! az rest --method post \
-      --url "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${VYRAL_AZURE_LIVE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${FUNCTION}/syncfunctiontriggers?api-version=${TRIGGER_SYNC_API_VERSION}" \
-      --only-show-errors --output none 2>"$WORK_ROOT/function-trigger-sync.log"; then
+      --url "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${VYRAL_AZURE_LIVE_RESOURCE_GROUP}/providers/Microsoft.Web/sites/${FUNCTION}/host/default/sync?api-version=${TRIGGER_SYNC_API_VERSION}" \
+      --only-show-errors --output json >"$trigger_sync_response" \
+      2>"$WORK_ROOT/function-trigger-sync.log"; then
       TRIGGER_SYNC_ERROR_CODE="$(
-        sed -nE 's/.*\\(([A-Za-z][A-Za-z0-9._-]{0,63})\\).*/\\1/p' \
-          "$WORK_ROOT/function-trigger-sync.log" | head -n 1
+        jq -r '.error.code? // .code? // empty' "$trigger_sync_response" \
+          2>/dev/null || true
       )"
       if [[ -z "$TRIGGER_SYNC_ERROR_CODE" ]]; then
-        TRIGGER_SYNC_ERROR_CODE="unknown"
+        trigger_sync_diagnostic="$(tr '[:upper:]' '[:lower:]' < "$WORK_ROOT/function-trigger-sync.log")"
+        case "$trigger_sync_diagnostic" in
+          *invalidapiversion*) TRIGGER_SYNC_ERROR_CODE="InvalidApiVersion" ;;
+          *authorization* | *forbidden*) TRIGGER_SYNC_ERROR_CODE="AuthorizationFailed" ;;
+          *notfound*) TRIGGER_SYNC_ERROR_CODE="ResourceNotFound" ;;
+          *conflict*) TRIGGER_SYNC_ERROR_CODE="Conflict" ;;
+          *badrequest* | *bad\ request*) TRIGGER_SYNC_ERROR_CODE="BadRequest" ;;
+          *timeout*) TRIGGER_SYNC_ERROR_CODE="Timeout" ;;
+          *) TRIGGER_SYNC_ERROR_CODE="unknown" ;;
+        esac
+        unset trigger_sync_diagnostic
       fi
+      unset trigger_sync_response
       unset subscription_id
       echo "azure-durable-functions-live-trigger-sync=failed code:${TRIGGER_SYNC_ERROR_CODE}" >&2
       false
     fi
+    unset trigger_sync_response
     unset subscription_id
     echo 'azure-durable-functions-live-trigger-sync=issued'
     DISCOVERED_FUNCTION_COUNT=0
