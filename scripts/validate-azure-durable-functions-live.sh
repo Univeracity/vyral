@@ -366,7 +366,9 @@ FUNCTION_RUNTIME_VERSION="$(jq -r '
 unset runtime_configuration
 FUNCTION_RUNTIME_NAME="${FUNCTION_RUNTIME_NAME:-not-observed}"
 FUNCTION_RUNTIME_VERSION="${FUNCTION_RUNTIME_VERSION:-not-observed}"
-if [[ "$FUNCTION_RUNTIME_NAME" != dotnet-isolated || "$FUNCTION_RUNTIME_VERSION" != 10 ]]; then
+# Flex exposes its runtime version in ARM as the platform version (for example, `10.0`), while
+# Azure CLI accepts the language major as `10`. They describe the same supported isolated worker.
+if [[ "$FUNCTION_RUNTIME_NAME" != dotnet-isolated || ! "$FUNCTION_RUNTIME_VERSION" =~ ^10(\.0+)?$ ]]; then
   echo "azure-durable-functions-live-runtime=invalid name:${FUNCTION_RUNTIME_NAME} version:${FUNCTION_RUNTIME_VERSION}" >&2
   false
 fi

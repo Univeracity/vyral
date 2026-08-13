@@ -74,7 +74,7 @@ case "$command" in
     touch "$VYRAL_TEST_STATE/host-restart-issued"
     ;;
   "functionapp show "*)
-    printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10"}}}'
+    printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10.0"}}}'
     ;;
   "functionapp log deployment list "*)
     if [[ "${VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL:-false}" == true ]]; then
@@ -251,7 +251,7 @@ run_case() {
   [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
   [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == "$expected_deployment_attempts" ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.name' "$receipt")" == dotnet-isolated ]]
-  [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10 ]]
+  [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10.0 ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.matchedExpectedDotnetIsolated10' "$receipt")" == true ]]
   if [[ "$expected_stage" == deployment ]]; then
     [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == 6 ]]
