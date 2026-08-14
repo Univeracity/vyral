@@ -326,8 +326,8 @@ Release policy:
 - local SQLite execution is ready for local-first consumer adoption
 - consumers should pin a compatible `0.2.x` version and run the handoff smoke before upgrading
 - packages declare Apache-2.0 metadata; consumers should review the repository [LICENSE](../../LICENSE)
-- Azure Durable Functions is released with a replay-safe bridge and isolated live gate; each host
-  still validates its Functions resources, identity, and operational policy
+- Azure Durable Functions is live qualified with a replay-safe bridge; each host still validates
+  its resources, identity, and operational policy
 
 Known provider boundaries and portability rules are documented in
 [execution runtime limitations](../reference/execution-runtime-limitations.md).

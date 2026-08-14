@@ -120,7 +120,7 @@ compatibility policy.
 | Python-native embedded runtime and REST/MCP host | Prototype; clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
 | Source-native ripgrep integration | Experimental; bounded exact-literal search over authorized code and Markdown, outside the stable wire/MCP contract |
 | Stateless MCP `2026-07-28` endpoint | Preview; opt-in and REST-backed |
-| Local SQLite and Azure Durable execution | Preview; locally conformant |
+| Local SQLite execution and Azure Durable Functions | Local reference path; Azure execution is live qualified |
 | AWS, Google, Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
 
 A package existing in the repository is not a production-readiness claim. The
@@ -366,7 +366,7 @@ Start with the [execution design](design/execution-runtime.md),
 | --- | --- |
 | Local SQLite records, objects, retrieval, and execution | Reference path; deterministic conformance |
 | PostgreSQL/pgvector and CanonicalStore | Implemented; live deployment evidence remains environment-specific |
-| Azure storage and Durable Functions | Preview; local gates and opt-in live qualification |
+| Azure Durable Functions execution | Live qualified; Azure storage adapters retain their separate preview posture |
 | AWS storage and execution | Live qualified for isolated S3, DynamoDB, and SQS; managed OpenSearch remains subject to end-user validation |
 | Google storage and execution | Preview/prototype; opt-in live qualification |
 | Temporal coordinator and projection | Prototype; disposable and operator-provisioned qualification gates |
