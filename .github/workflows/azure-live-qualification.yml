@@ -60,6 +60,7 @@ jobs:
       VYRAL_AZURE_LIVE_COSMOS_ACCOUNT: ${{ secrets.AZURE_LIVE_COSMOS_ACCOUNT }}
       VYRAL_AZURE_COSMOS_DATABASE: ${{ secrets.AZURE_LIVE_COSMOS_DATABASE }}
       VYRAL_AZURE_LIVE_LOCATION: ${{ secrets.AZURE_LIVE_LOCATION }}
+      VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN: windows_consumption
       VYRAL_AZURE_LIVE_RECEIPT_PATH: artifacts/qualification/azure-live-gate.json
     steps:
       - name: Check out repository

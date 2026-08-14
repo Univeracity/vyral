@@ -83,7 +83,14 @@ case "$command" in
     touch "$VYRAL_TEST_STATE/host-restart-issued"
     ;;
   "functionapp show "*)
-    printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10.0"}}}'
+    if [[ "${VYRAL_TEST_HOSTING_PLAN:-flex_consumption}" == windows_consumption ]]; then
+      printf '%s\n' '{"siteConfig":{"netFrameworkVersion":"v10.0"}}'
+    else
+      printf '%s\n' '{"functionAppConfig":{"runtime":{"name":"dotnet-isolated","version":"10.0"}}}'
+    fi
+    ;;
+  "functionapp config appsettings list "*)
+    printf '%s\n' '[{"name":"FUNCTIONS_WORKER_RUNTIME","value":"dotnet-isolated"}]'
     ;;
   "functionapp log deployment list "*)
     if [[ "${VYRAL_TEST_DEPLOYMENT_TIMEOUT:-false}" == true ]]; then
@@ -225,6 +232,7 @@ run_case() {
   local deployment_always_fail="${12:-false}"
   local expected_deployment_failure_class="${13:-worker_reset_503}"
   local deployment_timeout="${14:-false}"
+  local hosting_plan="${15:-flex_consumption}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -240,6 +248,8 @@ run_case() {
   VYRAL_TEST_DEPLOYMENT_FAIL_ONCE="$deployment_fail_once" \
   VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL="$deployment_always_fail" \
   VYRAL_TEST_DEPLOYMENT_TIMEOUT="$deployment_timeout" \
+  VYRAL_TEST_HOSTING_PLAN="$hosting_plan" \
+  VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN="$hosting_plan" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
   VYRAL_AZURE_COSMOS_CONNECTION_STRING='AccountEndpoint=https://fixture.invalid;AccountKey=fixture;' \
@@ -264,6 +274,7 @@ run_case() {
   fi
   [[ "$(jq -r '.recovery.partialInventoryRestartAttempted' "$receipt")" == "$expected_restart" ]]
   [[ "$(jq -r '.diagnostics.deploymentAttempts' "$receipt")" == "$expected_deployment_attempts" ]]
+  [[ "$(jq -r '.diagnostics.hostingPlan' "$receipt")" == "$hosting_plan" ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.name' "$receipt")" == dotnet-isolated ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10.0 ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.matchedExpectedDotnetIsolated10' "$receipt")" == true ]]
@@ -306,6 +317,7 @@ run_case() {
 }
 
 run_case success 7 0 passed complete false
+run_case windows-consumption-success 7 0 passed complete false false false false false 1 false worker_reset_503 false windows_consumption
 run_case deployment-status-retry 7 0 passed complete false false false false true 2
 run_case deployment-status-failure 0 1 failed deployment false false false false false 3 true
 run_case deployment-command-timeout 0 1 failed deployment false false false false false 3 false timeout true

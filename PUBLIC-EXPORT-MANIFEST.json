@@ -59,7 +59,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/azure-live-qualification.yml",
-      "sha256": "fea175a3c59032e87951392d26edfb6875edddca0f542d0ab2cc746f9cf3902b"
+      "sha256": "c33de9c057308375ebe1a2432ce6a765da14d0ef2c315c0c90c42563af1e0035"
     },
     {
       "mode": "644",
@@ -1734,7 +1734,7 @@
     {
       "mode": "755",
       "path": "scripts/test-validate-azure-durable-functions-live.sh",
-      "sha256": "631a5aeee7f1f1a02a7a936bc88875a01a4402c98f68e083716740736ecf4ba5"
+      "sha256": "d44e5d52699f23562625dacbba339c8de6d6f412cb49e22410cc7d8b355c194e"
     },
     {
       "mode": "755",
@@ -1779,7 +1779,7 @@
     {
       "mode": "755",
       "path": "scripts/validate-azure-durable-functions-live.sh",
-      "sha256": "caa80906c3324ee8f73a5b1dd2881e24445939e4faa9cad110abe718dd8aa58f"
+      "sha256": "342d3bd8e2c26ec8588bcf85779c29e12e3df6a3548882debaf1816f9b756805"
     },
     {
       "mode": "755",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "0859d1dda7cbf26aa805343fd18719abf7e7839aa27bd47b69697482782ad2ee"
+  "treeSha256": "4094e7e5f4ffeec35a3f9821a030a3065563ff4c44871e50a0cdff4b071ac1cb"
 }
