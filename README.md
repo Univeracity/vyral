@@ -120,8 +120,8 @@ compatibility policy.
 | Python-native embedded runtime and REST/MCP host | Prototype; clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
 | Source-native ripgrep integration | Experimental; bounded exact-literal search over authorized code and Markdown, outside the stable wire/MCP contract |
 | Stateless MCP `2026-07-28` endpoint | Preview; opt-in and REST-backed |
-| Local SQLite execution and Azure Durable Functions | Local reference path; Azure execution is live qualified |
-| AWS, Google, Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
+| Local SQLite, Azure, and Google execution | Local reference path; Azure and Google execution are live qualified |
+| Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
 
 A package existing in the repository is not a production-readiness claim. The
 [qualification report](qualification/adapter-qualification.json) is the source
@@ -368,7 +368,7 @@ Start with the [execution design](design/execution-runtime.md),
 | PostgreSQL/pgvector and CanonicalStore | Implemented; live deployment evidence remains environment-specific |
 | Azure Durable Functions execution | Live qualified; Azure storage adapters retain their separate preview posture |
 | AWS storage and execution | Live qualified for isolated S3, DynamoDB, and SQS; managed OpenSearch remains subject to end-user validation |
-| Google storage and execution | Preview/prototype; opt-in live qualification |
+| Google execution | Live qualified; other Google adapters retain their separate qualification posture |
 | Temporal coordinator and projection | Prototype; disposable and operator-provisioned qualification gates |
 | Cloudflare R2 | Preview object-store adapter |
 

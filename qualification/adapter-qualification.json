@@ -2,20 +2,20 @@
   "$schema": "./adapter-qualification.schema.json",
   "schemaVersion": "1.0",
   "coreContractVersion": "0.2.0",
-  "generatedAtUtc": "2026-08-14T01:10:13Z",
-  "releaseCommit": "2e3c4f8d6e150fe9f932485c4a193672d1ae4adb",
+  "generatedAtUtc": "2026-08-14T02:58:55Z",
+  "releaseCommit": "94db060bc6878da3c73986578f6e351a561ccf69",
   "qualificationExpiresAfterDays": 90,
   "summary": {
     "adapterCount": 5,
     "currentAdapterCount": 5,
     "staleAdapterCount": 0,
-    "prototypeAdapterCount": 2,
+    "prototypeAdapterCount": 1,
     "localConformantAdapterCount": 1,
-    "liveQualifiedAdapterCount": 2,
+    "liveQualifiedAdapterCount": 3,
     "consumerValidatedAdapterCount": 0,
     "advertisedCapabilityClaims": 64,
-    "currentLiveQualifiedCapabilityClaims": 25,
-    "currentLiveQualifiedCapabilityPercentage": 39.06
+    "currentLiveQualifiedCapabilityClaims": 37,
+    "currentLiveQualifiedCapabilityPercentage": 57.81
   },
   "adapters": [
     {
@@ -205,12 +205,13 @@
         "idempotency"
       ],
       "qualification": {
-        "level": "prototype",
+        "level": "live_qualified",
         "status": "current",
-        "environmentClass": "deterministic_fixture",
-        "testedAtUtc": "2026-07-28T09:21:29Z",
-        "expiresAtUtc": "2026-10-26T09:21:29Z",
-        "testCommit": "12ad291c3702b2b38485bbc844c371750d2a6e83",
+        "environmentClass": "live_managed",
+        "providerVersion": "google-managed-2026.08.14",
+        "testedAtUtc": "2026-08-14T02:55:46Z",
+        "expiresAtUtc": "2026-11-12T02:55:46Z",
+        "testCommit": "94db060bc6878da3c73986578f6e351a561ccf69",
         "adapterVersion": "0.2.0",
         "coreContractVersion": "0.2.0",
         "capabilities": [
@@ -233,6 +234,37 @@
             "result": "passed",
             "reference": "tests/Vyral.Tests.Google/GoogleCloudExecutionRuntimeAdapterConformanceTests.cs",
             "command": "dotnet test tests/Vyral.Tests.Google/Vyral.Tests.Google.csproj --filter FullyQualifiedName~GoogleCloudExecutionRuntimeAdapterConformanceTests"
+          },
+          {
+            "kind": "shared_conformance",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Google/GoogleExecutionLiveConformanceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Google/Vyral.Tests.Google.csproj --filter FullyQualifiedName~GoogleExecutionLiveConformanceTests"
+          },
+          {
+            "kind": "fault_restart",
+            "result": "passed",
+            "reference": "GoogleExecutionLiveConformanceTests.GoogleFirestoreExternalWorker_ResumesWaitingEventAfterRecreatingAdapter",
+            "command": "dotnet test tests/Vyral.Tests.Google/Vyral.Tests.Google.csproj --filter FullyQualifiedName~GoogleExecutionLiveConformanceTests"
+          },
+          {
+            "kind": "public_surface",
+            "result": "passed",
+            "reference": "tests/Vyral.Tests.Conformance/ExecutionPublicSurfaceTests.cs",
+            "command": "dotnet test tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj --filter FullyQualifiedName~ExecutionPublicSurfaceTests"
+          },
+          {
+            "kind": "live_gate",
+            "result": "passed",
+            "reference": "github.com/Univeracity/vyral/actions/runs/31765130195",
+            "command": "scripts/validate-google-execution-live.sh",
+            "resultArtifact": "google-live-gate-94db060bc6878da3c73986578f6e351a561ccf69/google-live-gate.json"
+          },
+          {
+            "kind": "cleanup",
+            "result": "passed",
+            "reference": "google-live-gate-94db060bc6878da3c73986578f6e351a561ccf69/google-live-gate.json",
+            "command": "scripts/validate-google-execution-live.sh"
           }
         ]
       }

@@ -12,10 +12,10 @@ jq -e '
   .schemaVersion == "1.0" and
   .summary.adapterCount == 5 and
   .summary.localConformantAdapterCount == 1 and
-  .summary.prototypeAdapterCount == 2 and
-  .summary.liveQualifiedAdapterCount == 2 and
-  .summary.currentLiveQualifiedCapabilityClaims == 25 and
-  .summary.currentLiveQualifiedCapabilityPercentage == 39.06 and
+  .summary.prototypeAdapterCount == 1 and
+  .summary.liveQualifiedAdapterCount == 3 and
+  .summary.currentLiveQualifiedCapabilityClaims == 37 and
+  .summary.currentLiveQualifiedCapabilityPercentage == 57.81 and
   all(.adapters[]; .qualification.status == "current")
 ' "$work_root/current.json" >/dev/null
 
