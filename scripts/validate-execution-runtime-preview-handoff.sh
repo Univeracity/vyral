@@ -184,7 +184,7 @@ npm install "$JAVASCRIPT_DIR/$tarball_name" >/dev/null
 cat > check-client.mjs <<'JS'
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { VyralClient, isExecutionRunTerminal } from "@vyral/client";
+import { VyralClient, isExecutionRunTerminal } from "vyral-client";
 
 const responses = [
   { adapter: { adapterId: "local-sqlite" }, plugins: [], handlers: [] },
@@ -278,7 +278,7 @@ assert.deepEqual(seen.slice(-10).map((item) => item.url), [
   "http://vyral.local/execution/workers/leases/complete"
 ]);
 
-const packageJson = JSON.parse(readFileSync(new URL("./node_modules/@vyral/client/package.json", import.meta.url), "utf-8"));
+const packageJson = JSON.parse(readFileSync(new URL("./node_modules/vyral-client/package.json", import.meta.url), "utf-8"));
 console.log(`javascript-client-version=${packageJson.version}`);
 console.log("javascript-client-execution-helpers=ok");
 JS

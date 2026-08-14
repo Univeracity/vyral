@@ -101,8 +101,8 @@ job fails closed and publishes nothing.
 
 Prepare release notes before the dispatch and publish the GitHub release only
 after every authorized registry job has succeeded. The
-The separate lightweight `vyral-client`, provider-specific packages, Temporal
-packages, and prototype integrations remain outside this cohort.
+The separate Python HTTP client (`vyral-client`), provider-specific packages,
+Temporal packages, and prototype integrations remain outside this cohort.
 
 Before the first public release, the repository owner must also configure the hosted controls that
 cannot be represented in source: protected release branches, required release-integrity,

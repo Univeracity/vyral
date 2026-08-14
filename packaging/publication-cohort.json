@@ -52,7 +52,7 @@
     },
     {
       "ecosystem": "npm",
-      "name": "@vyral/client",
+      "name": "vyral-client",
       "version": "0.3.0",
       "source": "clients/javascript/package.json",
       "environment": "publish-npm",
@@ -71,7 +71,7 @@
     "cloud-provider packages",
     "provider-specific execution adapters",
     "Temporal packages",
-    "vyral-client",
+    "Python HTTP client distribution (vyral-client)",
     "prototype integrations"
   ],
   "authorization": {

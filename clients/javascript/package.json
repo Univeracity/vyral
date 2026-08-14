@@ -1,5 +1,5 @@
 {
-  "name": "@vyral/client",
+  "name": "vyral-client",
   "version": "0.3.0",
   "description": "JavaScript HTTP client for the Vyral local server",
   "type": "module",

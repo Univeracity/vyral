@@ -209,7 +209,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: publish-npm
-      url: https://www.npmjs.com/package/@vyral/client
+      url: https://www.npmjs.com/package/vyral-client
     permissions:
       contents: read
       id-token: write

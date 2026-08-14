@@ -1,4 +1,4 @@
-import { VyralClient, VyralClientError } from "@vyral/client";
+import { VyralClient, VyralClientError } from "vyral-client";
 
 const baseUrl = process.env.VYRAL_TEST_BASE_URL;
 const apiKey = process.env.VYRAL_TEST_API_KEY;
