@@ -328,6 +328,8 @@ Release policy:
 - packages declare Apache-2.0 metadata; consumers should review the repository [LICENSE](../../LICENSE)
 - Azure Durable Functions is live qualified with a replay-safe bridge; each host still validates
   its resources, identity, and operational policy
+- Google execution is live qualified with Firestore-backed durable state and Cloud Tasks dispatch;
+  each host still validates its resources, identity, and operational policy
 
 Known provider boundaries and portability rules are documented in
 [execution runtime limitations](../reference/execution-runtime-limitations.md).
