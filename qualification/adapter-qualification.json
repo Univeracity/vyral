@@ -2,20 +2,20 @@
   "$schema": "./adapter-qualification.schema.json",
   "schemaVersion": "1.0",
   "coreContractVersion": "0.2.0",
-  "generatedAtUtc": "2026-08-13T20:26:26Z",
-  "releaseCommit": "af7ba9553e9c336f6d55d3db97b1587e18ca6223",
+  "generatedAtUtc": "2026-08-14T01:10:13Z",
+  "releaseCommit": "2e3c4f8d6e150fe9f932485c4a193672d1ae4adb",
   "qualificationExpiresAfterDays": 90,
   "summary": {
     "adapterCount": 5,
     "currentAdapterCount": 5,
     "staleAdapterCount": 0,
     "prototypeAdapterCount": 2,
-    "localConformantAdapterCount": 2,
-    "liveQualifiedAdapterCount": 1,
+    "localConformantAdapterCount": 1,
+    "liveQualifiedAdapterCount": 2,
     "consumerValidatedAdapterCount": 0,
     "advertisedCapabilityClaims": 64,
-    "currentLiveQualifiedCapabilityClaims": 12,
-    "currentLiveQualifiedCapabilityPercentage": 18.75
+    "currentLiveQualifiedCapabilityClaims": 25,
+    "currentLiveQualifiedCapabilityPercentage": 39.06
   },
   "adapters": [
     {
@@ -125,12 +125,13 @@
         "idempotency"
       ],
       "qualification": {
-        "level": "local_conformant",
+        "level": "live_qualified",
         "status": "current",
-        "environmentClass": "deterministic_fixture",
-        "testedAtUtc": "2026-07-28T09:21:29Z",
-        "expiresAtUtc": "2026-10-26T09:21:29Z",
-        "testCommit": "12ad291c3702b2b38485bbc844c371750d2a6e83",
+        "environmentClass": "live_managed",
+        "providerVersion": "azure-managed-2026.08.14",
+        "testedAtUtc": "2026-08-14T01:21:45Z",
+        "expiresAtUtc": "2026-11-12T01:21:45Z",
+        "testCommit": "2e3c4f8d6e150fe9f932485c4a193672d1ae4adb",
         "adapterVersion": "0.2.0",
         "coreContractVersion": "0.2.0",
         "capabilities": [
@@ -166,6 +167,19 @@
             "result": "passed",
             "reference": "tests/Vyral.Tests.Conformance/ExecutionPublicSurfaceTests.cs",
             "command": "dotnet test tests/Vyral.Tests.Conformance/Vyral.Tests.Conformance.csproj --filter FullyQualifiedName~ExecutionPublicSurfaceTests"
+          },
+          {
+            "kind": "live_gate",
+            "result": "passed",
+            "reference": "github.com/Univeracity/vyral/actions/runs/31759773474",
+            "command": "scripts/validate-azure-live-qualification.sh",
+            "resultArtifact": "azure-live-qualification-2e3c4f8d6e150fe9f932485c4a193672d1ae4adb/azure-live-gate.json"
+          },
+          {
+            "kind": "cleanup",
+            "result": "passed",
+            "reference": "azure-live-qualification-2e3c4f8d6e150fe9f932485c4a193672d1ae4adb/azure-live-gate.json",
+            "command": "scripts/validate-azure-live-qualification.sh"
           }
         ]
       }

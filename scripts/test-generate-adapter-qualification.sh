@@ -11,11 +11,11 @@ SOURCE_DATE_EPOCH=1785230489 scripts/generate-adapter-qualification.sh "$work_ro
 jq -e '
   .schemaVersion == "1.0" and
   .summary.adapterCount == 5 and
-  .summary.localConformantAdapterCount == 2 and
+  .summary.localConformantAdapterCount == 1 and
   .summary.prototypeAdapterCount == 2 and
-  .summary.liveQualifiedAdapterCount == 1 and
-  .summary.currentLiveQualifiedCapabilityClaims == 12 and
-  .summary.currentLiveQualifiedCapabilityPercentage == 18.75 and
+  .summary.liveQualifiedAdapterCount == 2 and
+  .summary.currentLiveQualifiedCapabilityClaims == 25 and
+  .summary.currentLiveQualifiedCapabilityPercentage == 39.06 and
   all(.adapters[]; .qualification.status == "current")
 ' "$work_root/current.json" >/dev/null
 

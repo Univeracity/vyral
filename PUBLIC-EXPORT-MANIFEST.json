@@ -159,7 +159,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "9627183379f4ed1f00b39e7ad64795d3f5003534b0ea19e4af5e6394462e3fad"
+      "sha256": "2ddddf5730fef26e794ace89a4b7a7fdfc5433144fbe2152ae01fb87dae7348c"
     },
     {
       "mode": "644",
@@ -619,7 +619,7 @@
     {
       "mode": "644",
       "path": "docs/guides/consumer-handoff.md",
-      "sha256": "2de27f52d6ebc717ebe74a422fb9c028233aaa0c04ca7e8bbfdf71b3b596868c"
+      "sha256": "a89dd4a771c4653d1a249f4797af8a1146ffb3c8b5c6d0abcd800510a2f8e2ca"
     },
     {
       "mode": "644",
@@ -739,12 +739,12 @@
     {
       "mode": "644",
       "path": "qualification/README.md",
-      "sha256": "9e315a16de19dd110beadcf30c8a8783819187c71509ce642df9a92688a0497c"
+      "sha256": "3557bdce05b3828c91400f73c342c666b6de87d93fe857013d919613870bac6e"
     },
     {
       "mode": "644",
       "path": "qualification/adapter-qualification.json",
-      "sha256": "171fc587c9fca81270823a5334a10425b134670c85aa7af91cc194776cd52d19"
+      "sha256": "f0a9d6e99bf3c88d2ae5e39a8c15b6216d832eb98348626d97912244ec70946f"
     },
     {
       "mode": "644",
@@ -1689,7 +1689,7 @@
     {
       "mode": "755",
       "path": "scripts/test-generate-adapter-qualification.sh",
-      "sha256": "1d26ad558f29f9b11098b8e6bb54a3a227be1c93714c899607fe6b983a0a5e02"
+      "sha256": "8d31ccb0ca7df887afc5a2a74e15464c614d68c81280e6cade3bedaa4b39b9d0"
     },
     {
       "mode": "644",
@@ -1699,7 +1699,7 @@
     {
       "mode": "755",
       "path": "scripts/test-render-adapter-qualification.py",
-      "sha256": "5d32abc29aa8788797ec79525045c5d8567badfd34c9540e13ea1a6eaedcf577"
+      "sha256": "953898583e64e04a14ec0f59a1a7dffd3d1ebb82be4c72c7fb39e5a0e1f2b47b"
     },
     {
       "mode": "755",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "41079d50ce7b2fc982411cf25145bb223f6fb5e3e890e87def311bb2e253fe47"
+  "treeSha256": "306d9119b80b92dd5b9dc249d0ed178dd574eb241830d18db424f81efb63d9d9"
 }
