@@ -108,6 +108,7 @@ jq -e '
   .authentication.serviceAccountKeyFile == false and
   .isolation.namedDatabase == true and
   .isolation.reusablePausedQueue == true and
+  (.checks | index("adapter_recreation_resume") != null) and
   .cleanup.result == "passed" and
   .cleanup.queueAction == "queue-purged" and
   .cleanup.queueEmptyObserved == true and
