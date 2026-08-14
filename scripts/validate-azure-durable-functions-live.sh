@@ -26,6 +26,7 @@ require VYRAL_AZURE_COSMOS_CONNECTION_STRING
 require VYRAL_AZURE_COSMOS_DATABASE
 
 LOCATION="${VYRAL_AZURE_LIVE_LOCATION:-centralus}"
+FUNCTION_HOSTING_PLAN="${VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN:-flex_consumption}"
 EXPECTED_FUNCTION_NAMES_JSON='[]'
 EXPECTED_FUNCTION_COUNT=0
 COSMOS_RESOURCE_GROUP="${VYRAL_AZURE_LIVE_COSMOS_RESOURCE_GROUP:-$VYRAL_AZURE_LIVE_RESOURCE_GROUP}"
@@ -73,6 +74,15 @@ POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON='[]'
 POST_DEPLOYMENT_RUNTIME_FUNCTION_COUNT=0
 POST_DEPLOYMENT_RUNTIME_FUNCTIONS_MATCHED=false
 FAILURE_STAGE="publish"
+
+case "$FUNCTION_HOSTING_PLAN" in
+  flex_consumption | windows_consumption)
+    ;;
+  *)
+    echo "VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN must be flex_consumption or windows_consumption." >&2
+    exit 2
+    ;;
+esac
 
 classify_deployment_provider_failure() {
   local diagnostic="$1"
@@ -227,6 +237,7 @@ cleanup() {
       --argjson deployment_attempts "$DEPLOYMENT_ATTEMPTS" \
       --arg deployment_provider_status "$DEPLOYMENT_PROVIDER_STATUS" \
       --arg deployment_provider_failure_class "$DEPLOYMENT_PROVIDER_FAILURE_CLASS" \
+      --arg function_hosting_plan "$FUNCTION_HOSTING_PLAN" \
       --arg function_runtime_name "$FUNCTION_RUNTIME_NAME" \
       --arg function_runtime_version "$FUNCTION_RUNTIME_VERSION" \
       --argjson function_runtime_matched "$FUNCTION_RUNTIME_MATCHED" \
@@ -275,6 +286,7 @@ cleanup() {
           deploymentAttempts: $deployment_attempts,
           deploymentProviderStatus: $deployment_provider_status,
           deploymentProviderFailureClass: $deployment_provider_failure_class,
+          hostingPlan: $function_hosting_plan,
           configuredRuntime: {
             name: $function_runtime_name,
             version: $function_runtime_version,
@@ -351,42 +363,80 @@ STORAGE_CONNECTION="$(az storage account show-connection-string --resource-group
   --name "$STORAGE" --query connectionString --output tsv)"
 
 FAILURE_STAGE="function-provisioning"
-az functionapp create --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
-  --storage-account "$STORAGE" --flexconsumption-location "$LOCATION" --runtime dotnet-isolated \
-  --runtime-version 10 --functions-version 4 --disable-app-insights true --https-only true \
-  --only-show-errors --output none
+case "$FUNCTION_HOSTING_PLAN" in
+  flex_consumption)
+    az functionapp create --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
+      --storage-account "$STORAGE" --flexconsumption-location "$LOCATION" --runtime dotnet-isolated \
+      --runtime-version 10 --functions-version 4 --disable-app-insights true --https-only true \
+      --only-show-errors --output none
+    ;;
+  windows_consumption)
+    az functionapp create --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
+      --storage-account "$STORAGE" --consumption-plan-location "$LOCATION" --os-type Windows \
+      --runtime dotnet-isolated --runtime-version 10 --functions-version 4 \
+      --disable-app-insights true --https-only true --only-show-errors --output none
+    ;;
+esac
 FUNCTION_CREATED=true
+FAILURE_STAGE="function-configuration"
+function_settings=(
+  "AzureWebJobsStorage=$STORAGE_CONNECTION"
+  "VYRAL_AZURE_DURABLE_TASK_HUB=$HUB"
+  "VYRAL_AZURE_COSMOS_CONNECTION_STRING=$VYRAL_AZURE_COSMOS_CONNECTION_STRING"
+  "VYRAL_AZURE_COSMOS_DATABASE=$VYRAL_AZURE_COSMOS_DATABASE"
+  "VYRAL_AZURE_DURABLE_STATUS_CONTAINER=$STATUS_CONTAINER"
+)
+if [[ "$FUNCTION_HOSTING_PLAN" == windows_consumption ]]; then
+  # Windows Consumption reads the worker-model selection from the app setting; Flex stores
+  # equivalent runtime metadata in functionAppConfig instead.
+  function_settings+=("FUNCTIONS_WORKER_RUNTIME=dotnet-isolated")
+fi
+az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
+  --settings "${function_settings[@]}" --only-show-errors --output none
+unset function_settings
+
 FAILURE_STAGE="function-runtime-configuration"
 runtime_configuration="$(az functionapp show --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
   --name "$FUNCTION" --only-show-errors --output json)"
-FUNCTION_RUNTIME_NAME="$(jq -r '
-  .functionAppConfig.runtime.name? // .properties.functionAppConfig.runtime.name? // empty
-' <<<"$runtime_configuration")"
-FUNCTION_RUNTIME_VERSION="$(jq -r '
-  .functionAppConfig.runtime.version? // .properties.functionAppConfig.runtime.version? // empty
-' <<<"$runtime_configuration")"
+case "$FUNCTION_HOSTING_PLAN" in
+  flex_consumption)
+    FUNCTION_RUNTIME_NAME="$(jq -r '
+      .functionAppConfig.runtime.name? // .properties.functionAppConfig.runtime.name? // empty
+    ' <<<"$runtime_configuration")"
+    FUNCTION_RUNTIME_VERSION="$(jq -r '
+      .functionAppConfig.runtime.version? // .properties.functionAppConfig.runtime.version? // empty
+    ' <<<"$runtime_configuration")"
+    ;;
+  windows_consumption)
+    runtime_settings="$(az functionapp config appsettings list \
+      --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
+      --only-show-errors --output json)"
+    FUNCTION_RUNTIME_NAME="$(jq -r '
+      map(select(.name == "FUNCTIONS_WORKER_RUNTIME")) | .[0].value? // empty
+    ' <<<"$runtime_settings")"
+    FUNCTION_RUNTIME_VERSION="$(jq -r '
+      .siteConfig.netFrameworkVersion? // .properties.siteConfig.netFrameworkVersion? // empty
+    ' <<<"$runtime_configuration")"
+    unset runtime_settings
+    ;;
+esac
 unset runtime_configuration
 FUNCTION_RUNTIME_NAME="${FUNCTION_RUNTIME_NAME:-not-observed}"
 FUNCTION_RUNTIME_VERSION="${FUNCTION_RUNTIME_VERSION:-not-observed}"
-# Flex exposes its runtime version in ARM as the platform version (for example, `10.0`), while
-# Azure CLI accepts the language major as `10`. They describe the same supported isolated worker.
+# App Service prefixes its Windows .NET framework version with `v`; normalize that provider
+# representation so receipts describe the same runtime version across hosting plans.
+FUNCTION_RUNTIME_VERSION="${FUNCTION_RUNTIME_VERSION#v}"
+# Flex reports platform runtime metadata, while Windows Consumption pairs the worker-model app
+# setting with its App Service .NET version. Both must resolve to the requested isolated .NET 10 host.
 if [[ "$FUNCTION_RUNTIME_NAME" != dotnet-isolated || ! "$FUNCTION_RUNTIME_VERSION" =~ ^10(\.0+)?$ ]]; then
-  echo "azure-durable-functions-live-runtime=invalid name:${FUNCTION_RUNTIME_NAME} version:${FUNCTION_RUNTIME_VERSION}" >&2
+  echo "azure-durable-functions-live-runtime=invalid plan:${FUNCTION_HOSTING_PLAN} name:${FUNCTION_RUNTIME_NAME} version:${FUNCTION_RUNTIME_VERSION}" >&2
   false
 fi
 FUNCTION_RUNTIME_MATCHED=true
-FAILURE_STAGE="function-configuration"
-az functionapp config appsettings set --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" --name "$FUNCTION" \
-  --settings "AzureWebJobsStorage=$STORAGE_CONNECTION" "VYRAL_AZURE_DURABLE_TASK_HUB=$HUB" \
-  "VYRAL_AZURE_COSMOS_CONNECTION_STRING=$VYRAL_AZURE_COSMOS_CONNECTION_STRING" \
-  "VYRAL_AZURE_COSMOS_DATABASE=$VYRAL_AZURE_COSMOS_DATABASE" \
-  "VYRAL_AZURE_DURABLE_STATUS_CONTAINER=$STATUS_CONTAINER" --only-show-errors --output none
 
-# Azure CLI selects One Deploy for Flex Consumption even though the command retains its historic
-# config-zip name. The CLI can return successfully before One Deploy finishes its provider-side
-# trigger synchronization, so require the deployment record itself to report success. Bound each
-# attempt and the retry count so a provider outage still reaches the recovery probe and receipt
-# before the protected job times out.
+# Azure CLI may return before provider-side trigger synchronization completes. Require the
+# deployment record itself to report success, regardless of the selected hosting plan. Bound each
+# attempt and the retry count so a provider outage still reaches the recovery probe and receipt.
 FAILURE_STAGE="deployment"
 deployed=false
 deployment_diagnostic="$WORK_ROOT/deployment-attempt.log"
@@ -459,8 +509,8 @@ unset function_key master_key
 base_url="https://${FUNCTION}.azurewebsites.net"
 
 # The ARM function inventory is eventually consistent and can expose a transient one-function
-# snapshot while a Flex host is still indexing. Query the authenticated runtime inventory instead;
-# it both wakes the deployed host and proves the exact functions that host can execute.
+# snapshot while a newly deployed host is still indexing. Query the authenticated runtime inventory
+# instead; it both wakes the deployed host and proves the exact functions that host can execute.
 FAILURE_STAGE="function-discovery"
 partial_inventory_observations=0
 for _ in $(seq 1 48); do
@@ -526,7 +576,7 @@ for _ in $(seq 1 48); do
           false
           ;;
         *)
-          # A newly deployed Flex host can reject an ARM sync request before worker indexing has
+          # A newly deployed host can reject an ARM sync request before worker indexing has
           # settled. Restart only the disposable app, then preserve the full discovery window.
           FAILURE_STAGE="function-discovery-host-restart"
           HOST_RESTART_ATTEMPTED=true
