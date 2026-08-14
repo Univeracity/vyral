@@ -179,7 +179,7 @@ ingress and a deployment-managed API key. See
 | Run Vyral in a Python process | `vyral` in `runtimes/python` |
 | Host REST and MCP from Python | `vyral[server]` |
 | Call a running host from Python | `vyral-client` in `clients/python` |
-| Call a running host from JavaScript | `@vyral/client` in `clients/javascript` |
+| Call a running host from JavaScript | `vyral-client` in `clients/javascript` |
 | Implement an external worker in Go | `clients/go` |
 
 The Python runtime is a peer implementation, not a wrapper around .NET. The

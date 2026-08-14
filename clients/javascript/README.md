@@ -1,4 +1,4 @@
-# @vyral/client
+# vyral-client
 
 Thin JavaScript client for the Vyral local HTTP server.
 
@@ -19,7 +19,7 @@ import {
   buildVerifiedRetrievalRequest,
   compareRagIngestResults,
   isExecutionRunTerminal
-} from "@vyral/client";
+} from "vyral-client";
 
 const client = new VyralClient("http://localhost:5220");
 // const client = new VyralClient("http://localhost:5220", { apiKey: "dev-secret" });

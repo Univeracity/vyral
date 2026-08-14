@@ -150,7 +150,7 @@ print(client.readiness()["summary"])
 JavaScript:
 
 ```js
-import { VyralClient } from "@vyral/client";
+import { VyralClient } from "vyral-client";
 
 const client = new VyralClient("http://127.0.0.1:5220");
 console.log((await client.readiness()).summary);

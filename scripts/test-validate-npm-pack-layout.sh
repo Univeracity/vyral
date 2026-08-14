@@ -15,7 +15,7 @@ valid_package='{
 
 printf '[%s]\n' "$valid_package" \
   | jq -e -f scripts/validate-npm-pack-layout.jq >/dev/null
-printf '{"@vyral/client":%s}\n' "$valid_package" \
+printf '{"vyral-client":%s}\n' "$valid_package" \
   | jq -e -f scripts/validate-npm-pack-layout.jq >/dev/null
 
 if printf '[%s,%s]\n' "$valid_package" "$valid_package" \

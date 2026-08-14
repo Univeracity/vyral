@@ -104,7 +104,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/publish-first-cohort.yml",
-      "sha256": "81336400c7b4f12c0260679ecd797b282f1c891603ba06c69d313a8e8f3d2f07"
+      "sha256": "299a4b65dfcc761552ebab89a0c35e7803b4a010cdafd35a248f5a53f38797ba"
     },
     {
       "mode": "644",
@@ -159,7 +159,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "78ef638b69cba648e06e5dbe8f8687d6f4bbafdfdf90dc29de00564a7912ffcb"
+      "sha256": "cf48f150db20b3a4798fd241895438771620298b0a57aa29ff5e26dead44f1ab"
     },
     {
       "mode": "644",
@@ -239,17 +239,17 @@
     {
       "mode": "644",
       "path": "clients/javascript/README.md",
-      "sha256": "7bc5cf9c5b5560d79adf0a7c0106f04115b71686bb67ddd08f8b0723289a35ad"
+      "sha256": "2b36cd4afa5958ab398641055c1de7692f4a58bc9da12fd63708c601e7e2ce2d"
     },
     {
       "mode": "644",
       "path": "clients/javascript/package-lock.json",
-      "sha256": "15d511afb8f01d05004c5f5c9d79cf202e4c5e2b4b12d61a144ef1fa1f9275c8"
+      "sha256": "47ab11ea923003178565a9b24a829347ece508af0f773d89c313503efd3ddb7b"
     },
     {
       "mode": "644",
       "path": "clients/javascript/package.json",
-      "sha256": "0c6887557a3db623cface5af80cd9e613856e1c6efd51660e4bede496e102ae3"
+      "sha256": "f46b72cd5b72c8242defd0b7f10796beeeff834ba98a575fa747f167889b7836"
     },
     {
       "mode": "644",
@@ -269,7 +269,7 @@
     {
       "mode": "644",
       "path": "clients/javascript/test/real-server-consumer.mjs",
-      "sha256": "8e84474f3b87584bb940f8959b8203057c5538ebf103f223a6494eea766f9149"
+      "sha256": "8c8fa3aec157cd880b9577648f4f310cecb75c1c307a34df87d5b10dbec96390"
     },
     {
       "mode": "644",
@@ -619,7 +619,7 @@
     {
       "mode": "644",
       "path": "docs/guides/consumer-handoff.md",
-      "sha256": "359a264ba3a1bb0643a463fcdb62aa6c5cf2243ac90c87821a35607e875fbc55"
+      "sha256": "ff99f0a7a52f73cdb827a046e61f00fe0cedb9415c717d8038e87ed954bad33e"
     },
     {
       "mode": "644",
@@ -649,7 +649,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "8d45e682aecbbc854a4780f1ac9e50299a22ebc1f2373bf1f8d2d7878a915368"
+      "sha256": "92c752ff86622eed85574f9a9b2539e2e2a79fcf5502cdd7edb9874bbba9f4a4"
     },
     {
       "mode": "644",
@@ -734,7 +734,7 @@
     {
       "mode": "644",
       "path": "packaging/publication-cohort.json",
-      "sha256": "5d23dbb69481cf0ba0a1088f247943feac2ab486f6cd86ee12316a7867a4ca36"
+      "sha256": "e8f6e44324df4798f5f04559e567c6f2fe57f2f6ed1ef45eb4b48008cb282530"
     },
     {
       "mode": "644",
@@ -1749,7 +1749,7 @@
     {
       "mode": "755",
       "path": "scripts/test-validate-npm-pack-layout.sh",
-      "sha256": "8a001ffa17fe95511223ead25b422f55b611d18383e755dcd70cd72639771898"
+      "sha256": "6f7147ca2739cccff18c457a41be050e3bd6da318215774a147eab62a681cc1e"
     },
     {
       "mode": "755",
@@ -1809,7 +1809,7 @@
     {
       "mode": "755",
       "path": "scripts/validate-execution-runtime-preview-handoff.sh",
-      "sha256": "b2284301e501b5542ffe79f1ce9157454a433476340a74fa34e910624dce59ae"
+      "sha256": "ea09e42bbc37d63a6b0c74b91822d756991f8cd60603b2306eb5e4612a596eb6"
     },
     {
       "mode": "755",
@@ -1914,7 +1914,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-publication-cohort.py",
-      "sha256": "a293de175a68f1ff70112e0928a6da54a0e038c2e562f0c312c02833d12b6e8e"
+      "sha256": "f7e4768131816f33044d891f55c8597de7e1ccccc500787a798f4db55ad5b429"
     },
     {
       "mode": "644",
@@ -4344,5 +4344,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "b40ebbc2e12f3c87504615e9ee63d8ab7b29041b18c65837be8f7b389226bc77"
+  "treeSha256": "fbd366573f68a99ab633a1cb5826d76903910d008058dc739b8e72543bffe3bd"
 }

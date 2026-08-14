@@ -62,7 +62,7 @@ EXPECTED = (
     ),
     (
         "npm",
-        "@vyral/client",
+        "vyral-client",
         "0.3.0",
         "clients/javascript/package.json",
         "publish-npm",
@@ -81,7 +81,7 @@ EXCLUDED = {
     "cloud-provider packages",
     "provider-specific execution adapters",
     "Temporal packages",
-    "vyral-client",
+    "Python HTTP client distribution (vyral-client)",
     "prototype integrations",
 }
 AUTHORIZATION = {
