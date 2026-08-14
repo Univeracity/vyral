@@ -153,6 +153,11 @@ done
 
 case "$url" in
   */admin/functions | */admin/functions/)
+    if [[ "${VYRAL_TEST_DISCOVERY_TRANSIENT_HTTP_FAILURE:-false}" == true && ! -e "$VYRAL_TEST_STATE/discovery-http-failure-observed" ]]; then
+      touch "$VYRAL_TEST_STATE/discovery-http-failure-observed"
+      printf '%s\n' 'curl: (22) The requested URL returned error: 503' >&2
+      exit 22
+    fi
     function_count="${VYRAL_TEST_FUNCTION_COUNT:-7}"
     if [[ "${VYRAL_TEST_RECOVER_AFTER_SYNC:-false}" == true && \
       ( -e "$VYRAL_TEST_STATE/trigger-sync-issued" || -e "$VYRAL_TEST_STATE/host-restart-issued" ) ]]; then
@@ -242,6 +247,7 @@ run_case() {
   local hosting_plan="${15:-flex_consumption}"
   local timer_failure="${16:-false}"
   local event_connect_timeout="${17:-false}"
+  local discovery_transient_http_failure="${18:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -260,6 +266,7 @@ run_case() {
   VYRAL_TEST_HOSTING_PLAN="$hosting_plan" \
   VYRAL_TEST_TIMER_FAILURE="$timer_failure" \
   VYRAL_TEST_EVENT_CONNECT_TIMEOUT="$event_connect_timeout" \
+  VYRAL_TEST_DISCOVERY_TRANSIENT_HTTP_FAILURE="$discovery_transient_http_failure" \
   VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN="$hosting_plan" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
@@ -352,6 +359,7 @@ run_case deployment-status-failure 0 1 failed deployment false false false false
 run_case deployment-command-timeout 0 1 failed deployment false false false false false 3 false timeout true
 run_case durable-timer-failure 7 1 failed durable-timer false false false false false 1 false worker_reset_503 false flex_consumption true
 run_case external-event-connect-retry 7 0 passed complete false false false false false 1 false worker_reset_503 false flex_consumption false true
+run_case discovery-transient-http-recovery 7 0 passed complete false false false false false 1 false worker_reset_503 false flex_consumption false false true
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
 run_case trigger-sync-recovery 1 0 passed complete true true

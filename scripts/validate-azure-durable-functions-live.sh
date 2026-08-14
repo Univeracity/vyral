@@ -126,9 +126,12 @@ functions_http_request() {
   while true; do
     FUNCTIONS_HTTP_RESPONSE=""
     if FUNCTIONS_HTTP_RESPONSE="$(curl "$@" 2>"$diagnostic")"; then
+      HTTP_TRANSPORT_LAST_FAILED_OPERATION="not-observed"
+      HTTP_TRANSPORT_LAST_FAILED_EXIT_CODE="not-observed"
       return 0
+    else
+      exit_code=$?
     fi
-    exit_code=$?
     if (( attempt < 4 )) && grep -Eqi 'failed to connect|connection refused' "$diagnostic"; then
       HTTP_TRANSPORT_RECOVERY_COUNT=$((HTTP_TRANSPORT_RECOVERY_COUNT + 1))
       echo "azure-durable-functions-live-transport=retry operation:${operation} attempt:${attempt}" >&2
