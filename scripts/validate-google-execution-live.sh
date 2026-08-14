@@ -204,6 +204,7 @@ if [[ -n "$RESULT_PATH" ]]; then
         "bounded_admission_contention",
         "competitive_lease_claim",
         "shared_external_worker_conformance",
+        "adapter_recreation_resume",
         "durable_event_wait_resume",
         "stale_lease_rejection"
       ],
