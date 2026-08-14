@@ -201,7 +201,9 @@ case "$url" in
     fi
     ;;
   */runs/timer)
-    if [[ -e "$VYRAL_TEST_STATE/timer-observed" ]]; then
+    if [[ "${VYRAL_TEST_TIMER_FAILURE:-false}" == true ]]; then
+      printf '%s\n' '{"status":"failed","failureClass":"provider_failure"}'
+    elif [[ -e "$VYRAL_TEST_STATE/timer-observed" ]]; then
       printf '%s\n' '{"status":"succeeded"}'
     else
       touch "$VYRAL_TEST_STATE/timer-observed"
@@ -233,6 +235,7 @@ run_case() {
   local expected_deployment_failure_class="${13:-worker_reset_503}"
   local deployment_timeout="${14:-false}"
   local hosting_plan="${15:-flex_consumption}"
+  local timer_failure="${16:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -249,6 +252,7 @@ run_case() {
   VYRAL_TEST_DEPLOYMENT_ALWAYS_FAIL="$deployment_always_fail" \
   VYRAL_TEST_DEPLOYMENT_TIMEOUT="$deployment_timeout" \
   VYRAL_TEST_HOSTING_PLAN="$hosting_plan" \
+  VYRAL_TEST_TIMER_FAILURE="$timer_failure" \
   VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN="$hosting_plan" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
@@ -278,6 +282,13 @@ run_case() {
   [[ "$(jq -r '.diagnostics.configuredRuntime.name' "$receipt")" == dotnet-isolated ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10.0 ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.matchedExpectedDotnetIsolated10' "$receipt")" == true ]]
+  if [[ "$expected_stage" == durable-timer ]]; then
+    [[ "$(jq -r '.diagnostics.durableTimer.terminalStatus' "$receipt")" == failed ]]
+    [[ "$(jq -r '.diagnostics.durableTimer.failureClass' "$receipt")" == provider_failure ]]
+  elif [[ "$expected_result" == passed ]]; then
+    [[ "$(jq -r '.diagnostics.durableTimer.terminalStatus' "$receipt")" == succeeded ]]
+    [[ "$(jq -r '.diagnostics.durableTimer.failureClass' "$receipt")" == null ]]
+  fi
   if [[ "$expected_stage" == deployment ]]; then
     if [[ "$expected_deployment_failure_class" == timeout ]]; then
       [[ "$(jq -r '.diagnostics.deploymentProviderStatus' "$receipt")" == not-observed ]]
@@ -309,7 +320,11 @@ run_case() {
     [[ "$(jq -r '.failure.discoveredFunctionCount' "$receipt")" == "$function_count" ]]
     [[ "$(jq -r '.failure.expectedFunctionCount' "$receipt")" == 7 ]]
     [[ "$(jq -r '.diagnostics.runtimeFunctionNames | length' "$receipt")" == "$function_count" ]]
-    [[ "$(jq -r '.cleanup.statusContainer' "$receipt")" == not-created ]]
+    if [[ "$expected_stage" == durable-timer ]]; then
+      [[ "$(jq -r '.cleanup.statusContainer' "$receipt")" == deleted ]]
+    else
+      [[ "$(jq -r '.cleanup.statusContainer' "$receipt")" == not-created ]]
+    fi
     if [[ "$expected_stage" == function-discovery-trigger-sync ]]; then
       [[ "$(jq -r '.recovery.partialInventoryTriggerSyncErrorCode' "$receipt")" == unknown ]]
     fi
@@ -321,6 +336,7 @@ run_case windows-consumption-success 7 0 passed complete false false false false
 run_case deployment-status-retry 7 0 passed complete false false false false true 2
 run_case deployment-status-failure 0 1 failed deployment false false false false false 3 true
 run_case deployment-command-timeout 0 1 failed deployment false false false false false 3 false timeout true
+run_case durable-timer-failure 7 1 failed durable-timer false false false false false 1 false worker_reset_503 false flex_consumption true
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
 run_case trigger-sync-recovery 1 0 passed complete true true
