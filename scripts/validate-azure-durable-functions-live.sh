@@ -44,6 +44,8 @@ STORAGE_CLEANUP="not-created"
 ORDINARY_RUN_PASSED=false
 EXTERNAL_EVENT_PASSED=false
 TIMER_PASSED=false
+TIMER_TERMINAL_STATUS="not-observed"
+TIMER_FAILURE_CLASS="not-observed"
 LIVE_ASSERTIONS_PASSED=false
 GATE_RESULT="failed"
 DEPLOYMENT_PASSED=false
@@ -241,6 +243,8 @@ cleanup() {
       --arg function_runtime_name "$FUNCTION_RUNTIME_NAME" \
       --arg function_runtime_version "$FUNCTION_RUNTIME_VERSION" \
       --argjson function_runtime_matched "$FUNCTION_RUNTIME_MATCHED" \
+      --arg timer_terminal_status "$TIMER_TERMINAL_STATUS" \
+      --arg timer_failure_class "$TIMER_FAILURE_CLASS" \
       --argjson post_deployment_recovery_attempted "$POST_DEPLOYMENT_RECOVERY_ATTEMPTED" \
       --argjson post_deployment_restart_issued "$POST_DEPLOYMENT_RESTART_ISSUED" \
       --argjson post_deployment_master_key_available "$POST_DEPLOYMENT_MASTER_KEY_AVAILABLE" \
@@ -291,6 +295,12 @@ cleanup() {
             name: $function_runtime_name,
             version: $function_runtime_version,
             matchedExpectedDotnetIsolated10: $function_runtime_matched
+          },
+          durableTimer: {
+            terminalStatus: $timer_terminal_status,
+            failureClass: (
+              if $timer_failure_class == "not-observed" then null else $timer_failure_class end
+            )
           },
           packagedFunctionNames: $expected_function_names,
           runtimeFunctionNames: $discovered_function_names,
@@ -673,21 +683,31 @@ timer_started="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/
 timer_run_id="$(printf '%s' "$timer_started" | jq -r .id)"
 [[ -n "$timer_run_id" && "$timer_run_id" != null ]]
 timer_status=""
+timer_payload=""
 for _ in $(seq 1 48); do
-  timer_status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id" | jq -r .status)"
+  timer_payload="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id")"
+  timer_status="$(jq -r .status <<<"$timer_payload")"
   case "$timer_status" in
-    waiting | failed | rejected | cancelled | timed_out) break ;;
+    waiting) break ;;
+    failed | rejected | cancelled | timed_out)
+      TIMER_TERMINAL_STATUS="$timer_status"
+      TIMER_FAILURE_CLASS="$(jq -r '.failureClass // "not-observed"' <<<"$timer_payload")"
+      break
+      ;;
   esac
   sleep 3
 done
 [[ "$timer_status" == waiting ]]
 for _ in $(seq 1 72); do
-  timer_status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id" | jq -r .status)"
+  timer_payload="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id")"
+  timer_status="$(jq -r .status <<<"$timer_payload")"
   case "$timer_status" in
     succeeded | failed | rejected | cancelled | timed_out) break ;;
   esac
   sleep 3
 done
+TIMER_TERMINAL_STATUS="${timer_status:-not-observed}"
+TIMER_FAILURE_CLASS="$(jq -r '.failureClass // "not-observed"' <<<"$timer_payload")"
 [[ "$timer_status" == succeeded ]]
 TIMER_PASSED=true
 
