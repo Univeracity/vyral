@@ -46,6 +46,10 @@ EXTERNAL_EVENT_PASSED=false
 TIMER_PASSED=false
 TIMER_TERMINAL_STATUS="not-observed"
 TIMER_FAILURE_CLASS="not-observed"
+HTTP_TRANSPORT_RECOVERY_COUNT=0
+HTTP_TRANSPORT_LAST_FAILED_OPERATION="not-observed"
+HTTP_TRANSPORT_LAST_FAILED_EXIT_CODE="not-observed"
+FUNCTIONS_HTTP_RESPONSE=""
 LIVE_ASSERTIONS_PASSED=false
 GATE_RESULT="failed"
 DEPLOYMENT_PASSED=false
@@ -109,6 +113,37 @@ classify_deployment_provider_failure() {
   esac
 }
 
+# Retries only failures which prove that curl never established a connection to the Functions
+# host. That makes a retry safe even for an external-event POST: Azure never accepted the first
+# request. HTTP failures and response timeouts are deliberately not retried here because their
+# request-delivery outcome is ambiguous. The receipt records every recovered transport failure.
+functions_http_request() {
+  local operation="$1"
+  shift
+  local attempt=1
+  local exit_code=0
+  local diagnostic="$WORK_ROOT/http-${operation}.stderr"
+  while true; do
+    FUNCTIONS_HTTP_RESPONSE=""
+    if FUNCTIONS_HTTP_RESPONSE="$(curl "$@" 2>"$diagnostic")"; then
+      return 0
+    fi
+    exit_code=$?
+    if (( attempt < 4 )) && grep -Eqi 'failed to connect|connection refused' "$diagnostic"; then
+      HTTP_TRANSPORT_RECOVERY_COUNT=$((HTTP_TRANSPORT_RECOVERY_COUNT + 1))
+      echo "azure-durable-functions-live-transport=retry operation:${operation} attempt:${attempt}" >&2
+      attempt=$((attempt + 1))
+      sleep 5
+      continue
+    fi
+
+    HTTP_TRANSPORT_LAST_FAILED_OPERATION="$operation"
+    HTTP_TRANSPORT_LAST_FAILED_EXIT_CODE="$exit_code"
+    echo "azure-durable-functions-live-transport=failed operation:${operation} exit:${exit_code}" >&2
+    return "$exit_code"
+  done
+}
+
 probe_host_after_failed_deployment() {
   POST_DEPLOYMENT_RECOVERY_ATTEMPTED=true
   if ! az functionapp restart --resource-group "$VYRAL_AZURE_LIVE_RESOURCE_GROUP" \
@@ -136,8 +171,12 @@ probe_host_after_failed_deployment() {
       "$master_key" > "$admin_config"
     chmod 0600 "$admin_config"
     unset master_key
-    admin_payload="$(curl --config "$admin_config" -sS --fail --max-time 10 \
-      "https://${FUNCTION}.azurewebsites.net/admin/functions/" 2>/dev/null || true)"
+    if functions_http_request "post-deployment-runtime-inventory" --config "$admin_config" -sS --fail --max-time 10 \
+      "https://${FUNCTION}.azurewebsites.net/admin/functions/" 2>/dev/null; then
+      admin_payload="$FUNCTIONS_HTTP_RESPONSE"
+    else
+      admin_payload=""
+    fi
     POST_DEPLOYMENT_RUNTIME_FUNCTION_NAMES_JSON="$(jq -cer '
       if type == "array" and all(.[]; (.name? | type) == "string")
       then [.[].name] | sort
@@ -245,6 +284,9 @@ cleanup() {
       --argjson function_runtime_matched "$FUNCTION_RUNTIME_MATCHED" \
       --arg timer_terminal_status "$TIMER_TERMINAL_STATUS" \
       --arg timer_failure_class "$TIMER_FAILURE_CLASS" \
+      --argjson http_transport_recovery_count "$HTTP_TRANSPORT_RECOVERY_COUNT" \
+      --arg http_transport_last_failed_operation "$HTTP_TRANSPORT_LAST_FAILED_OPERATION" \
+      --arg http_transport_last_failed_exit_code "$HTTP_TRANSPORT_LAST_FAILED_EXIT_CODE" \
       --argjson post_deployment_recovery_attempted "$POST_DEPLOYMENT_RECOVERY_ATTEMPTED" \
       --argjson post_deployment_restart_issued "$POST_DEPLOYMENT_RESTART_ISSUED" \
       --argjson post_deployment_master_key_available "$POST_DEPLOYMENT_MASTER_KEY_AVAILABLE" \
@@ -300,6 +342,17 @@ cleanup() {
             terminalStatus: $timer_terminal_status,
             failureClass: (
               if $timer_failure_class == "not-observed" then null else $timer_failure_class end
+            )
+          },
+          functionsHostTransport: {
+            recoveredConnectionFailures: $http_transport_recovery_count,
+            unrecoveredOperation: (
+              if $http_transport_last_failed_operation == "not-observed"
+              then null else $http_transport_last_failed_operation end
+            ),
+            unrecoveredExitCode: (
+              if $http_transport_last_failed_exit_code == "not-observed"
+              then null else ($http_transport_last_failed_exit_code | tonumber) end
             )
           },
           packagedFunctionNames: $expected_function_names,
@@ -524,8 +577,12 @@ base_url="https://${FUNCTION}.azurewebsites.net"
 FAILURE_STAGE="function-discovery"
 partial_inventory_observations=0
 for _ in $(seq 1 48); do
-  admin_payload="$(curl --config "$ADMIN_CURL_CONFIG" -sS --fail \
-    --max-time 10 "$base_url/admin/functions/" 2>/dev/null || true)"
+  if functions_http_request "function-discovery" --config "$ADMIN_CURL_CONFIG" -sS --fail \
+    --max-time 10 "$base_url/admin/functions/" 2>/dev/null; then
+    admin_payload="$FUNCTIONS_HTTP_RESPONSE"
+  else
+    admin_payload=""
+  fi
   candidate_count="$(jq -r 'if type == "array" then length else 0 end' \
     <<<"$admin_payload" 2>/dev/null || echo 0)"
   if [[ "$candidate_count" =~ ^[0-9]+$ ]]; then
@@ -618,7 +675,11 @@ echo "azure-durable-functions-live-discovery=count:${DISCOVERED_FUNCTION_COUNT}"
 http_code=""
 FAILURE_STAGE="endpoint-readiness"
 for _ in $(seq 1 72); do
-  http_code="$(curl --config "$CURL_CONFIG" -sS -o /dev/null -w '%{http_code}' "$base_url/api/vyral-smoke/runs/not-a-run" || true)"
+  if functions_http_request "endpoint-readiness" --config "$CURL_CONFIG" -sS -o /dev/null -w '%{http_code}' "$base_url/api/vyral-smoke/runs/not-a-run"; then
+    http_code="$FUNCTIONS_HTTP_RESPONSE"
+  else
+    http_code=""
+  fi
   [[ "$http_code" == 404 ]] && break
   sleep 5
 done
@@ -629,15 +690,17 @@ ENDPOINT_READY=true
 
 FAILURE_STAGE="ordinary-run"
 smoke_body="{\"idempotencyKey\":\"ordinary-smoke-${STAMP}\",\"payload\":{}}"
-smoke_started="$(curl --config "$CURL_CONFIG" -sS --fail -X POST \
+functions_http_request "ordinary-start" --config "$CURL_CONFIG" -sS --fail -X POST \
   "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' \
-  --data "$smoke_body")"
+  --data "$smoke_body"
+smoke_started="$FUNCTIONS_HTTP_RESPONSE"
 smoke_run_id="$(printf '%s' "$smoke_started" | jq -r .id)"
 [[ -n "$smoke_run_id" && "$smoke_run_id" != null ]]
 smoke_status=""
 for _ in $(seq 1 72); do
-  smoke_status="$(curl --config "$CURL_CONFIG" -sS --fail \
-    "$base_url/api/vyral-smoke/runs/$smoke_run_id" | jq -r .status)"
+  functions_http_request "ordinary-status" --config "$CURL_CONFIG" -sS --fail \
+    "$base_url/api/vyral-smoke/runs/$smoke_run_id"
+  smoke_status="$(jq -r .status <<<"$FUNCTIONS_HTTP_RESPONSE")"
   case "$smoke_status" in
     succeeded | failed | rejected | cancelled | timed_out) break ;;
   esac
@@ -649,25 +712,29 @@ ORDINARY_RUN_PASSED=true
 FAILURE_STAGE="external-event-wait"
 timeout_at="$(date -u -d '+10 minutes' +%Y-%m-%dT%H:%M:%SZ)"
 body="{\"idempotencyKey\":\"wait-smoke-${STAMP}\",\"payload\":{\"waitForEvent\":\"approval\",\"waitTimeoutAtUtc\":\"${timeout_at}\"}}"
-first="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$body")"
+functions_http_request "external-event-start" --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$body"
+first="$FUNCTIONS_HTTP_RESPONSE"
 run_id="$(printf '%s' "$first" | jq -r .id)"
 [[ -n "$run_id" && "$run_id" != null ]]
-second="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$body")"
+functions_http_request "external-event-idempotency" --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$body"
+second="$FUNCTIONS_HTTP_RESPONSE"
 [[ "$(printf '%s' "$second" | jq -r .id)" == "$run_id" ]]
 
 status=""
 for _ in $(seq 1 48); do
-  status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$run_id" | jq -r .status)"
+  functions_http_request "external-event-wait-status" --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$run_id"
+  status="$(jq -r .status <<<"$FUNCTIONS_HTTP_RESPONSE")"
   case "$status" in
     waiting | failed | rejected | cancelled | timed_out) break ;;
   esac
   sleep 3
 done
 [[ "$status" == waiting ]]
-curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs/$run_id/events/approval" \
-  -H 'content-type: application/json' --data '{"approved":true}' >/dev/null
+functions_http_request "external-event-raise" --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs/$run_id/events/approval" \
+  -H 'content-type: application/json' --data '{"approved":true}'
 for _ in $(seq 1 72); do
-  status="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$run_id" | jq -r .status)"
+  functions_http_request "external-event-resume-status" --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$run_id"
+  status="$(jq -r .status <<<"$FUNCTIONS_HTTP_RESPONSE")"
   case "$status" in
     succeeded | failed | rejected | cancelled | timed_out) break ;;
   esac
@@ -679,13 +746,15 @@ EXTERNAL_EVENT_PASSED=true
 FAILURE_STAGE="durable-timer"
 timer_at="$(date -u -d '+90 seconds' +%Y-%m-%dT%H:%M:%SZ)"
 timer_body="{\"idempotencyKey\":\"timer-smoke-${STAMP}\",\"payload\":{\"waitForTimerAtUtc\":\"${timer_at}\"}}"
-timer_started="$(curl --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$timer_body")"
+functions_http_request "durable-timer-start" --config "$CURL_CONFIG" -sS --fail -X POST "$base_url/api/vyral-smoke/runs" -H 'content-type: application/json' --data "$timer_body"
+timer_started="$FUNCTIONS_HTTP_RESPONSE"
 timer_run_id="$(printf '%s' "$timer_started" | jq -r .id)"
 [[ -n "$timer_run_id" && "$timer_run_id" != null ]]
 timer_status=""
 timer_payload=""
 for _ in $(seq 1 48); do
-  timer_payload="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id")"
+  functions_http_request "durable-timer-wait-status" --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id"
+  timer_payload="$FUNCTIONS_HTTP_RESPONSE"
   timer_status="$(jq -r .status <<<"$timer_payload")"
   case "$timer_status" in
     waiting) break ;;
@@ -699,7 +768,8 @@ for _ in $(seq 1 48); do
 done
 [[ "$timer_status" == waiting ]]
 for _ in $(seq 1 72); do
-  timer_payload="$(curl --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id")"
+  functions_http_request "durable-timer-resume-status" --config "$CURL_CONFIG" -sS --fail "$base_url/api/vyral-smoke/runs/$timer_run_id"
+  timer_payload="$FUNCTIONS_HTTP_RESPONSE"
   timer_status="$(jq -r .status <<<"$timer_payload")"
   case "$timer_status" in
     succeeded | failed | rejected | cancelled | timed_out) break ;;

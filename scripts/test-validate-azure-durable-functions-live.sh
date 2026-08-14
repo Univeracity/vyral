@@ -188,6 +188,11 @@ case "$url" in
     ;;
   */runs/wait/events/approval)
     [[ "$method" == POST ]]
+    if [[ "${VYRAL_TEST_EVENT_CONNECT_TIMEOUT:-false}" == true && ! -e "$VYRAL_TEST_STATE/event-connect-timeout-observed" ]]; then
+      touch "$VYRAL_TEST_STATE/event-connect-timeout-observed"
+      printf '%s\n' 'curl: (28) Failed to connect to fixture.invalid port 443 after 10000 ms: Timeout was reached' >&2
+      exit 28
+    fi
     touch "$VYRAL_TEST_STATE/event-received"
     ;;
   */runs/ordinary)
@@ -236,6 +241,7 @@ run_case() {
   local deployment_timeout="${14:-false}"
   local hosting_plan="${15:-flex_consumption}"
   local timer_failure="${16:-false}"
+  local event_connect_timeout="${17:-false}"
   local state="$work/state-$name"
   local receipt="$work/receipts/$name.json"
   local output="$work/$name.log"
@@ -253,6 +259,7 @@ run_case() {
   VYRAL_TEST_DEPLOYMENT_TIMEOUT="$deployment_timeout" \
   VYRAL_TEST_HOSTING_PLAN="$hosting_plan" \
   VYRAL_TEST_TIMER_FAILURE="$timer_failure" \
+  VYRAL_TEST_EVENT_CONNECT_TIMEOUT="$event_connect_timeout" \
   VYRAL_AZURE_FUNCTIONS_HOSTING_PLAN="$hosting_plan" \
   VYRAL_AZURE_LIVE_RESOURCE_GROUP=test-disposable \
   VYRAL_AZURE_LIVE_COSMOS_ACCOUNT=test-cosmos \
@@ -282,6 +289,13 @@ run_case() {
   [[ "$(jq -r '.diagnostics.configuredRuntime.name' "$receipt")" == dotnet-isolated ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.version' "$receipt")" == 10.0 ]]
   [[ "$(jq -r '.diagnostics.configuredRuntime.matchedExpectedDotnetIsolated10' "$receipt")" == true ]]
+  expected_transport_recoveries=0
+  if [[ "$event_connect_timeout" == true ]]; then
+    expected_transport_recoveries=1
+  fi
+  [[ "$(jq -r '.diagnostics.functionsHostTransport.recoveredConnectionFailures' "$receipt")" == "$expected_transport_recoveries" ]]
+  [[ "$(jq -r '.diagnostics.functionsHostTransport.unrecoveredOperation' "$receipt")" == null ]]
+  [[ "$(jq -r '.diagnostics.functionsHostTransport.unrecoveredExitCode' "$receipt")" == null ]]
   if [[ "$expected_stage" == durable-timer ]]; then
     [[ "$(jq -r '.diagnostics.durableTimer.terminalStatus' "$receipt")" == failed ]]
     [[ "$(jq -r '.diagnostics.durableTimer.failureClass' "$receipt")" == provider_failure ]]
@@ -337,6 +351,7 @@ run_case deployment-status-retry 7 0 passed complete false false false false tru
 run_case deployment-status-failure 0 1 failed deployment false false false false false 3 true
 run_case deployment-command-timeout 0 1 failed deployment false false false false false 3 false timeout true
 run_case durable-timer-failure 7 1 failed durable-timer false false false false false 1 false worker_reset_503 false flex_consumption true
+run_case external-event-connect-retry 7 0 passed complete false false false false false 1 false worker_reset_503 false flex_consumption false true
 run_case discovery-failure 0 1 failed function-discovery false
 run_case incomplete-discovery 1 1 failed function-discovery true
 run_case trigger-sync-recovery 1 0 passed complete true true
