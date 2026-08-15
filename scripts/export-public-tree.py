@@ -193,6 +193,7 @@ REQUIRED_FILES = {
     "scripts/test-run-dotnet-tests.sh",
     "scripts/test-validate-azure-durable-functions-live.sh",
     "scripts/test-validate-aws-live-qualification.sh",
+    "scripts/verify-python-extropic-sdk-surface.py",
     "scripts/verify-python-runtime-external-worker.sh",
     "scripts/verify-python-runtime-install.py",
     "scripts/verify-python-runtime-mcp-conformance.sh",

@@ -8,6 +8,7 @@ on:
       - "examples/python/extropic_torx_workload.py"
       - "runtimes/python/pyproject.toml"
       - "runtimes/python/src/vyral_runtime/integrations/extropic.py"
+      - "scripts/verify-python-extropic-sdk-surface.py"
       - "scripts/verify-python-extropic-torx.py"
       - "scripts/verify-python-extropic-torx-live.py"
   push:
@@ -19,6 +20,7 @@ on:
       - "examples/python/extropic_torx_workload.py"
       - "runtimes/python/pyproject.toml"
       - "runtimes/python/src/vyral_runtime/integrations/extropic.py"
+      - "scripts/verify-python-extropic-sdk-surface.py"
       - "scripts/verify-python-extropic-torx.py"
       - "scripts/verify-python-extropic-torx-live.py"
   workflow_dispatch:
@@ -53,5 +55,6 @@ jobs:
 
       - name: Run local and clean-process proofs
         run: |
+          python scripts/verify-python-extropic-sdk-surface.py
           python -m py_compile scripts/verify-python-extropic-torx-live.py
           python scripts/verify-python-extropic-torx.py

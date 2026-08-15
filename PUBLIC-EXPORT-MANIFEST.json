@@ -1,5 +1,5 @@
 {
-  "fileCount": 868,
+  "fileCount": 869,
   "files": [
     {
       "mode": "644",
@@ -94,7 +94,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/extropic-preview.yml",
-      "sha256": "93c54dda7ffe6f206fb18795ba3bd54c68e742344bb8f6a960e83102f0a9f483"
+      "sha256": "1ee36ac5443d13e4f9f25ffa4f1b498c88c884e0ed4d08eb6b35778f10232d87"
     },
     {
       "mode": "644",
@@ -624,7 +624,7 @@
     {
       "mode": "644",
       "path": "docs/guides/extropic-execution.md",
-      "sha256": "09e9c18f2f54f28da367906c197abbd192699d686387a147fdf114feff51f656"
+      "sha256": "ad40e64e32ac7d74a03ce9af096bc79523b81605833a8d08ef15126ebe0c9ac1"
     },
     {
       "mode": "644",
@@ -1559,7 +1559,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "a2f976c66152485c09c322735e99cfe0899508641f1b2c9a02c5df9a8361c167"
+      "sha256": "17d010b81f2a31910bb770b324a11856d3910b5fa6e2cfc3f37b6548e77400c8"
     },
     {
       "mode": "755",
@@ -1932,6 +1932,11 @@
       "sha256": "b33ff4b37582f669dddaa3170d048050514ffb13389cfa5ab795703e0acfa1c7"
     },
     {
+      "mode": "644",
+      "path": "scripts/verify-python-extropic-sdk-surface.py",
+      "sha256": "2d83c5e789a6dbdc490a8128d802c4cd66aabcff8c6fac9b7c186a51aab16207"
+    },
+    {
       "mode": "755",
       "path": "scripts/verify-python-extropic-torx-live.py",
       "sha256": "1de7729c6298580a8a44947d42e04b6a2c71a1a92de5362bcbbec807eae655b0"
@@ -1979,7 +1984,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "b4f4e397cf826e60d11cd43d8c8066a9776fc32acce93a0d7086444b6c652ac2"
+      "sha256": "e6409d656e5f12aa2bbd7469a4f66080af8e160128266a5e81210dffc2970d31"
     },
     {
       "mode": "755",
@@ -4344,5 +4349,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "fbd366573f68a99ab633a1cb5826d76903910d008058dc739b8e72543bffe3bd"
+  "treeSha256": "e8f1e887321398347b26b3527d09ce81d3524ef4039caff256807a89761277c1"
 }
