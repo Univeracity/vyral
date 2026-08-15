@@ -28,11 +28,17 @@ environment:
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --editable "runtimes/python[extropic]"
+python scripts/verify-python-extropic-sdk-surface.py
 ```
 
 Authenticate using Extropic's supported `EXTROPIC_TOKEN` environment variable
 or its local browser-login flow. Do not put provider credentials in Vyral run
 payloads, checkpoints, source control, or artifacts.
+
+The verifier imports the exact optional SDK line and checks only the public
+classes, methods, and typed errors Vyral uses. It never creates a client,
+authenticates, or submits provider work; it is the first drift check to run
+after an SDK update and is also retained in release verification.
 
 ## Register a workload
 

@@ -450,6 +450,9 @@ jq -e -f scripts/validate-npm-pack-layout.jq \
 
 python3 -m build --outdir "$ARTIFACT_ROOT/python" clients/python
 scripts/verify-python-runtime.sh
+python3 -m pip install --disable-pip-version-check --no-cache-dir \
+  --editable "runtimes/python[extropic]"
+python3 scripts/verify-python-extropic-sdk-surface.py
 python3 -m build \
   --outdir "$ARTIFACT_ROOT/python-runtime" \
   runtimes/python
