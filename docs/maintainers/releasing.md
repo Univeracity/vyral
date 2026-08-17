@@ -32,16 +32,15 @@ retained as release evidence.
    The Python runtime must likewise retain a passing frozen `2026-07-28` requirements receipt
    produced from its packaged wheel; conformance diagnostics must remain explicitly test-only
    and `VYRAL_MCP_CONFORMANCE_DIAGNOSTICS` must not be present in a release deployment.
-4. Publish packages only through a trusted-publishing or OIDC-backed registry configuration. Do
-   not place long-lived registry tokens in the repository or workflow files. npm currently requires
-   a package to exist before a trusted publisher can be configured. The first
-   `vyral-client@0.3.0` publication is therefore the sole bootstrap exception:
-   after the release tag and canonical evidence exist, publish the exact packed archive from the
-   authorized commit with a locally controlled, short-lived npm token; configure the named npm
-   trusted publisher immediately afterward; and revoke the bootstrap token. Dispatch the protected
-   publisher with `npm_bootstrap_complete: true`; it verifies the registry version, repository URL,
-   and SHA-512 archive integrity against its independently built distribution. Every later npm
-   publication must use OIDC. Do not place the bootstrap token in GitHub, the repository, or a
+4. Publish packages through a trusted-publishing or OIDC-backed registry configuration. Do not
+   place registry tokens in the repository or workflow files. `vyral-client@0.3.0` has an
+   explicitly authorized, capability-scoped exception: after the release tag and canonical evidence
+   exist, publish the exact packed archive from the authorized commit with a locally controlled npm
+   token. Dispatch the protected publisher with `npm_direct_token_published: true`; it verifies the
+   registry version, repository URL, and SHA-512 archive integrity against its independently built
+   distribution. This exception does not claim npm OIDC provenance or a trusted-publisher
+   relationship. A later npm release requires a new explicit authorization or an account configuration
+   that permits npm trusted publishing. Do not place the token in GitHub, the repository, or a
    workflow file.
 5. Attach provenance/attestations and SBOMs to the published release; publish container images with
    build provenance and SBOM attestations enabled.
@@ -96,13 +95,12 @@ push run for that commit. Each registry job uses its own protected environment
 and least-privilege identity. It has no automatic trigger.
 
 Before dispatching it, configure the exact publisher tuple in the cohort
-manifest at each registry: `Univeracity/vyral`, workflow file
-`publish-first-cohort.yml`, and its named environment. NuGet, PyPI, and npm use
+manifest at each trusted registry: `Univeracity/vyral`, workflow file
+`publish-first-cohort.yml`, and its named environment. NuGet and PyPI use
 GitHub Actions OIDC trusted publishing; NuGet additionally needs the
-`NUGET_USERNAME` environment variable for its short-lived-key exchange. The
-npm publisher must permit `npm publish` for that trusted publisher; its
- isolated job supplies Node `22.14.0` and npm `11.5.1`, the minimum supported
- by npm's OIDC flow. The
+`NUGET_USERNAME` environment variable for its short-lived-key exchange. npm is
+published locally under the approved direct-token exception and its isolated
+workflow job verifies the exact registered archive. The
 container job uses only the repository-scoped `GITHUB_TOKEN` with
 `packages: write`. This source authorization is not a claim that any package is
 already available: absent registry trust or an environment approval, the manual
