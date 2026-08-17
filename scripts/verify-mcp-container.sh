@@ -83,9 +83,15 @@ if [[ "$PUBLISH_HOST" != "127.0.0.1" && "$PUBLISH_HOST" != "0.0.0.0" ]]; then
 fi
 CONTAINER_NAME="vyral-mcp-qualification-$PORT-$$"
 CONTAINER_ID=""
+UNAUTHENTICATED_CONTAINER_NAME="${CONTAINER_NAME}-unauthenticated"
+UNAUTHENTICATED_CONTAINER_ID=""
+API_KEY="container-qualification-api-key"
 
 cleanup() {
   local status=$?
+  if [[ -n "$UNAUTHENTICATED_CONTAINER_ID" ]]; then
+    docker rm --force "$UNAUTHENTICATED_CONTAINER_NAME" >/dev/null 2>&1 || true
+  fi
   if [[ -n "$CONTAINER_ID" ]]; then
     if [[ "$status" -ne 0 ]]; then
       echo "Packaged MCP container log (last 120 lines):" >&2
@@ -97,6 +103,32 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+UNAUTHENTICATED_CONTAINER_ID="$(docker run \
+  --detach \
+  --name "$UNAUTHENTICATED_CONTAINER_NAME" \
+  --read-only \
+  --tmpfs /app/.vyral:rw,noexec,nosuid,nodev,uid=1654,gid=1654,mode=0700 \
+  --cap-drop ALL \
+  --security-opt no-new-privileges=true \
+  --pids-limit 256 \
+  "$IMAGE")"
+for _ in {1..40}; do
+  if ! docker inspect --format '{{.State.Running}}' "$UNAUTHENTICATED_CONTAINER_NAME" 2>/dev/null | grep -qx true; then
+    break
+  fi
+  sleep 0.25
+done
+if docker inspect --format '{{.State.Running}}' "$UNAUTHENTICATED_CONTAINER_NAME" 2>/dev/null | grep -qx true; then
+  echo "The packaged MCP container started without its required API key." >&2
+  exit 1
+fi
+if [[ "$(docker inspect --format '{{.State.ExitCode}}' "$UNAUTHENTICATED_CONTAINER_NAME")" == 0 ]]; then
+  echo "The packaged MCP container accepted a missing required API key." >&2
+  exit 1
+fi
+docker rm "$UNAUTHENTICATED_CONTAINER_NAME" >/dev/null
+UNAUTHENTICATED_CONTAINER_ID=""
+
 CONTAINER_ID="$(docker run \
   --detach \
   --name "$CONTAINER_NAME" \
@@ -107,6 +139,7 @@ CONTAINER_ID="$(docker run \
   --security-opt no-new-privileges=true \
   --pids-limit 256 \
   --env Mcp__Enabled=true \
+  --env VYRAL_API_KEY="$API_KEY" \
   "$IMAGE")"
 
 for _ in {1..120}; do
@@ -132,7 +165,8 @@ python3 - \
   "$PUBLISH_HOST" \
   "$ARCHIVED_CONFIG_DIGEST" \
   "$ARCHIVED_ARTIFACT_DIGEST" \
-  "$ROOT/contracts/public-sdk-surface.json" <<'PY'
+  "$ROOT/contracts/public-sdk-surface.json" \
+  "$API_KEY" <<'PY'
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -148,6 +182,7 @@ port = int(sys.argv[1])
 output = Path(sys.argv[2])
 protocol_version = "2026-07-28"
 catalog = json.loads(Path(sys.argv[9]).read_text(encoding="utf-8"))
+api_key = sys.argv[10]
 expected_tools = {
     operation["mcp"]["id"]
     for operation in catalog["operations"]
@@ -206,19 +241,26 @@ def parse_response(content: bytes, content_type: str | None) -> dict[str, object
     return parsed
 
 
-def request(request_id: int, method: str = "server/discover") -> tuple[int, dict[str, object], bool]:
+def request(
+    request_id: int,
+    method: str = "server/discover",
+    include_api_key: bool = True,
+) -> tuple[int, dict[str, object], bool]:
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
     try:
+        headers = {
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+            "MCP-Protocol-Version": protocol_version,
+            "Mcp-Method": method,
+        }
+        if include_api_key:
+            headers["X-Vyral-Api-Key"] = api_key
         connection.request(
             "POST",
             "/mcp",
             body=payload(request_id, method),
-            headers={
-                "Accept": "application/json, text/event-stream",
-                "Content-Type": "application/json",
-                "MCP-Protocol-Version": protocol_version,
-                "Mcp-Method": method,
-            },
+            headers=headers,
         )
         response = connection.getresponse()
         content = response.read()
@@ -227,6 +269,10 @@ def request(request_id: int, method: str = "server/discover") -> tuple[int, dict
     finally:
         connection.close()
 
+
+status, _, _ = request(0, include_api_key=False)
+if status != 401:
+    raise SystemExit(f"Packaged MCP endpoint accepted an anonymous request with HTTP {status}.")
 
 status, discovery, has_session = request(1)
 if status != 200 or has_session:
@@ -288,6 +334,7 @@ try:
     wrong_host.putheader("Content-Length", str(len(content)))
     wrong_host.putheader("MCP-Protocol-Version", protocol_version)
     wrong_host.putheader("Mcp-Method", "server/discover")
+    wrong_host.putheader("X-Vyral-Api-Key", api_key)
     wrong_host.endheaders(content)
     response = wrong_host.getresponse()
     response.read()
@@ -310,6 +357,7 @@ try:
             "Content-Type": "application/json",
             "MCP-Protocol-Version": protocol_version,
             "Mcp-Method": "server/discover",
+            "X-Vyral-Api-Key": api_key,
             "Origin": "https://rebinding.invalid",
         },
     )
@@ -339,6 +387,7 @@ assertions = [
     "the image config selects a non-root runtime user",
     "the server starts with a read-only root filesystem and writable data tmpfs",
     "all Linux capabilities are dropped and no-new-privileges is enforced",
+    "the image refuses startup without an API key and rejects anonymous MCP requests",
     "discovery, tools/list, and resources/list are stateless and session-free",
     "the packaged tool and resource catalogs exactly match the canonical default surface",
     "Development-only conformance fixtures are absent from that canonical surface",

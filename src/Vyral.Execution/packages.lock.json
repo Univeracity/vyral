@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "vyral.primitives": {
+        "type": "Project"
+      }
+    },
+    "net8.0": {
+      "vyral.primitives": {
+        "type": "Project"
+      }
+    }
+  }
+}

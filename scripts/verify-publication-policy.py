@@ -14,13 +14,15 @@ AUTOMATION_GATE = (
     "github.event_name == 'workflow_dispatch' || "
     "vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true'"
 )
-GATED_WORKFLOWS = (
+PAUSED_QUALIFICATION_WORKFLOWS = (
+    "temporal-container-qualification.yml",
+)
+CORE_ASSURANCE_WORKFLOWS = (
     "codeql.yml",
     "container-security.yml",
     "dependency-review.yml",
     "execution-runtime-consumer.yml",
     "release-integrity.yml",
-    "temporal-container-qualification.yml",
 )
 PUBLISH_WORKFLOW = "publish-first-cohort.yml"
 PUBLISH_PATTERNS = {
@@ -63,12 +65,21 @@ def main() -> int:
     ):
         workflow_text[path.name] = _read(path)
 
-    for name in GATED_WORKFLOWS:
+    for name in PAUSED_QUALIFICATION_WORKFLOWS:
         text = workflow_text.get(name)
         if text is None:
             errors.append(f"required manually gated workflow is missing: {name}")
         elif AUTOMATION_GATE not in text:
             errors.append(f"{name} no longer fails closed behind the automation gate")
+
+    for name in CORE_ASSURANCE_WORKFLOWS:
+        text = workflow_text.get(name)
+        if text is None:
+            errors.append(f"required core assurance workflow is missing: {name}")
+        elif "VYRAL_ENABLE_AUTOMATED_WORKFLOWS" in text:
+            errors.append(
+                f"{name} must run without the private automation-pause variable"
+            )
 
     cohort = json.loads(
         _read(ROOT / "packaging" / "publication-cohort.json")
@@ -196,6 +207,8 @@ def main() -> int:
         "no-new-privileges",
         "expected_tools",
         "expected_resources",
+        '"X-Vyral-Api-Key"',
+        "refuses startup without an API key",
         '"Origin": "https://rebinding.invalid"',
         'document["result"].get("resultType") != "complete"',
     ):
@@ -244,7 +257,8 @@ def main() -> int:
     )
     print(
         "publication-policy=ok mode=authorized-first-cohort "
-        f"gatedWorkflows={len(GATED_WORKFLOWS)} "
+        f"pausedQualificationWorkflows={len(PAUSED_QUALIFICATION_WORKFLOWS)} "
+        f"coreAssuranceWorkflows={len(CORE_ASSURANCE_WORKFLOWS)} "
         f"pythonRuntimeMcp={python_status}"
     )
     return 0

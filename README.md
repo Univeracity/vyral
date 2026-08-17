@@ -156,6 +156,7 @@ filesystem. This local command keeps state in a Docker-managed volume:
 ```bash
 docker build -t vyral-server .
 docker volume create vyral-data
+export VYRAL_API_KEY="$(openssl rand -hex 32)"
 docker run --rm \
   --publish 127.0.0.1:8080:8080 \
   --read-only \
@@ -163,13 +164,18 @@ docker run --rm \
   --cap-drop ALL \
   --security-opt no-new-privileges=true \
   --pids-limit 256 \
+  --env VYRAL_API_KEY \
   vyral-server
 ```
 
 CanonicalStore routes are disabled in the image unless their identity policies
-are explicitly configured. Shared deployments should also use an authenticated
-ingress and a deployment-managed API key. See
-[CanonicalStore guide](docs/concepts/canonical-store.md) and the [deployment guide](deploy).
+are explicitly configured. The image requires an API key before it starts;
+health and readiness remain public while data-plane routes require
+`X-Vyral-Api-Key` or `Authorization: Bearer …`. This key establishes one
+application trust boundary, not multi-tenant authorization. Shared deployments
+also need TLS, rate limits, authenticated ingress, and deployment-specific
+identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
+and the [deployment guide](deploy).
 
 ## Choose a runtime or client
 

@@ -29,8 +29,6 @@ permissions:
 jobs:
   scan:
     name: Scan current container surfaces
-    # Manual dispatch remains available when the hosted-automation pause switch is active.
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

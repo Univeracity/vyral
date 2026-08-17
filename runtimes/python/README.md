@@ -123,10 +123,25 @@ work to admit a new run. Use `--path` or `--root` when you need non-default code
 or state locations.
 
 Use `--json` with `init`, `quickstart`, or `inspect` for machine-readable
-output. `vyral-runtime` remains a compatibility command alias. No wheel has
-yet been published, so direct source use or the editable install is the public
-pre-release path. Once the authorized wheel is available, install it with
-`python -m pip install vyral` without changing the local commands.
+output. `vyral-runtime` remains a compatibility command alias. Install the
+published runtime with `python -m pip install vyral` without changing the
+local commands.
+
+### Reproducible server deployment profile
+
+The published REST/MCP host has a separate hash-verified profile for the
+current release. From a source checkout, create an isolated environment and
+install the pinned runtime and server dependencies together:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --require-hashes -r runtimes/python/requirements-server.lock
+```
+
+This profile is intentionally release-specific. Regenerate it when changing
+the published Python version or its `server` extra; development extras and
+experimental integrations remain separate, opt-in dependency choices.
 
 From a source checkout, run the generated application through the same launcher
 that created it so no editable installation is required:

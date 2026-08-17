@@ -70,7 +70,7 @@ jobs:
 
       - name: Restore
         if: ${{ needs.changes.outputs.dotnet == 'true' }}
-        run: dotnet restore Vyral.sln
+        run: dotnet restore Vyral.sln --locked-mode
 
       - name: Verify Azure Durable package coherence
         if: ${{ needs.changes.outputs.dotnet == 'true' }}
@@ -126,6 +126,8 @@ jobs:
           cache-dependency-path: |
             clients/python/pyproject.toml
             runtimes/python/pyproject.toml
+            runtimes/python/requirements-server.in
+            runtimes/python/requirements-server.lock
 
       - name: Set up Go
         if: ${{ needs.changes.outputs.go == 'true' }}
@@ -184,6 +186,7 @@ jobs:
           python3 scripts/verify-markdown-links.py
           python3 scripts/verify-publication-cohort.py
           python3 scripts/verify-publication-policy.py
+          python3 scripts/verify-python-server-lock.py
           python3 scripts/generate-sdk-types.py
           python3 scripts/sync-python-runtime-contracts.py
           git diff --exit-code
