@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "vyral.container-security-release.v1",
+  "publicationAuthorized": true,
+  "image": {
+    "name": "ghcr.io/univeracity/vyral-server",
+    "version": "0.3.1",
+    "source": "Dockerfile",
+    "environment": "publish-container",
+    "maturity": "mixed"
+  },
+  "authorization": {
+    "mode": "manual-protected-environment",
+    "releaseTag": "server-v0.3.1",
+    "workflow": ".github/workflows/publish-container-security-patch.yml",
+    "requirements": [
+      "a GitHub-verified signed annotated server tag that resolves to current main",
+      "a successful canonical Release Integrity push run for that exact commit",
+      "a manual dispatch from main through the publish-container protected environment"
+    ],
+    "publisher": {
+      "ecosystem": "container",
+      "registry": "https://ghcr.io",
+      "workflowFile": "publish-container-security-patch.yml",
+      "environment": "publish-container",
+      "authentication": "repository-scoped GitHub Actions GITHUB_TOKEN"
+    }
+  }
+}

@@ -24,7 +24,12 @@ CORE_ASSURANCE_WORKFLOWS = (
     "execution-runtime-consumer.yml",
     "release-integrity.yml",
 )
-PUBLISH_WORKFLOW = "publish-first-cohort.yml"
+FIRST_COHORT_PUBLISH_WORKFLOW = "publish-first-cohort.yml"
+CONTAINER_SECURITY_PUBLISH_WORKFLOW = "publish-container-security-patch.yml"
+PUBLISH_WORKFLOWS = (
+    FIRST_COHORT_PUBLISH_WORKFLOW,
+    CONTAINER_SECURITY_PUBLISH_WORKFLOW,
+)
 PUBLISH_PATTERNS = {
     "JavaScript package publish": re.compile(
         r"\b(?:npm\s+publish|pnpm\s+publish|yarn\s+npm\s+publish)\b",
@@ -89,12 +94,16 @@ def main() -> int:
             "publication-cohort.json must explicitly authorize the reviewed "
             "first cohort"
         )
-    publisher = workflow_text.get(PUBLISH_WORKFLOW)
+    publisher = workflow_text.get(FIRST_COHORT_PUBLISH_WORKFLOW)
     if publisher is None:
         errors.append("the authorized first-cohort publisher workflow is missing")
         publisher = ""
+    container_publisher = workflow_text.get(CONTAINER_SECURITY_PUBLISH_WORKFLOW)
+    if container_publisher is None:
+        errors.append("the authorized container security publisher workflow is missing")
+        container_publisher = ""
     for name, text in workflow_text.items():
-        if name == PUBLISH_WORKFLOW:
+        if name in PUBLISH_WORKFLOWS:
             continue
         if re.search(
             r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
@@ -105,7 +114,7 @@ def main() -> int:
         for label, pattern in PUBLISH_PATTERNS.items():
             if pattern.search(text):
                 errors.append(
-                    f"{name} contains {label}; only {PUBLISH_WORKFLOW} may publish"
+                    f"{name} contains {label}; only an explicitly authorized publisher may publish"
                 )
 
     for requirement in (
@@ -139,31 +148,63 @@ def main() -> int:
     ):
         if requirement not in publisher:
             errors.append(
-                f"{PUBLISH_WORKFLOW} is missing authorization hook {requirement!r}"
+                f"{FIRST_COHORT_PUBLISH_WORKFLOW} is missing authorization hook {requirement!r}"
             )
     if re.search(r"^  push:\s*$", publisher, re.MULTILINE):
-        errors.append(f"{PUBLISH_WORKFLOW} must not have an automatic push trigger")
+        errors.append(f"{FIRST_COHORT_PUBLISH_WORKFLOW} must not have an automatic push trigger")
     for label in (
         "NuGet push",
         "registry or release publishing action",
     ):
         pattern = PUBLISH_PATTERNS[label]
         if not pattern.search(publisher):
-            errors.append(f"{PUBLISH_WORKFLOW} is missing expected {label}")
+            errors.append(f"{FIRST_COHORT_PUBLISH_WORKFLOW} is missing expected {label}")
     if not re.search(
         r"npm\s+view\s+vyral-client@0\.3\.0\s+dist\.integrity",
         publisher,
         re.IGNORECASE,
     ):
         errors.append(
-            f"{PUBLISH_WORKFLOW} is missing exact npm archive verification"
+            f"{FIRST_COHORT_PUBLISH_WORKFLOW} is missing exact npm archive verification"
         )
     if re.search(
         r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
         publisher,
         re.IGNORECASE,
     ):
-        errors.append(f"{PUBLISH_WORKFLOW} enables VYRAL_ENABLE_AUTOMATED_WORKFLOWS in source")
+        errors.append(f"{FIRST_COHORT_PUBLISH_WORKFLOW} enables VYRAL_ENABLE_AUTOMATED_WORKFLOWS in source")
+
+    for requirement in (
+        "workflow_dispatch:",
+        "server-v0.3.1",
+        "test \"$GITHUB_REF\" = \"refs/heads/main\"",
+        "git cat-file -t \"refs/tags/${RELEASE_TAG}\"",
+        ".verification.verified == true",
+        "release-integrity.yml/runs?head_sha=",
+        "name: publish-container",
+        "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "VYRAL_IMAGE_VERSION=0.3.1",
+        "ghcr.io/univeracity/vyral-server:0.3.1",
+    ):
+        if requirement not in container_publisher:
+            errors.append(
+                f"{CONTAINER_SECURITY_PUBLISH_WORKFLOW} is missing authorization hook {requirement!r}"
+            )
+    if re.search(r"^  push:\s*$", container_publisher, re.MULTILINE):
+        errors.append(
+            f"{CONTAINER_SECURITY_PUBLISH_WORKFLOW} must not have an automatic push trigger"
+        )
+    for label in (
+        "JavaScript package publish",
+        "NuGet push",
+        "Twine upload",
+        "Cargo publish",
+        "GitHub release creation",
+    ):
+        if PUBLISH_PATTERNS[label].search(container_publisher):
+            errors.append(
+                f"{CONTAINER_SECURITY_PUBLISH_WORKFLOW} may publish only the reviewed GHCR image, not {label}"
+            )
 
     release_workflow = workflow_text.get("release-integrity.yml", "")
     for evidence_hook in (
@@ -259,6 +300,7 @@ def main() -> int:
         "publication-policy=ok mode=authorized-first-cohort "
         f"pausedQualificationWorkflows={len(PAUSED_QUALIFICATION_WORKFLOWS)} "
         f"coreAssuranceWorkflows={len(CORE_ASSURANCE_WORKFLOWS)} "
+        f"authorizedPublishers={len(PUBLISH_WORKFLOWS)} "
         f"pythonRuntimeMcp={python_status}"
     )
     return 0

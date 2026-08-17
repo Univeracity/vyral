@@ -186,6 +186,7 @@ jobs:
           python3 scripts/verify-markdown-links.py
           python3 scripts/verify-publication-cohort.py
           python3 scripts/verify-publication-policy.py
+          python3 scripts/verify-container-security-release.py
           python3 scripts/verify-python-server-lock.py
           python3 scripts/generate-sdk-types.py
           python3 scripts/sync-python-runtime-contracts.py
