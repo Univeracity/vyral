@@ -44,7 +44,7 @@
     {
       "mode": "644",
       "path": ".github/dependabot.yml",
-      "sha256": "da1c000ab3f3151632f86ecb004ad2830b5a3211a832ee690b48a4700df1afb3"
+      "sha256": "1167ead29f8a22ba41eae94ed552197921d2a4232b06fb9be3a968a8ca6aec68"
     },
     {
       "mode": "644",
@@ -74,12 +74,12 @@
     {
       "mode": "644",
       "path": ".github/workflows/codeql.yml",
-      "sha256": "e0755cf6064ea170a386e4947a0d0e58159805b2d9e8c5e20ff69106e027715c"
+      "sha256": "bd340e2bee1d0065ff91f526b7da769813ea6554888247bb45797fcf9af72e66"
     },
     {
       "mode": "644",
       "path": ".github/workflows/container-security.yml",
-      "sha256": "fd8957374a754138856c95d3fcd3c32253cf024a59729e234688c9812e8104b8"
+      "sha256": "6c8162e8ed8ff30bb1e29aa69f2a4f0d1745cbb80f9c24ca0654e64dc3ecba9a"
     },
     {
       "mode": "644",
@@ -1629,7 +1629,7 @@
     {
       "mode": "755",
       "path": "scripts/scan-release-secrets.sh",
-      "sha256": "ff7b77d880d5a3712a35ff19d6c48ef9298c67b5f72aea4f221c44b5a6ec0c98"
+      "sha256": "26cac5ac68291e22b9819bc34f87e1a9af411cd12d16e9be1b449e7f5ca66295"
     },
     {
       "mode": "755",
@@ -4349,5 +4349,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "e8f1e887321398347b26b3527d09ce81d3524ef4039caff256807a89761277c1"
+  "treeSha256": "3a6c41832474d488398bd4a7c9184ec855612102cf2ad41f54c5185633026a7d"
 }
