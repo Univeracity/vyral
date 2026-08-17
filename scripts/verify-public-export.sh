@@ -129,12 +129,14 @@ for relative in sorted(actual):
 print(f"public-export-manifest=ok files={len(actual)}")
 PY
 
-# The public repository commits its export manifest so benchmark provenance can prove descent from
-# the private canonical tree. Compare that checked-in evidence with the export we just built. Ignore
-# only sourceDirty: local --allow-dirty rehearsals intentionally set it on generated evidence, while
-# a committed manifest must always describe a clean source tree.
+# The public repository retains an export manifest as release evidence. Every invocation verifies a
+# regenerated deterministic export; release mode additionally requires the retained manifest to
+# describe this exact clean commit. Pull requests deliberately do not require that exact match:
+# dependency automation cannot regenerate provenance evidence, while the release procedure performs
+# the exact check from a clean reviewed commit.
 if [[ -f "$ROOT/PUBLIC-EXPORT-MANIFEST.json" ]]; then
-  python3 - "$ROOT/PUBLIC-EXPORT-MANIFEST.json" "$first/PUBLIC-EXPORT-MANIFEST.json" <<'PY'
+  if [[ "$release_mode" == "true" ]]; then
+    python3 - "$ROOT/PUBLIC-EXPORT-MANIFEST.json" "$first/PUBLIC-EXPORT-MANIFEST.json" <<'PY'
 from __future__ import annotations
 
 import json
@@ -155,6 +157,9 @@ if any(checked.get(field) != generated.get(field) for field in fields):
 
 print("public-export-current-manifest=ok")
 PY
+  else
+    printf 'public-export-current-manifest=release-only\n'
+  fi
 else
   printf 'public-export-current-manifest=not-applicable\n'
 fi

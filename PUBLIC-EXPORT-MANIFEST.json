@@ -1719,7 +1719,7 @@
     {
       "mode": "755",
       "path": "scripts/test-scan-release-secrets.sh",
-      "sha256": "9989cdae3cb02028d9b4a61750f3ee0dbfcd4bf9cbcf31cf29f13252d9c8a962"
+      "sha256": "4af694b8b9e81e9f51fa7578e8fc1527124a7d7550c0d8a8b82c5a24a70288f1"
     },
     {
       "mode": "755",
@@ -1894,7 +1894,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-pr-release-boundary.sh",
-      "sha256": "76dff9274c19a86c8a7f8bbf7f9effa15f52672cf3aababe36307c1a521415d3"
+      "sha256": "f22ee780b9f017d7a75c71e39b03fcf801db4e94c0cfe0b9860b4c1d9c114e19"
     },
     {
       "mode": "644",
@@ -1904,7 +1904,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-public-export.sh",
-      "sha256": "d6c86d5800a4910e180210db8f0b8b43b943b25f70b9c7a918d4adcb4e684b01"
+      "sha256": "604eebb4f89bcce001720720f2dcf85de2de09b9c261fb9720d25c4645c7bc5c"
     },
     {
       "mode": "755",
@@ -4349,5 +4349,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "3a6c41832474d488398bd4a7c9184ec855612102cf2ad41f54c5185633026a7d"
+  "treeSha256": "d148ce8c81ee687170eb9e466f0e77c8de62f205c3ba2170ec06063042012ba5"
 }

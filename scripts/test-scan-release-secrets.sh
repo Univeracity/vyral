@@ -23,5 +23,15 @@ if (cd "$repository" && scripts/scan-release-secrets.sh) >/dev/null 2>&1; then
   echo "Secret scan accepted a credential-shaped token." >&2
   exit 1
 fi
+git -C "$repository" checkout -- README.md
+
+printf '%s\n' 'tracked-ignored.txt' > "$repository/.gitignore"
+printf '%s\n' 'This file is both tracked and ignored.' > "$repository/tracked-ignored.txt"
+git -C "$repository" add --force .gitignore tracked-ignored.txt
+git -C "$repository" commit -qm tracked-ignored-file
+if (cd "$repository" && scripts/scan-release-secrets.sh) >/dev/null 2>&1; then
+  echo "Secret scan accepted a tracked ignored file." >&2
+  exit 1
+fi
 
 printf 'release-secret-scan-test=ok\n'
