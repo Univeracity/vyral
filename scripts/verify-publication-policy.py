@@ -103,7 +103,7 @@ def main() -> int:
         "v0.3.0",
         "confirm:",
         "type: boolean",
-        "npm_bootstrap_complete:",
+        "npm_direct_token_published:",
         "refs/heads/main",
         "git cat-file -t \"refs/tags/${RELEASE_TAG}\"",
         ".verification.verified == true",
@@ -114,12 +114,11 @@ def main() -> int:
         "name: publish-container",
         "node-version: \"22.14.0\"",
         "npm@11.5.1",
-        "Publish or verify npm first cohort",
-        "Verify the one-time direct bootstrap archive",
+        "Verify direct-token npm first cohort",
+        "Verify the authorized direct-token archive",
         'npm view vyral-client@0.3.0 dist.integrity',
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
-        "npm publish vyral-client-0.3.0.tgz --access public --provenance",
         "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
         "ghcr.io/univeracity/vyral-server:0.3.0",
     ):
@@ -130,13 +129,20 @@ def main() -> int:
     if re.search(r"^  push:\s*$", publisher, re.MULTILINE):
         errors.append(f"{PUBLISH_WORKFLOW} must not have an automatic push trigger")
     for label in (
-        "JavaScript package publish",
         "NuGet push",
         "registry or release publishing action",
     ):
         pattern = PUBLISH_PATTERNS[label]
         if not pattern.search(publisher):
             errors.append(f"{PUBLISH_WORKFLOW} is missing expected {label}")
+    if not re.search(
+        r"npm\s+view\s+vyral-client@0\.3\.0\s+dist\.integrity",
+        publisher,
+        re.IGNORECASE,
+    ):
+        errors.append(
+            f"{PUBLISH_WORKFLOW} is missing exact npm archive verification"
+        )
     if re.search(
         r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
         publisher,

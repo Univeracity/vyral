@@ -10,11 +10,11 @@ on:
         options:
           - v0.3.0
       confirm:
-        description: I have configured the exact trusted publishers and reviewed the release notes
+        description: I have configured the required registry publishers and reviewed the release notes
         required: true
         type: boolean
-      npm_bootstrap_complete:
-        description: The one-time direct vyral-client bootstrap is published, integrity-verified, and now trusted by npm OIDC
+      npm_direct_token_published:
+        description: The authorized local direct-token publication of vyral-client is complete and ready for exact archive verification
         required: true
         default: false
         type: boolean
@@ -44,13 +44,13 @@ jobs:
         id: authority
         env:
           CONFIRM: ${{ inputs.confirm }}
-          NPM_BOOTSTRAP_COMPLETE: ${{ inputs.npm_bootstrap_complete }}
+          NPM_DIRECT_TOKEN_PUBLISHED: ${{ inputs.npm_direct_token_published }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$CONFIRM" = "true"
-          test "$NPM_BOOTSTRAP_COMPLETE" = "true" || test "$NPM_BOOTSTRAP_COMPLETE" = "false"
+          test "$NPM_DIRECT_TOKEN_PUBLISHED" = "true"
           test "$RELEASE_TAG" = "v0.3.0"
           git fetch --force --tags origin
           test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
@@ -211,7 +211,7 @@ jobs:
           packages-dir: dist/pypi
 
   publish-npm:
-    name: Publish or verify npm first cohort
+    name: Verify direct-token npm first cohort
     needs: build
     runs-on: ubuntu-22.04
     environment:
@@ -219,7 +219,6 @@ jobs:
       url: https://www.npmjs.com/package/vyral-client
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Set up a trusted-publishing-compatible Node and npm CLI
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -239,13 +238,7 @@ jobs:
           name: first-cohort-v0.3.0
           path: dist
 
-      - name: Publish the JavaScript client with provenance
-        if: inputs.npm_bootstrap_complete == false
-        working-directory: dist/npm
-        run: npm publish vyral-client-0.3.0.tgz --access public --provenance
-
-      - name: Verify the one-time direct bootstrap archive
-        if: inputs.npm_bootstrap_complete == true
+      - name: Verify the authorized direct-token archive
         working-directory: dist/npm
         run: |
           set -euo pipefail
