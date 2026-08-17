@@ -2,9 +2,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1fc6e423f543119c406d24e2e687d67c5
 
 WORKDIR /src
 COPY . .
-RUN dotnet publish src/Vyral.Server/Vyral.Server.csproj \
+RUN dotnet restore src/Vyral.Server/Vyral.Server.csproj --locked-mode --disable-parallel \
+    && dotnet publish src/Vyral.Server/Vyral.Server.csproj \
     -c Release \
     -o /app/publish \
+    --no-restore \
     /p:UseAppHost=false \
     && mkdir -p /app/publish/.vyral
 
@@ -21,6 +23,7 @@ LABEL org.opencontainers.image.title="Vyral Server" \
 
 WORKDIR /app
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
+    Server__RequireApiKey=true \
     CanonicalStore__Enabled=false \
     DatabasePath=/app/.vyral/vyral.sqlite \
     ObjectsPath=/app/.vyral/objects \

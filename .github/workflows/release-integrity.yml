@@ -16,9 +16,6 @@ permissions:
 jobs:
   verify:
     name: Verify releasable artifacts
-    # The repository variable is the emergency pause switch for hosted gates.
-    # Manual dispatch remains available for controlled diagnostics.
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
     # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor. The workspace-agent
     # security gate must exercise Bubblewrap's real namespace boundary, never an unsandboxed
     # fallback, so keep this job on the supported 22.04 runner until a reviewed AppArmor profile

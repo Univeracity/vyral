@@ -159,6 +159,11 @@ def main() -> int:
         raise SystemExit(
             "workers/execution-smoke-go/Dockerfile is not pinned to the supported Go build version."
         )
+    for requirement in ("--locked-mode", "Server__RequireApiKey=true"):
+        if requirement not in dockerfile:
+            raise SystemExit(
+                f"Dockerfile is missing the required security build/runtime setting {requirement!r}."
+            )
 
     for relative in (
         ".github/workflows/ci.yml",

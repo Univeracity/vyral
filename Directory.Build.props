@@ -22,6 +22,10 @@
     <PackageTags Condition="'$(PackageTags)' == ''">vyral;provider-neutral;contracts;retrieval;execution</PackageTags>
     <PackageReadmeFile Condition="'$(PackageReadmeFile)' == '' and '$(IsPackable)' != 'false'">README.md</PackageReadmeFile>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <!-- Lock the resolved NuGet graph. CI must never silently refresh a transitive
+         dependency; dependency updates deliberately regenerate the committed locks. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
 
   <!-- Packages without a package-specific README receive a compact package landing page rather

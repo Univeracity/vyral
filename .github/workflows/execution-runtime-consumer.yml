@@ -69,9 +69,6 @@ on:
 jobs:
   validate:
     name: Validate consumer path
-    # The repository variable is the emergency pause switch for hosted gates.
-    # Manual dispatch remains available for controlled diagnostics.
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.VYRAL_ENABLE_AUTOMATED_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
@@ -92,7 +89,7 @@ jobs:
           cache: false
 
       - name: Restore
-        run: dotnet restore Vyral.sln
+        run: dotnet restore Vyral.sln --locked-mode
 
       - name: Validate local consumer contract
         run: scripts/validate-execution-runtime-consumer.sh
