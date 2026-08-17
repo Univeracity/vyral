@@ -1,4 +1,4 @@
-FROM golang:1.26.6@sha256:640a234f4bea3e399c056b7b8f9c667c4939befae8db2f14e9785e16eccd4205 AS build
+FROM golang:1.26.6@sha256:0d1d3a794be25f809dd2cb3160d8c73276c4056a9f8242a138e908ddeee7b6b6 AS build
 
 WORKDIR /src
 COPY clients/go/go.mod ./clients/go/go.mod
@@ -8,7 +8,7 @@ COPY workers/execution-smoke-go ./workers/execution-smoke-go
 WORKDIR /src/workers/execution-smoke-go
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags='-s -w' -o /out/execution-smoke-worker ./
 
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:1b7b9f0f0e0a1d2155f531db587cc48ec26aaf97ab64364225f5bf18a054e66a
 ARG VYRAL_IMAGE_VERSION=0.3.0
 ARG VYRAL_IMAGE_REVISION=local
 LABEL org.opencontainers.image.title="Vyral Execution Smoke Worker" \

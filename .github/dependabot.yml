@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      aws-sdk-net:
+        patterns:
+          - AWSSDK.*
 
   - package-ecosystem: npm
     directory: /clients/javascript
@@ -57,3 +61,7 @@ updates:
       codeql-action:
         patterns:
           - github/codeql-action/*
+      docker-publish-actions:
+        patterns:
+          - docker/login-action
+          - docker/build-push-action
