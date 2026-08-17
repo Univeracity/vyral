@@ -5,8 +5,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # A privacy rule in .gitignore is ineffective if the file was committed before the rule existed.
-# Reject that state without echoing potentially sensitive file names into build logs.
-if git ls-files -ci --exclude-standard | rg -q .; then
+# Reject that state without echoing potentially sensitive file names into build logs. Avoid a
+# non-standard search-tool dependency here: a release guard must fail or pass on the same evidence
+# in every supported runner.
+if [[ -n "$(git ls-files -ci --exclude-standard)" ]]; then
   printf '%s\n' 'Tracked files match a repository ignore rule; remove them from the release candidate before publishing.' >&2
   exit 1
 fi
