@@ -117,11 +117,28 @@ git -C "$public_root" \
   -c user.name='Vyral Tests' \
   -c user.email='tests@openvyral.com' \
   commit --amend --quiet --no-edit
+public_result="$(
+  cd "$public_root"
+  scripts/validate-canonical-mysql-benchmark-report.sh "$source_report"
+)"
+if [[ "$public_result" != *"provenance=public-export-lineage"* ]]; then
+  echo "Canonical MySQL benchmark validator treated the release-only current manifest as receipt evidence." >&2
+  exit 1
+fi
+
+jq '.generatedAtUtc = "2026-07-29T00:00:00Z"' "$public_root/$source_report" \
+  > "$work_root/changed-report.json"
+mv "$work_root/changed-report.json" "$public_root/$source_report"
+git -C "$public_root" add "$source_report"
+git -C "$public_root" \
+  -c user.name='Vyral Tests' \
+  -c user.email='tests@openvyral.com' \
+  commit --quiet --message='Alter benchmark receipt'
 if (
   cd "$public_root"
   scripts/validate-canonical-mysql-benchmark-report.sh "$source_report" >/dev/null 2>&1
 ); then
-  echo "Canonical MySQL benchmark validator accepted a dirty public-export manifest." >&2
+  echo "Canonical MySQL benchmark validator accepted an altered benchmark receipt." >&2
   exit 1
 fi
 

@@ -93,8 +93,7 @@ from typing import Any
 
 root = Path.cwd().resolve()
 report = Path(sys.argv[1]).resolve()
-manifest_path = root / "PUBLIC-EXPORT-MANIFEST.json"
-manifest_name = manifest_path.name
+manifest_name = "PUBLIC-EXPORT-MANIFEST.json"
 
 
 def git_bytes(*arguments: str) -> bytes:
@@ -164,37 +163,9 @@ try:
 except ValueError as exc:
     raise SystemExit("Benchmark report is outside the public export root.") from exc
 
-if not manifest_path.is_file():
-    raise SystemExit(
-        "Canonical MySQL benchmark sourceCommit is not an ancestor and no public-export "
-        "manifest is present."
-    )
-
 for command in (["git", "diff", "--quiet"], ["git", "diff", "--cached", "--quiet"]):
     if subprocess.run(command, check=False).returncode != 0:
         raise SystemExit("Public-export benchmark provenance requires a clean tracked tree.")
-
-current_actual: dict[str, tuple[str, str]] = {}
-for encoded_path in git_bytes("ls-files", "-z").split(b"\0"):
-    if not encoded_path:
-        continue
-    relative = encoded_path.decode("utf-8")
-    if relative == manifest_name:
-        continue
-    path = root / relative
-    try:
-        path.resolve().relative_to(root)
-    except ValueError as exc:
-        raise SystemExit(f"Current public-export path escapes the root: {relative}") from exc
-    if path.is_symlink() or not path.is_file():
-        raise SystemExit(f"Current public-export path is not a regular file: {relative}")
-    mode = "755" if path.stat().st_mode & stat.S_IXUSR else "644"
-    current_actual[relative] = (mode, hashlib.sha256(path.read_bytes()).hexdigest())
-
-current_manifest = load_manifest(manifest_path.read_bytes(), "Current")
-validate_manifest(current_manifest, current_actual, "Current")
-if report_relative not in current_actual:
-    raise SystemExit("Benchmark report is absent from the public-export manifest.")
 
 roots = git_bytes("rev-list", "--max-parents=0", "HEAD").decode("ascii").splitlines()
 if len(roots) != 1:
@@ -226,7 +197,19 @@ for record in git_bytes("ls-tree", "-rz", history_root).split(b"\0"):
 validate_manifest(root_manifest, root_actual, "Root")
 if report_relative not in root_actual:
     raise SystemExit("Benchmark report is absent from the initial public-export manifest.")
-if current_actual[report_relative] != root_actual[report_relative]:
+
+# The retained manifest is exact evidence for the immutable public-history root and for a release
+# verification. It is intentionally not refreshed for ordinary commits: otherwise harmless
+# dependency maintenance would require a release-evidence rewrite before it could merge. The
+# benchmark receipt is instead protected by comparing the report itself to the root receipt.
+current_report = root / report_relative
+if current_report.is_symlink() or not current_report.is_file():
+    raise SystemExit("Benchmark report is not a regular file in the current public tree.")
+current_report_entry = (
+    "755" if current_report.stat().st_mode & stat.S_IXUSR else "644",
+    hashlib.sha256(current_report.read_bytes()).hexdigest(),
+)
+if current_report_entry != root_actual[report_relative]:
     raise SystemExit("Benchmark report has changed since the initial public-export root.")
 PY
   provenance="public-export-lineage"
