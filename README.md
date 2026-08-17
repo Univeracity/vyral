@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Own the contract layer.</strong><br>
-  Provider-portable records, retrieval, durable execution, and AI runs.
+  Provider-portable canonical data, retrieval, durable execution, and agent-facing AI.
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
   <a href="docs/reference/stability.md"><img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-111111"></a>
   <a href="runtimes/python"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/python-3.10%2B-111111"></a>
   <a href="design/public-sdk-surface-and-stateless-mcp.md"><img alt="MCP 2026-07-28" src="https://img.shields.io/badge/MCP-2026--07--28-111111"></a>
-  <a href="#status"><img alt="Readiness is evidence-scoped" src="https://img.shields.io/badge/readiness-evidence--scoped-6b7280"></a>
+  <a href="#capability-boundaries"><img alt="Readiness is evidence-scoped" src="https://img.shields.io/badge/readiness-evidence--scoped-6b7280"></a>
 </p>
 
 <p align="center">
@@ -32,9 +32,9 @@
 ---
 
 Vyral is an open-source, local-first contract layer and runtime for applications
-that need **records and objects**, **retrieval and RAG**, **durable work**, and
-**provider-backed AI runs**. It keeps those capabilities behind stable,
-application-owned contracts instead of vendor SDKs.
+that own canonical data and need **records and objects**, **retrieval and RAG**,
+**durable work**, and **agent-facing AI**. It keeps those capabilities behind
+stable, application-owned contracts instead of vendor SDKs.
 
 Start on a laptop with one command. When economics, features, policy, or scale
 change, adapters can move individual capabilities to SQLite,
@@ -93,7 +93,7 @@ Vyral keeps the capability model application-owned:
 - **Objects** — large immutable payloads and manifests outside the record index
 - **Retrieval** — source-native, lexical, vector, and hybrid search, profiles, and evaluation
 - **RAG** — deterministic chunk plans, dry-run/commit, manifests, context, and citations
-- **AI runs** — one envelope for local, CLI, ONNX-backed, and remote capabilities
+- **Agent-facing AI** — one envelope for local, CLI, ONNX-backed, and remote capabilities
 - **Execution** — durable runs and plugins with local and provider-backed adapters
 - **Evidence** — readiness, traces, conformance suites, and qualification levels
 
@@ -106,16 +106,16 @@ structured sources that an application can safely access, direct source search
 is often the simplest first path. Indexed lexical, vector, hybrid, and reranked
 retrieval remain available when corpus shape and measured quality justify them.
 
-## Status
+## Capability boundaries
 
-Vyral is an Apache-2.0, pre-1.0 project in active development. Local paths are
-usable and tested, but adapter maturity varies and packages have not yet been
-published. See the [stability policy](docs/reference/stability.md) for the
-compatibility policy.
+Vyral is Apache-2.0 software with independently evidenced capabilities. Local
+records, objects, retrieval, RAG, and the .NET contract surface are the primary
+paths; other capabilities carry their own boundary below. See the
+[stability policy](docs/reference/stability.md) for compatibility commitments.
 
-| Surface | Current posture |
+| Surface | Current capability |
 | --- | --- |
-| .NET local server, SQLite, retrieval, and RAG | Primary supported implementation |
+| .NET local server, SQLite, retrieval, and RAG | Primary local implementation |
 | Python and JavaScript HTTP clients | Implemented and tested against the public SDK catalog |
 | Python-native embedded runtime and REST/MCP host | Prototype; clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
 | Source-native ripgrep integration | Experimental; bounded exact-literal search over authorized code and Markdown, outside the stable wire/MCP contract |
@@ -123,7 +123,7 @@ compatibility policy.
 | Local SQLite, Azure, and Google execution | Local reference path; Azure and Google execution are live qualified |
 | Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
 
-A package existing in the repository is not a production-readiness claim. The
+Package availability does not itself establish a service-level commitment. The
 [qualification report](qualification/adapter-qualification.json) is the source
 of truth for recorded evidence.
 
