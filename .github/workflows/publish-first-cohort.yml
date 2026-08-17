@@ -44,6 +44,7 @@ jobs:
         id: authority
         env:
           CONFIRM: ${{ inputs.confirm }}
+          GITHUB_TOKEN: ${{ github.token }}
           NPM_DIRECT_TOKEN_PUBLISHED: ${{ inputs.npm_direct_token_published }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |

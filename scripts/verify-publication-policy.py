@@ -104,6 +104,7 @@ def main() -> int:
         "confirm:",
         "type: boolean",
         "npm_direct_token_published:",
+        "GITHUB_TOKEN: ${{ github.token }}",
         "refs/heads/main",
         "git cat-file -t \"refs/tags/${RELEASE_TAG}\"",
         ".verification.verified == true",
