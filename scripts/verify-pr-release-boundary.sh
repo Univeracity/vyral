@@ -25,6 +25,7 @@ python3 scripts/verify-public-sdk-surface.py
 python3 scripts/verify-public-contract-schemas.py
 python3 scripts/test-classify-ci-changes.py
 scripts/scan-release-secrets.sh
+scripts/test-scan-release-secrets.sh
 scripts/scan-release-ownership.sh
 scripts/verify-public-export.sh "${export_args[@]}"
 
