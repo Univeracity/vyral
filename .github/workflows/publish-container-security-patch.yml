@@ -1,0 +1,110 @@
+name: Publish server container security patch
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Signed server container tag for the reviewed security patch
+        required: true
+        type: choice
+        options:
+          - server-v0.3.1
+      confirm:
+        description: I have reviewed the release evidence and container release notes
+        required: true
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: publish-server-container-v0.3.1
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate container release authority
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      source_sha: ${{ steps.authority.outputs.source_sha }}
+    steps:
+      - name: Check out protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Require the signed current server tag and canonical evidence
+        id: authority
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONFIRM" = "true"
+          test "$RELEASE_TAG" = "server-v0.3.1"
+          git fetch --force --tags origin
+          test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
+          source_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          test "$source_sha" = "$(git rev-parse origin/main)"
+          tag_object="$(git rev-parse "refs/tags/${RELEASE_TAG}")"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/tags/$tag_object" \
+            | jq -e '.verification.verified == true' >/dev/null
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/release-integrity.yml/runs?head_sha=$source_sha&event=push&status=success&per_page=20" \
+            | jq -e '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == "main")] | length > 0' >/dev/null
+          printf 'source_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish server container security patch
+    needs: validate
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-container
+      url: https://github.com/Univeracity/vyral/pkgs/container/vyral-server
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Check out the authorized release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.source_sha }}
+
+      - name: Set up an attestation-capable BuildKit builder
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          driver: docker-container
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build, attest, and publish the authorized server image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: true
+          sbom: true
+          provenance: mode=max
+          build-args: |
+            VYRAL_IMAGE_VERSION=0.3.1
+            VYRAL_IMAGE_REVISION=${{ needs.validate.outputs.source_sha }}
+          tags: ghcr.io/univeracity/vyral-server:0.3.1
+          labels: |
+            org.opencontainers.image.source=https://github.com/Univeracity/vyral
+            org.opencontainers.image.version=0.3.1
+            org.opencontainers.image.revision=${{ needs.validate.outputs.source_sha }}

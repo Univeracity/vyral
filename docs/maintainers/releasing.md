@@ -88,11 +88,19 @@ The version lines and maturity promises are defined in the [stability policy](..
 The exact authorized first cohort is recorded in
 [`packaging/publication-cohort.json`](../../packaging/publication-cohort.json).
 The manual [`Publish first cohort`](../../.github/workflows/publish-first-cohort.yml)
-workflow is the only source path allowed to publish it. It accepts only the
+workflow is the only source path allowed to publish that cohort. It accepts only the
 reviewed `v0.3.0` cohort, and before packaging requires a GitHub-verified signed
 annotated tag at current `main` plus a successful canonical Release Integrity
 push run for that commit. Each registry job uses its own protected environment
 and least-privilege identity. It has no automatic trigger.
+
+The server's `0.3.1` security correction is a deliberately separate,
+container-only delivery: [`packaging/container-security-release.json`](../../packaging/container-security-release.json)
+and the manual [`Publish server container security patch`](../../.github/workflows/publish-container-security-patch.yml)
+workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.1`. It requires a
+GitHub-verified signed `server-v0.3.1` tag at current `main` and a successful
+Release Integrity run for that commit. It does not republish the unaffected
+NuGet, PyPI, or npm artifacts.
 
 Before dispatching it, configure the exact publisher tuple in the cohort
 manifest at each trusted registry: `Univeracity/vyral`, workflow file

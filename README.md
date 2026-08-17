@@ -177,6 +177,10 @@ also need TLS, rate limits, authenticated ingress, and deployment-specific
 identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
 and the [deployment guide](deploy).
 
+The hardened immutable server image is
+`ghcr.io/univeracity/vyral-server:0.3.1`; use it with the same API-key and
+runtime restrictions shown above.
+
 ## Choose a runtime or client
 
 | Goal | Entry point |
