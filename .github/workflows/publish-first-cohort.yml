@@ -13,6 +13,11 @@ on:
         description: I have configured the exact trusted publishers and reviewed the release notes
         required: true
         type: boolean
+      npm_bootstrap_complete:
+        description: The one-time direct vyral-client bootstrap is published, integrity-verified, and now trusted by npm OIDC
+        required: true
+        default: false
+        type: boolean
 
 permissions: {}
 
@@ -39,11 +44,13 @@ jobs:
         id: authority
         env:
           CONFIRM: ${{ inputs.confirm }}
+          NPM_BOOTSTRAP_COMPLETE: ${{ inputs.npm_bootstrap_complete }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$CONFIRM" = "true"
+          test "$NPM_BOOTSTRAP_COMPLETE" = "true" || test "$NPM_BOOTSTRAP_COMPLETE" = "false"
           test "$RELEASE_TAG" = "v0.3.0"
           git fetch --force --tags origin
           test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
@@ -204,7 +211,7 @@ jobs:
           packages-dir: dist/pypi
 
   publish-npm:
-    name: Publish npm first cohort
+    name: Publish or verify npm first cohort
     needs: build
     runs-on: ubuntu-22.04
     environment:
@@ -233,8 +240,19 @@ jobs:
           path: dist
 
       - name: Publish the JavaScript client with provenance
+        if: inputs.npm_bootstrap_complete == false
         working-directory: dist/npm
         run: npm publish vyral-client-0.3.0.tgz --access public --provenance
+
+      - name: Verify the one-time direct bootstrap archive
+        if: inputs.npm_bootstrap_complete == true
+        working-directory: dist/npm
+        run: |
+          set -euo pipefail
+          expected_integrity="sha512-$(openssl dgst -sha512 -binary vyral-client-0.3.0.tgz | base64 -w 0)"
+          test "$(npm view vyral-client@0.3.0 version)" = "0.3.0"
+          test "$(npm view vyral-client@0.3.0 repository.url)" = "git+https://github.com/univeracity/vyral.git"
+          test "$(npm view vyral-client@0.3.0 dist.integrity)" = "$expected_integrity"
 
   publish-container:
     name: Publish server container

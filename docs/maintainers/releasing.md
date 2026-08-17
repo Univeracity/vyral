@@ -33,7 +33,16 @@ retained as release evidence.
    produced from its packaged wheel; conformance diagnostics must remain explicitly test-only
    and `VYRAL_MCP_CONFORMANCE_DIAGNOSTICS` must not be present in a release deployment.
 4. Publish packages only through a trusted-publishing or OIDC-backed registry configuration. Do
-   not place long-lived registry tokens in the repository or workflow files.
+   not place long-lived registry tokens in the repository or workflow files. npm currently requires
+   a package to exist before a trusted publisher can be configured. The first
+   `vyral-client@0.3.0` publication is therefore the sole bootstrap exception:
+   after the release tag and canonical evidence exist, publish the exact packed archive from the
+   authorized commit with a locally controlled, short-lived npm token; configure the named npm
+   trusted publisher immediately afterward; and revoke the bootstrap token. Dispatch the protected
+   publisher with `npm_bootstrap_complete: true`; it verifies the registry version, repository URL,
+   and SHA-512 archive integrity against its independently built distribution. Every later npm
+   publication must use OIDC. Do not place the bootstrap token in GitHub, the repository, or a
+   workflow file.
 5. Attach provenance/attestations and SBOMs to the published release; publish container images with
    build provenance and SBOM attestations enabled.
 6. Before any visibility change, scan every reachable Git ref as well as the current tree. Create
