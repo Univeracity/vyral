@@ -297,7 +297,6 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
                 first.Id);
             var checkpoint = await _runtime.GetCheckpointAsync(
                 first.Id, "progress");
-            var history = await _runtime.GetHistoryAsync(first.Id);
             var required = new[]
             {
                 ExecutionEventTypes.RunCreated,
@@ -307,6 +306,11 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
                 ExecutionEventTypes.CheckpointWritten,
                 ExecutionEventTypes.RunCompleted
             };
+            await WaitForHistoryEventsAsync(
+                _runtime,
+                first.Id,
+                required);
+            var history = await _runtime.GetHistoryAsync(first.Id);
             var firstAdmission = ExecutionAdmission.Create(
                 first,
                 "startExecutionRun",
@@ -635,6 +639,26 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
             }
             throw new TimeoutException(
                 $"Run {runId} did not record {eventType}.");
+        }
+
+        private static async Task WaitForHistoryEventsAsync(
+            IExecutionRuntime runtime,
+            string runId,
+            IReadOnlyCollection<string> eventTypes)
+        {
+            for (var attempt = 0; attempt < 400; attempt++)
+            {
+                var history = await runtime.GetHistoryAsync(runId);
+                if (eventTypes.All(
+                    eventType => history.Any(
+                        item => item.Type == eventType)))
+                {
+                    return;
+                }
+                await Task.Delay(10);
+            }
+            throw new TimeoutException(
+                $"Run {runId} did not record all required history events.");
         }
     }
 

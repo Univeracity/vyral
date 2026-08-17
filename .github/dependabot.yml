@@ -15,6 +15,11 @@ updates:
       sqlitepclraw:
         patterns:
           - SQLitePCLRaw.*
+    ignore:
+      # System.CommandLine 2.x requires an intentional CLI API migration.
+      - dependency-name: System.CommandLine
+        versions:
+          - ">= 2.0.0"
 
   - package-ecosystem: npm
     directory: /clients/javascript
