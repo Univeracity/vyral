@@ -9,6 +9,12 @@ updates:
       aws-sdk-net:
         patterns:
           - AWSSDK.*
+      mcp-sdk:
+        patterns:
+          - ModelContextProtocol.*
+      sqlitepclraw:
+        patterns:
+          - SQLitePCLRaw.*
 
   - package-ecosystem: npm
     directory: /clients/javascript
