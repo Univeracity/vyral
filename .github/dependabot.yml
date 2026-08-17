@@ -19,10 +19,11 @@ updates:
         patterns:
           - xunit.runner.visualstudio
     ignore:
-      # System.CommandLine 2.x requires an intentional CLI API migration.
+      # System.CommandLine 2.x, including prereleases, requires an intentional
+      # CLI API migration.
       - dependency-name: System.CommandLine
         versions:
-          - ">= 2.0.0"
+          - ">= 2.0.0-beta4.22272.1"
 
   - package-ecosystem: npm
     directory: /clients/javascript
