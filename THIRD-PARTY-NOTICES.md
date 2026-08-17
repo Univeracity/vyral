@@ -13,6 +13,7 @@ does contain its license file:
 | --- | --- | --- |
 | `Microsoft.Extensions.Logging.Abstractions` 2.2.0 | [Package-declared upstream `LICENSE`](https://raw.githubusercontent.com/aspnet/AspNetCore/2.0.0/LICENSE.txt) | Apache-2.0 |
 | `Microsoft.ML.OnnxRuntime` and `Microsoft.ML.OnnxRuntime.Managed` | Distributed `LICENSE` / `LICENSE.txt` | MIT |
+| `SQLite` | Distributed `LICENSE.txt` and [SQLite copyright notice](https://sqlite.org/copyright.html) | Public domain |
 | `SourceGear.sqlite3` | Distributed `LICENSE.txt` and SQLite copyright notice | Public domain |
 | `System.Reactive.Compatibility` | [Upstream version-tagged `LICENSE`](https://github.com/dotnet/reactive/blob/rxnet-v4.4.1/LICENSE) | MIT |
 
