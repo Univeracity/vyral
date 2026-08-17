@@ -116,7 +116,7 @@ def main() -> int:
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
         "npm publish vyral-client-0.3.0.tgz --access public --provenance",
-        "docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8",
+        "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
         "ghcr.io/univeracity/vyral-server:0.3.0",
     ):
         if requirement not in publisher:
