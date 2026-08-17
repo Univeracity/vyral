@@ -120,6 +120,8 @@ def main() -> int:
         'npm view vyral-client@0.3.0 dist.integrity',
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
+        "docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435",
+        "driver: docker-container",
         "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
         "ghcr.io/univeracity/vyral-server:0.3.0",
     ):

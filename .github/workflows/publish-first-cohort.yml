@@ -268,6 +268,11 @@ jobs:
         with:
           ref: ${{ needs.validate.outputs.source_sha }}
 
+      - name: Set up an attestation-capable BuildKit builder
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          driver: docker-container
+
       - name: Log in to the GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
