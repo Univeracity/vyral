@@ -440,6 +440,10 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
                 ExecutionEventTypes.WaitRegistered);
 
             _runtime = CreateRuntime();
+            // Recover persisted state before delivering the event. Recovering after the
+            // event can mistake the newly resumed worker for interrupted work.
+            await _runtime.DispatchReadyRunsAsync(
+                recoverInterruptedRuns: true);
             var rawEvent = arguments.GetProperty("event");
             await _runtime.RaiseEventAsync(
                 new ExecutionExternalEventRequest
@@ -449,8 +453,7 @@ public sealed class PortableNativeExecutionLifecycleFixtureTests
                     Payload = JsonNode.Parse(
                         rawEvent.GetProperty("payload").GetRawText())
                 });
-            await _runtime.DispatchReadyRunsAsync(
-                recoverInterruptedRuns: true);
+            await _runtime.DispatchReadyRunsAsync();
             var final = await WaitForStatusAsync(
                 _runtime,
                 run.Id,
