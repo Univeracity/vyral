@@ -812,6 +812,7 @@ public sealed class TemporalContainerExecutionRuntimeConformanceTests :
     {
         public const string HandlerId = "qualification.temporal.continue-as-new";
         public const int CycleCount = 18;
+        private static readonly TimeSpan CycleDelay = TimeSpan.FromMilliseconds(300);
         private const string CheckpointKey = "continue-as-new-cycles";
 
         public ExecutionHandlerDescriptor Descriptor { get; } = new()
@@ -827,9 +828,11 @@ public sealed class TemporalContainerExecutionRuntimeConformanceTests :
             while (completedCycles < CycleCount)
             {
                 var nextCycle = completedCycles + 1;
+                // Keep the timer ahead of a persistence round trip so every cycle exercises
+                // the durable suspend/resume path rather than the valid immediate-elapsed path.
                 _ = await context.WaitForTimerAsync(
                     $"continue-as-new-{nextCycle}",
-                    DateTime.UtcNow.AddMilliseconds(50),
+                    DateTime.UtcNow.Add(CycleDelay),
                     ct: ct);
                 completedCycles = nextCycle;
                 await context.PutCheckpointAsync(new ExecutionCheckpointWrite
