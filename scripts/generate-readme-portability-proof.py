@@ -186,7 +186,12 @@ def surface_content(
             "result_detail": "record · tenant-a / order-42",
             "boundary": "atomic completion · stable etag",
             "traits": "identity · partition · optimistic concurrency",
-            "choices": [{"name": "Local · SQLite", "level": "REFERENCE PATH"}],
+            "choices": [
+                {"name": "Local · SQLite", "level": "REFERENCE PATH"},
+                {"name": "AWS · DynamoDB", "level": "ADAPTER PATH"},
+                {"name": "Google · Firestore", "level": "ADAPTER PATH"},
+                {"name": "Azure · Cosmos DB", "level": "ADAPTER PATH"},
+            ],
         }
     if surface == "retrieval":
         return {
@@ -196,7 +201,10 @@ def surface_content(
             "result_detail": "matches + citations",
             "boundary": "non-mutating retrieval",
             "traits": "bounded query · diagnostics · source identity",
-            "choices": [{"name": "Local · SQLite", "level": "REFERENCE PATH"}],
+            "choices": [
+                {"name": "Local · SQLite", "level": "REFERENCE PATH"},
+                {"name": "Postgres · pgvector", "level": "ADAPTER PATH"},
+            ],
         }
     if surface == "execution":
         return {
