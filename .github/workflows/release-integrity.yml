@@ -21,13 +21,13 @@ jobs:
     # fallback, so keep this job on the supported 22.04 runner until a reviewed AppArmor profile
     # can be installed by the deployment topology.
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
       VYRAL_RELEASE_ARTIFACT_DIR: artifacts/release
       VYRAL_BUILDX_BUILDER: vyral-release-${{ github.run_id }}
-      VYRAL_SKOPEO_IMAGE: quay.io/skopeo/stable@sha256:c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615
+      VYRAL_SKOPEO_IMAGE: quay.io/skopeo/stable:v1.22.2-immutable@sha256:4a16d57b37617a04b3d643079a477a2848efe892dffcdf0ce56df4262b65f810
       VYRAL_TEST_BUBBLEWRAP: /usr/local/bin/bwrap
     steps:
       - name: Check out repository
@@ -69,11 +69,28 @@ jobs:
 
       - name: Install release gate tooling
         if: ${{ github.event_name != 'pull_request' }}
-        run: >-
-          sudo apt-get update &&
-          sudo apt-get install --yes --no-install-recommends
-          build-essential ca-certificates curl jq libcap-dev meson ninja-build
-          pkg-config ripgrep xz-utils
+        run: |
+          # GitHub's Ubuntu mirror list prefers the runner-local Azure mirror. A mirror
+          # outage must fail this bootstrap promptly instead of consuming the entire
+          # release-integrity budget before any Vyral checks run.
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' \
+              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+
+          apt_options=(
+            --option Acquire::Retries=2
+            --option Acquire::http::Timeout=20
+            --option Acquire::https::Timeout=20
+          )
+          timeout --kill-after=30s 5m \
+            sudo apt-get "${apt_options[@]}" update
+          timeout --kill-after=30s 5m \
+            sudo env DEBIAN_FRONTEND=noninteractive \
+            apt-get "${apt_options[@]}" --option DPkg::Lock::Timeout=60 \
+            install --yes --no-install-recommends \
+            build-essential ca-certificates curl jq libcap-dev meson ninja-build \
+            pkg-config ripgrep xz-utils
 
       - name: Build the pinned Bubblewrap security boundary
         if: ${{ github.event_name != 'pull_request' }}
@@ -85,6 +102,7 @@ jobs:
           source="$RUNNER_TEMP/bubblewrap-$BUBBLEWRAP_VERSION"
           build="$RUNNER_TEMP/bubblewrap-build"
           curl --fail --location --retry 3 --retry-all-errors \
+            --connect-timeout 15 --max-time 180 \
             --proto '=https' --tlsv1.2 \
             --output "$archive" \
             "https://github.com/containers/bubblewrap/releases/download/v$BUBBLEWRAP_VERSION/bubblewrap-$BUBBLEWRAP_VERSION.tar.xz"
@@ -211,7 +229,7 @@ jobs:
           fi
 
       - name: Upload release evidence
-        if: ${{ always() && github.event_name != 'pull_request' }}
+        if: ${{ always() && github.event_name != 'pull_request' && hashFiles('artifacts/release/**') != '' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-integrity-${{ github.sha }}
