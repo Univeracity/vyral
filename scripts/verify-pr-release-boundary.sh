@@ -21,6 +21,7 @@ fi
 python3 scripts/verify-publication-policy.py
 python3 scripts/verify-publication-cohort.py
 python3 scripts/verify-container-security-release.py
+python3 scripts/verify-worker-container-release.py
 python3 scripts/verify-version-policy.py
 python3 scripts/verify-public-sdk-surface.py
 python3 scripts/verify-public-contract-schemas.py

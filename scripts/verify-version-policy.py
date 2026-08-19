@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCT_VERSION = "0.3.0"
+SERVER_IMAGE_VERSION = "0.3.2"
 EXECUTION_VERSION = "0.2.0"
 PYTHON_RUNTIME_VERSION = "0.1.1"
 PYTHON_RUNTIME_FIXTURE_MINIMUM = "0.1.0"
@@ -149,12 +150,12 @@ def main() -> int:
 
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     worker_dockerfile = (ROOT / "workers/execution-smoke-go/Dockerfile").read_text(encoding="utf-8")
-    for relative, content in (
-        ("Dockerfile", dockerfile),
-        ("workers/execution-smoke-go/Dockerfile", worker_dockerfile),
-    ):
-        if f"ARG VYRAL_IMAGE_VERSION={PRODUCT_VERSION}" not in content:
-            raise SystemExit(f"{relative} image version is not {PRODUCT_VERSION}.")
+    if f"ARG VYRAL_IMAGE_VERSION={SERVER_IMAGE_VERSION}" not in dockerfile:
+        raise SystemExit(f"Dockerfile image version is not {SERVER_IMAGE_VERSION}.")
+    if f"ARG VYRAL_IMAGE_VERSION={PRODUCT_VERSION}" not in worker_dockerfile:
+        raise SystemExit(
+            f"workers/execution-smoke-go/Dockerfile image version is not {PRODUCT_VERSION}."
+        )
     if f"FROM golang:{GO_BUILD_VERSION}@sha256:" not in worker_dockerfile:
         raise SystemExit(
             "workers/execution-smoke-go/Dockerfile is not pinned to the supported Go build version."
@@ -177,8 +178,8 @@ def main() -> int:
     release_workflow = (ROOT / ".github/workflows/release-integrity.yml").read_text(
         encoding="utf-8"
     )
-    if f"--build-arg VYRAL_IMAGE_VERSION={PRODUCT_VERSION}" not in release_workflow:
-        raise SystemExit("release-integrity.yml does not apply the current product image version.")
+    if f"--build-arg VYRAL_IMAGE_VERSION={SERVER_IMAGE_VERSION}" not in release_workflow:
+        raise SystemExit("release-integrity.yml does not apply the current server image version.")
     if f'BUBBLEWRAP_VERSION: "{BUBBLEWRAP_BUILD_VERSION}"' not in release_workflow:
         raise SystemExit(
             "release-integrity.yml does not build the supported Bubblewrap security boundary."
@@ -208,6 +209,8 @@ def main() -> int:
             raise SystemExit(f"The stability policy is missing the {label} maturity label.")
     if "| Python runtime | `0.1.x` |" not in stability:
         raise SystemExit("The stability policy must document the Python runtime version line.")
+    if "| Server container | `0.3.x` |" not in stability:
+        raise SystemExit("The stability policy must document the server container version line.")
 
     allowed_explicit_versions = {PRODUCT_VERSION, EXECUTION_VERSION}
     for project in sorted((ROOT / "src").glob("*/**/*.csproj")):
@@ -220,7 +223,7 @@ def main() -> int:
             )
 
     print(
-        f"version-policy=ok product={PRODUCT_VERSION} execution={EXECUTION_VERSION} "
+        f"version-policy=ok product={PRODUCT_VERSION} server-image={SERVER_IMAGE_VERSION} execution={EXECUTION_VERSION} "
         f"python-runtime={PYTHON_RUNTIME_VERSION} go-minimum={GO_MINIMUM_VERSION} "
         f"go-build={GO_BUILD_VERSION} bubblewrap-build={BUBBLEWRAP_BUILD_VERSION} "
         "core-tfms=net8.0,net10.0"

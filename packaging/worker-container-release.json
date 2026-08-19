@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "vyral.worker-container-release.v1",
+  "publicationAuthorized": true,
+  "image": {
+    "name": "ghcr.io/univeracity/vyral-server",
+    "version": "0.3.2",
+    "source": "Dockerfile",
+    "environment": "publish-container",
+    "maturity": "mixed",
+    "hostedWorker": {
+      "entrypoint": "dotnet worker/Vyral.HostedWorker.dll",
+      "handlerIds": [
+        "vyral.artifacts.record-ingest"
+      ],
+      "maturity": "preview"
+    }
+  },
+  "authorization": {
+    "mode": "manual-protected-environment",
+    "releaseTag": "server-v0.3.2",
+    "workflow": ".github/workflows/publish-worker-container.yml",
+    "requirements": [
+      "a GitHub-verified signed annotated server tag that resolves to current main",
+      "a successful canonical Release Integrity run for that exact commit, including the packaged hosted-worker receipt",
+      "a manual dispatch from main through the publish-container protected environment",
+      "a passing hosted-worker qualification and vulnerability scan against the exact published digest"
+    ],
+    "publisher": {
+      "ecosystem": "container",
+      "registry": "https://ghcr.io",
+      "workflowFile": "publish-worker-container.yml",
+      "environment": "publish-container",
+      "authentication": "repository-scoped GitHub Actions GITHUB_TOKEN"
+    }
+  }
+}
