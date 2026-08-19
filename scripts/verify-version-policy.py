@@ -23,8 +23,8 @@ BUBBLEWRAP_BUILD_SHA256 = (
     "69abc30005d2186baf7737feacd8da35633b93cf5af38838ecff17c5f8e924f6"
 )
 SKOPEO_IMAGE = (
-    "quay.io/skopeo/stable@sha256:"
-    "c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615"
+    "quay.io/skopeo/stable:v1.22.2-immutable@sha256:"
+    "4a16d57b37617a04b3d643079a477a2848efe892dffcdf0ce56df4262b65f810"
 )
 
 CORE_TFM_PROJECTS = (
