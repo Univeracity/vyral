@@ -38,6 +38,7 @@ published adapter remains no more qualified than the evidence in
 | Line | Current source version | Scope |
 | --- | --- | --- |
 | Product and SDK | `0.3.x` | OpenAPI, public SDK catalog, Python and JavaScript clients, MCP, and NuGet projects without a deliberately separate line |
+| Server container | `0.3.x` | API server image and same-image hosted-worker entrypoints; container patch releases can advance independently of package patch versions |
 | Execution runtime | `0.2.x` | `Vyral.Primitives`, `Vyral.Execution`, execution adapters, worker client, and their current qualification evidence |
 | Python runtime | `0.1.x` | Prototype Python-first full portable-local implementation; profile promotion remains evidence-gated |
 | Go worker client | pre-v1 module | Source is under `clients/go`; a release tag must use the submodule form `clients/go/vMAJOR.MINOR.PATCH` |

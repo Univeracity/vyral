@@ -148,7 +148,7 @@ jobs:
           docker buildx build \
             --file Dockerfile \
             --tag "vyral-server-mcp-qualification:${{ github.sha }}" \
-            --build-arg VYRAL_IMAGE_VERSION=0.3.0 \
+            --build-arg VYRAL_IMAGE_VERSION=0.3.2 \
             --build-arg VYRAL_IMAGE_REVISION="${{ github.sha }}" \
             --sbom=true \
             --provenance=mode=max \
@@ -192,6 +192,11 @@ jobs:
           scripts/verify-mcp-container.sh \
             "vyral-server-mcp-qualification:${{ github.sha }}" \
             artifacts/release/qualification/mcp-container.json \
+            artifacts/release/images/vyral-server.oci \
+            artifacts/release/images/vyral-server-build-metadata.json
+          scripts/verify-hosted-worker-container.sh \
+            "vyral-server-mcp-qualification:${{ github.sha }}" \
+            artifacts/release/qualification/hosted-worker-container.json \
             artifacts/release/images/vyral-server.oci \
             artifacts/release/images/vyral-server-build-metadata.json
           scripts/verify-execution-smoke-container.sh \

@@ -32,6 +32,10 @@ retained as release evidence.
    The Python runtime must likewise retain a passing frozen `2026-07-28` requirements receipt
    produced from its packaged wheel; conformance diagnostics must remain explicitly test-only
    and `VYRAL_MCP_CONFORMANCE_DIAGNOSTICS` must not be present in a release deployment.
+   A server image that advertises the generic hosted worker must additionally retain a receipt
+   proving that `worker/Vyral.HostedWorker.dll` starts as the configured non-root user under the
+   documented read-only runtime profile, exposes only the approved hosted-handler catalog, and
+   rejects callbacks that lack the dispatch marker or an accepted callback identity.
 4. Publish packages through a trusted-publishing or OIDC-backed registry configuration. Do not
    place registry tokens in the repository or workflow files. `vyral-client@0.3.0` has an
    explicitly authorized, capability-scoped exception: after the release tag and canonical evidence
@@ -101,6 +105,17 @@ workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.1`. It requires a
 GitHub-verified signed `server-v0.3.1` tag at current `main` and a successful
 Release Integrity run for that commit. It does not republish the unaffected
 NuGet, PyPI, or npm artifacts.
+
+The server's `0.3.2` worker-capable delivery is likewise container-only:
+[`packaging/worker-container-release.json`](../../packaging/worker-container-release.json)
+and the manual [`Publish worker-capable server container`](../../.github/workflows/publish-worker-container.yml)
+workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.2`. It requires a
+GitHub-verified signed `server-v0.3.2` tag at current `main`, successful canonical
+Release Integrity evidence containing the hosted-worker receipt, and a second
+qualification plus pinned Trivy scan against the exact published digest. The
+hosted-worker entrypoint is preview and initially hosts only
+`vyral.artifacts.record-ingest`; the API server and other capability maturity
+boundaries remain unchanged.
 
 Before dispatching it, configure the exact publisher tuple in the cohort
 manifest at each trusted registry: `Univeracity/vyral`, workflow file

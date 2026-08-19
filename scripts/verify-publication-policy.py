@@ -26,9 +26,11 @@ CORE_ASSURANCE_WORKFLOWS = (
 )
 FIRST_COHORT_PUBLISH_WORKFLOW = "publish-first-cohort.yml"
 CONTAINER_SECURITY_PUBLISH_WORKFLOW = "publish-container-security-patch.yml"
+WORKER_CONTAINER_PUBLISH_WORKFLOW = "publish-worker-container.yml"
 PUBLISH_WORKFLOWS = (
     FIRST_COHORT_PUBLISH_WORKFLOW,
     CONTAINER_SECURITY_PUBLISH_WORKFLOW,
+    WORKER_CONTAINER_PUBLISH_WORKFLOW,
 )
 PUBLISH_PATTERNS = {
     "JavaScript package publish": re.compile(
@@ -102,6 +104,10 @@ def main() -> int:
     if container_publisher is None:
         errors.append("the authorized container security publisher workflow is missing")
         container_publisher = ""
+    worker_container_publisher = workflow_text.get(WORKER_CONTAINER_PUBLISH_WORKFLOW)
+    if worker_container_publisher is None:
+        errors.append("the authorized worker container publisher workflow is missing")
+        worker_container_publisher = ""
     for name, text in workflow_text.items():
         if name in PUBLISH_WORKFLOWS:
             continue
@@ -206,6 +212,41 @@ def main() -> int:
                 f"{CONTAINER_SECURITY_PUBLISH_WORKFLOW} may publish only the reviewed GHCR image, not {label}"
             )
 
+    for requirement in (
+        "workflow_dispatch:",
+        "server-v0.3.2",
+        'test "$GITHUB_REF" = "refs/heads/main"',
+        'git cat-file -t "refs/tags/${RELEASE_TAG}"',
+        ".verification.verified == true",
+        "release-integrity.yml/runs?head_sha=",
+        "name: publish-container",
+        "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "VYRAL_IMAGE_VERSION=0.3.2",
+        "ghcr.io/univeracity/vyral-server:0.3.2",
+        "scripts/verify-hosted-worker-container.sh",
+        "aquasec/trivy:0.73.0@sha256:",
+        "worker-container-server-v0.3.2",
+    ):
+        if requirement not in worker_container_publisher:
+            errors.append(
+                f"{WORKER_CONTAINER_PUBLISH_WORKFLOW} is missing authorization hook {requirement!r}"
+            )
+    if re.search(r"^  push:\s*$", worker_container_publisher, re.MULTILINE):
+        errors.append(
+            f"{WORKER_CONTAINER_PUBLISH_WORKFLOW} must not have an automatic push trigger"
+        )
+    for label in (
+        "JavaScript package publish",
+        "NuGet push",
+        "Twine upload",
+        "Cargo publish",
+        "GitHub release creation",
+    ):
+        if PUBLISH_PATTERNS[label].search(worker_container_publisher):
+            errors.append(
+                f"{WORKER_CONTAINER_PUBLISH_WORKFLOW} may publish only the reviewed GHCR image, not {label}"
+            )
+
     release_workflow = workflow_text.get("release-integrity.yml", "")
     for evidence_hook in (
         "aquasec/trivy:0.73.0@sha256:",
@@ -213,6 +254,8 @@ def main() -> int:
         "execution-smoke-worker.oci",
         "scripts/verify-mcp-container.sh",
         "scripts/verify-execution-smoke-container.sh",
+        "scripts/verify-hosted-worker-container.sh",
+        "hosted-worker-container.json",
         "scripts/verify-release-artifacts.sh",
         "oci-archive:/evidence/$archive",
         "vyral-server.oci",
@@ -271,6 +314,27 @@ def main() -> int:
         if requirement not in worker_container_gate:
             errors.append(
                 f"packaged execution-smoke gate is missing {requirement!r}"
+            )
+
+    hosted_worker_container_gate = _read(
+        ROOT / "scripts" / "verify-hosted-worker-container.sh"
+    )
+    for requirement in (
+        "verify-oci-image-identity.py",
+        "worker/Vyral.HostedWorker.dll",
+        "vyral.artifacts.record-ingest",
+        "imageConfiguredUser",
+        "archivedConfigDigest",
+        "archivedArtifactDigest",
+        "missingDispatchMarkerRejected",
+        "unauthenticatedDispatchRejected",
+        "readOnlyRootFilesystem",
+        "allLinuxCapabilitiesDropped",
+        "noNewPrivileges",
+    ):
+        if requirement not in hosted_worker_container_gate:
+            errors.append(
+                f"packaged hosted-worker gate is missing {requirement!r}"
             )
 
     python_gate = _read(
