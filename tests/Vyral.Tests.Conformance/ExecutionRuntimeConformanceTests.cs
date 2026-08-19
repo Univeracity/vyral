@@ -868,7 +868,19 @@ public abstract class ExecutionRuntimeConformanceTests
             run = await runtime.GetRunAsync(id);
             if (run?.Status == status)
             {
-                return run;
+                if (!ExecutionRunStatuses.IsTerminal(status))
+                {
+                    return run;
+                }
+
+                var terminalEventType = status == ExecutionRunStatuses.Failed
+                    ? ExecutionEventTypes.RunFailed
+                    : ExecutionEventTypes.RunCompleted;
+                var observedHistory = await runtime.GetHistoryAsync(id);
+                if (observedHistory.Any(item => item.Type == terminalEventType))
+                {
+                    return run;
+                }
             }
 
             await Task.Delay(50);
