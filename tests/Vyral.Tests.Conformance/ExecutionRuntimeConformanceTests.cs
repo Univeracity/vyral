@@ -98,7 +98,7 @@ public abstract class ExecutionRuntimeConformanceTests
         Assert.Equal(1, completed.Progress);
         Assert.Equal(6, completed.Result!["total"]!.GetValue<int>());
 
-        var history = await runtime.GetHistoryAsync(first.Id);
+        var history = await WaitForHistoryEventAsync(runtime, first.Id, ExecutionEventTypes.RunCompleted);
         Assert.Contains(history, item => item.Type == ExecutionEventTypes.RunStarted);
         Assert.Contains(history, item => item.Type == ExecutionEventTypes.RunStatus);
         Assert.Contains(history, item => item.Type == ExecutionEventTypes.ArtifactWritten);
@@ -269,7 +269,7 @@ public abstract class ExecutionRuntimeConformanceTests
         var failed = await WaitForRunAsync(runtime, thrown.Id, ExecutionRunStatuses.Failed);
         Assert.Equal(ExecutionFailureClasses.Unknown, failed.FailureClass);
         Assert.Contains("consumer-visible failure", failed.Error);
-        var failedHistory = await runtime.GetHistoryAsync(failed.Id);
+        var failedHistory = await WaitForHistoryEventAsync(runtime, failed.Id, ExecutionEventTypes.RunFailed);
         Assert.Contains(failedHistory, item => item.Type == ExecutionEventTypes.RunFailed);
 
         runtime.RegisterHandler(new AlwaysFailHandler());
@@ -287,7 +287,7 @@ public abstract class ExecutionRuntimeConformanceTests
         var exhausted = await WaitForRunAsync(runtime, retrying.Id, ExecutionRunStatuses.Failed);
         Assert.Equal(2, exhausted.Attempt);
         Assert.Equal(ExecutionFailureClasses.Transient, exhausted.FailureClass);
-        var exhaustedHistory = await runtime.GetHistoryAsync(exhausted.Id);
+        var exhaustedHistory = await WaitForHistoryEventAsync(runtime, exhausted.Id, ExecutionEventTypes.RunFailed);
         Assert.Single(exhaustedHistory, item => item.Type == ExecutionEventTypes.RetryScheduled);
         Assert.Contains(exhaustedHistory, item => item.Type == ExecutionEventTypes.RunFailed);
 
@@ -406,7 +406,7 @@ public abstract class ExecutionRuntimeConformanceTests
         Assert.Equal(2, handler.Attempts);
         Assert.Equal(ExecutionFailureClasses.Transient, failed.FailureClass);
 
-        var history = await runtime.GetHistoryAsync(failed.Id);
+        var history = await WaitForHistoryEventAsync(runtime, failed.Id, ExecutionEventTypes.RunFailed);
         Assert.Single(history, item => item.Type == ExecutionEventTypes.RetryScheduled);
         Assert.Contains(history, item => item.Type == ExecutionEventTypes.RunFailed);
     }
@@ -868,19 +868,7 @@ public abstract class ExecutionRuntimeConformanceTests
             run = await runtime.GetRunAsync(id);
             if (run?.Status == status)
             {
-                if (!ExecutionRunStatuses.IsTerminal(status))
-                {
-                    return run;
-                }
-
-                var terminalEventType = status == ExecutionRunStatuses.Failed
-                    ? ExecutionEventTypes.RunFailed
-                    : ExecutionEventTypes.RunCompleted;
-                var observedHistory = await runtime.GetHistoryAsync(id);
-                if (observedHistory.Any(item => item.Type == terminalEventType))
-                {
-                    return run;
-                }
+                return run;
             }
 
             await Task.Delay(50);
@@ -895,6 +883,28 @@ public abstract class ExecutionRuntimeConformanceTests
             $"Run {id} did not reach {status}. Last status: {run?.Status ?? "(missing)"}; " +
             $"failure: {run?.FailureClass ?? "none"}; error: {run?.Error ?? "none"}; " +
             $"recent history: {recent}");
+    }
+
+    private static async Task<IReadOnlyList<ExecutionTraceEvent>> WaitForHistoryEventAsync(
+        IExecutionRuntime runtime,
+        string runId,
+        string eventType)
+    {
+        IReadOnlyList<ExecutionTraceEvent> history = [];
+        for (var i = 0; i < 400; i++)
+        {
+            history = await runtime.GetHistoryAsync(runId);
+            if (history.Any(item => item.Type == eventType))
+            {
+                return history;
+            }
+
+            await Task.Delay(50);
+        }
+
+        var observed = string.Join(", ", history.Select(item => item.Type).Distinct(StringComparer.Ordinal));
+        throw new InvalidOperationException(
+            $"Run {runId} did not expose history event {eventType}. Observed: {observed}");
     }
 
     private static void AssertRunAttempt(ExecutionRun run, int expected)
