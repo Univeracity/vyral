@@ -58,6 +58,8 @@ PUBLIC_PREFIXES = {
 
 PUBLIC_DOC_FILES = {
     "docs/README.md",
+    "docs/assets/vyral-portability-proof-static.png",
+    "docs/assets/vyral-portability-proof.png",
     "docs/assets/vyral-logo-50.png",
     "docs/concepts/canonical-store.md",
     "docs/contributing/adapter-contributor.md",
