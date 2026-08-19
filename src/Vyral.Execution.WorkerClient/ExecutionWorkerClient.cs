@@ -101,6 +101,12 @@ public sealed class ExecutionWorkerClientOptions
     public required string WorkerId { get; init; }
     public required IReadOnlyList<string> HandlerIds { get; init; }
     public IExecutionWorkerTokenSource? TokenSource { get; init; }
+    /// <summary>
+    /// Optional API key supplied in addition to the worker identity. This is useful when the
+    /// Vyral API retains API-key defense in depth behind an identity-aware gateway.
+    /// </summary>
+    public string? ApiKey { get; init; }
+    public string ApiKeyHeader { get; init; } = "X-Vyral-Api-Key";
     public Action<ExecutionWorkerClientTelemetry>? Observe { get; init; }
 }
 
@@ -133,6 +139,8 @@ public sealed class ExecutionWorkerClient : IExecutionWorkerTransport
     private readonly string _workerId;
     private readonly IReadOnlyList<string> _handlerIds;
     private readonly IExecutionWorkerTokenSource? _tokenSource;
+    private readonly string? _apiKey;
+    private readonly string? _apiKeyHeader;
     private readonly Action<ExecutionWorkerClientTelemetry>? _observe;
 
     public ExecutionWorkerClient(HttpClient client, ExecutionWorkerClientOptions options)
@@ -146,6 +154,8 @@ public sealed class ExecutionWorkerClient : IExecutionWorkerTransport
         _handlerIds = options.HandlerIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct(StringComparer.Ordinal).ToList();
         if (_handlerIds.Count == 0) throw new InvalidOperationException("At least one Vyral worker handler id is required.");
         _tokenSource = options.TokenSource;
+        _apiKey = string.IsNullOrWhiteSpace(options.ApiKey) ? null : options.ApiKey.Trim();
+        _apiKeyHeader = _apiKey is null ? null : RequireHeaderName(options.ApiKeyHeader);
         _observe = options.Observe;
     }
 
@@ -247,6 +257,10 @@ public sealed class ExecutionWorkerClient : IExecutionWorkerTransport
                 if (string.IsNullOrWhiteSpace(token)) throw new InvalidOperationException("Vyral worker token source returned an empty token.");
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             }
+            if (_apiKey is not null)
+            {
+                request.Headers.Add(_apiKeyHeader!, _apiKey);
+            }
 
             using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             statusCode = response.StatusCode;
@@ -283,4 +297,16 @@ public sealed class ExecutionWorkerClient : IExecutionWorkerTransport
             }
         });
     private static string Require(string value, string description) => string.IsNullOrWhiteSpace(value) ? throw new InvalidOperationException($"{description} is required.") : value.Trim();
+
+    private static string RequireHeaderName(string? value)
+    {
+        var candidate = value?.Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || !candidate.All(character =>
+                char.IsAsciiLetterOrDigit(character) || character == '-'))
+        {
+            throw new InvalidOperationException("Vyral worker API-key header must contain only letters, digits, and hyphens.");
+        }
+
+        return candidate;
+    }
 }

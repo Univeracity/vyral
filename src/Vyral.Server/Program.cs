@@ -50,15 +50,15 @@ var embeddingProvider = embeddingRegistry.Create(embeddingOptions);
 LogStartupPhaseCompleted("embedding.provider", startupPhase, $"provider={embeddingProvider.ProviderId}; model={embeddingProvider.ModelId}; dimensions={embeddingProvider.Dimensions}");
 
 startupPhase = LogStartupPhaseStarting("record_store", $"backend={storageOptions.RecordStore}");
-var store = await CreateRecordStoreAsync(storageOptions);
+var store = await ServerStorageFactory.CreateRecordStoreAsync(storageOptions);
 LogStartupPhaseCompleted("record_store", startupPhase, $"backend={storageOptions.RecordStore}; store={store.GetType().Name}");
 
 startupPhase = LogStartupPhaseStarting("trace_store", $"backend={storageOptions.TraceStore}");
-var traceStore = await CreateTraceStoreAsync(storageOptions);
+var traceStore = await ServerStorageFactory.CreateTraceStoreAsync(storageOptions);
 LogStartupPhaseCompleted("trace_store", startupPhase, $"backend={storageOptions.TraceStore}; store={traceStore.GetType().Name}");
 
 startupPhase = LogStartupPhaseStarting("object_store", $"backend={storageOptions.ObjectStore}");
-var objectStore = CreateObjectStore(storageOptions);
+var objectStore = ServerStorageFactory.CreateObjectStore(storageOptions);
 LogStartupPhaseCompleted("object_store", startupPhase, $"backend={storageOptions.ObjectStore}; store={objectStore.GetType().Name}");
 
 startupPhase = LogStartupPhaseStarting("canonical_store");
@@ -98,6 +98,18 @@ startupPhase = LogStartupPhaseStarting("execution.runtime", $"adapter={builder.C
 var executionRuntime = CreateExecutionRuntime(builder.Configuration, storageOptions, dbPath, objectStore);
 var externalExecutionRuntime = executionRuntime as IExternalExecutionWorkerRuntime;
 var configuredExternalHandlers = GetExternalExecutionHandlers(builder.Configuration);
+var artifactIngestionIsExternal = configuredExternalHandlers.Any(handler =>
+    string.Equals(handler.HandlerId, ExecutionRuntimeArtifactRecordIngestionAdapter.HandlerId, StringComparison.Ordinal));
+foreach (var handler in configuredExternalHandlers.Where(handler =>
+             string.Equals(handler.HandlerId, ExecutionRuntimeArtifactRecordIngestionAdapter.HandlerId, StringComparison.Ordinal)))
+{
+    if (!string.IsNullOrWhiteSpace(handler.PluginId) &&
+        !string.Equals(handler.PluginId, ExecutionRuntimeArtifactRecordIngestionAdapter.PluginId, StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            $"External handler '{handler.HandlerId}' must use plugin '{ExecutionRuntimeArtifactRecordIngestionAdapter.PluginId}'.");
+    }
+}
 if (externalExecutionRuntime is null && configuredExternalHandlers.Count > 0)
 {
     throw new InvalidOperationException("ExecutionRuntime:ExternalHandlers requires an adapter that implements IExternalExecutionWorkerRuntime.");
@@ -193,7 +205,13 @@ if (executionRuntime is LocalExecutionRuntime localExecutionRuntime)
     builder.Services.AddSingleton(localExecutionRuntime);
 }
 builder.Services.AddSingleton(embeddingJobAdapter);
-builder.Services.AddSingleton<ExecutionRuntimeArtifactRecordIngestionAdapter>();
+builder.Services.AddSingleton<ExecutionRuntimeArtifactRecordIngestionAdapter>(services =>
+    new ExecutionRuntimeArtifactRecordIngestionAdapter(
+        services.GetRequiredService<IExecutionRuntime>(),
+        services.GetRequiredService<IObjectStore>(),
+        services.GetRequiredService<ArtifactRecordIngestionService>(),
+        services.GetRequiredService<ArtifactRecordIngestionOptions>(),
+        registerInProcessHandler: !artifactIngestionIsExternal));
 builder.Services.AddSingleton<ExecutionRuntimeCollectionManagementAdapter>();
 builder.Services.AddSingleton<ExecutionRuntimeRagIngestionJobAdapter>(services =>
     new ExecutionRuntimeRagIngestionJobAdapter(
@@ -2530,68 +2548,6 @@ static List<string> GetTraceList(IReadOnlyDictionary<string, object?> values, st
     return new List<string> { value.ToString()! };
 }
 
-static async Task<IRecordCollectionStore> CreateRecordStoreAsync(ServerStorageOptions options)
-{
-    switch (options.RecordStore)
-    {
-        case ServerStorageBackendIds.Sqlite:
-        {
-            var store = new SqliteRecordCollectionStore(options.DatabasePath);
-            await store.InitializeAsync();
-            return store;
-        }
-        case ServerStorageBackendIds.GoogleFirestore:
-            return new FirestoreRecordCollectionStore(CreateFirestoreDb(options), options.GoogleFirestoreRootCollection);
-        case ServerStorageBackendIds.GoogleAlloyDb:
-        {
-            if (string.IsNullOrWhiteSpace(options.GoogleAlloyDbConnectionString))
-            {
-                throw new InvalidOperationException("Google AlloyDB record store requires Google:AlloyDb:ConnectionString or VYRAL_ALLOYDB_CONNECTION_STRING.");
-            }
-
-            var store = new AlloyDbRecordCollectionStore(options.GoogleAlloyDbConnectionString);
-            await store.InitializeAsync();
-            return store;
-        }
-        default:
-            throw new InvalidOperationException($"Record store backend '{options.RecordStore}' is not supported by this server.");
-    }
-}
-
-static async Task<ITraceStore> CreateTraceStoreAsync(ServerStorageOptions options)
-{
-    switch (options.TraceStore)
-    {
-        case ServerStorageBackendIds.Sqlite:
-        {
-            var traceStore = new SqliteTraceStore(options.DatabasePath);
-            await traceStore.InitializeAsync();
-            return traceStore;
-        }
-        case ServerStorageBackendIds.GoogleFirestore:
-            return new FirestoreTraceStore(CreateFirestoreDb(options), options.GoogleFirestoreRootCollection);
-        default:
-            throw new InvalidOperationException($"Trace store backend '{options.TraceStore}' is not supported by this server.");
-    }
-}
-
-static IObjectStore CreateObjectStore(ServerStorageOptions options)
-{
-    return options.ObjectStore switch
-    {
-        ServerStorageBackendIds.File => new FileObjectStore(options.ObjectsPath),
-        ServerStorageBackendIds.GoogleCloudStorage => new CloudStorageObjectStore(StorageClient.Create()),
-        ServerStorageBackendIds.CloudflareR2 => R2ObjectStore.Create(new CloudflareR2Options
-        {
-            AccountId = options.CloudflareAccountId,
-            AccessKeyId = options.CloudflareR2AccessKeyId,
-            SecretAccessKey = options.CloudflareR2SecretAccessKey,
-            ServiceUrl = options.CloudflareR2ServiceUrl
-        }),
-        _ => throw new InvalidOperationException($"Object store backend '{options.ObjectStore}' is not supported by this server.")
-    };
-}
-
 static ICanonicalStore CreateCanonicalStore(CanonicalStoreOptions options)
 {
     return options.Provider switch
@@ -2643,25 +2599,6 @@ static void ValidateCanonicalEvidenceBriefDocuments(CanonicalTransactionRequest 
             _ = EvidenceBriefContract.FromCanonicalDocument(mutation.Document!);
         }
     }
-}
-
-static FirestoreDb CreateFirestoreDb(ServerStorageOptions options)
-{
-    if (string.IsNullOrWhiteSpace(options.GoogleProjectId))
-    {
-        throw new InvalidOperationException("Google Firestore store requires Google:ProjectId, Google:Firestore:ProjectId, GOOGLE_CLOUD_PROJECT, or VYRAL_GCP_PROJECT_ID.");
-    }
-
-    var builder = new FirestoreDbBuilder
-    {
-        ProjectId = options.GoogleProjectId
-    };
-    if (!string.IsNullOrWhiteSpace(options.GoogleFirestoreDatabaseId))
-    {
-        builder.DatabaseId = options.GoogleFirestoreDatabaseId;
-    }
-
-    return builder.Build();
 }
 
 static ServerHealthStatus BuildServerHealth(
@@ -3798,7 +3735,7 @@ static GoogleCloudExecutionRuntimeAdapter CreateGoogleExecutionRuntime(
     dispatchOptions.Validate();
     var workerDispatchers = GetGoogleExecutionWorkerDispatchers(configuration, projectId, dispatchOptions);
     return new GoogleCloudExecutionRuntimeAdapter(
-        new FirestoreExecutionStateStore(CreateFirestoreDb(firestoreOptions), firestoreRoot!),
+        new FirestoreExecutionStateStore(ServerStorageFactory.CreateFirestoreDb(firestoreOptions), firestoreRoot!),
         new GoogleCloudExecutionDispatcher(new CloudTasksHttpJsonQueue(CloudTasksClient.Create()), dispatchOptions),
         new GoogleCloudExecutionRuntimeOptions
         {

@@ -338,7 +338,17 @@ public sealed class GoogleExecutionTokenValidator : IGoogleExecutionTokenValidat
     public async Task<string> ValidateAsync(string token, IReadOnlySet<string> allowedAudiences, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        var payload = await GoogleJsonWebSignature.ValidateAsync(token, new GoogleJsonWebSignature.ValidationSettings { Audience = allowedAudiences });
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(
+                token,
+                new GoogleJsonWebSignature.ValidationSettings { Audience = allowedAudiences });
+        }
+        catch (InvalidJwtException)
+        {
+            throw new ExecutionAccessDeniedException("Google OIDC identity token is invalid.");
+        }
         if (!payload.EmailVerified || string.IsNullOrWhiteSpace(payload.Email)) throw new ExecutionAccessDeniedException("Google OIDC execution identity must contain a verified email.");
         return payload.Email.Trim();
     }

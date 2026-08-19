@@ -196,6 +196,43 @@ email. It rejects unscoped starts, worker-id impersonation, un-routed handlers,
 and maintenance calls without a dedicated policy. Keep test-only public worker
 fixtures out of the shared project.
 
+### Vyral-hosted generic handlers
+
+Consumer-neutral Vyral handlers may use the same external-worker protocol as a
+consumer worker. The initial handler, `vyral.artifacts.record-ingest`, preserves
+the public `POST /ingest/record-artifact` admission contract while a separately
+deployed Vyral worker performs the staged-object read, object publish, record
+upsert, and best-effort staging cleanup.
+
+Set `VYRAL_INGEST_STAGING_CONTAINER` identically on the API and worker. With
+GCS it is normally the Vyral artifact bucket, using a private
+`record-artifact/` object prefix; it is not a product-owned bucket. A manifest's
+published artifact container must likewise be one the Vyral worker is allowed to
+write.
+
+Deploy the same pinned Vyral image as a separate Cloud Run service with command
+`dotnet` and argument `worker/Vyral.HostedWorker.dll`. Configure the API route
+and external handler descriptor as shown in
+[`google-cloud-run.env.example`](google-cloud-run.env.example), and configure
+the worker from [`google-hosted-worker.env.example`](google-hosted-worker.env.example).
+The worker must have a distinct service account. The Cloud Tasks dispatch
+service account gets `run.invoker` only on the worker. The worker gets
+`run.invoker` only on the Vyral API, plus Firestore and object permissions for
+the Vyral storage plane; it does not need Cloud Tasks enqueue, execution-state,
+or consumer-deployment permissions. If the API retains API-key defense in
+depth, mount only that Vyral API-key secret into the worker. Each product policy
+that allows artifact admission must also allow `vyral.artifacts.record-ingest`
+and the hosted worker id. This keeps the generic worker from crossing a product
+scope merely because it can claim the handler.
+
+The queue message is only a run id and dispatch reason. The worker validates the
+Cloud Tasks OIDC callback, leases the run through Vyral, and returns success only
+after duplicate-safe lease completion. The original `202 Accepted` response and
+its `Location` execution-run receipt remain the consumer's status surface; no
+consumer implementation is required to complete the generic work. Do not route a
+generic Vyral handler to a consumer worker or grant consumers access to the
+Vyral admission-staging prefix.
+
 ### Execution deployment preflight
 
 Run the read-only preflight after deploying candidate Vyral and worker Cloud Run services, but
@@ -208,9 +245,9 @@ deletes a resource.
 ```bash
 VYRAL_EXECUTION_PROJECT_ID=your-gcp-project-id \
 VYRAL_EXECUTION_SERVER_SERVICE=vyral-server \
-VYRAL_EXECUTION_WORKER_SERVICE=product-example-worker \
-VYRAL_EXECUTION_WORKER_ID=product-example-worker \
-VYRAL_EXECUTION_HANDLER_IDS=product.example.job \
+VYRAL_EXECUTION_WORKER_SERVICE=vyral-hosted-worker \
+VYRAL_EXECUTION_WORKER_ID=vyral-hosted-artifact-worker \
+VYRAL_EXECUTION_HANDLER_IDS=vyral.artifacts.record-ingest \
 VYRAL_EXECUTION_CONFIG_FILE=deploy/google-cloud-run.env \
 deploy/preflight-google-execution.sh
 ```

@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\src\Vyral.Local\Vyral.Local.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Execution\Vyral.Execution.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Execution.Local\Vyral.Execution.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Execution.WorkerClient\Vyral.Execution.WorkerClient.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Bridge.SemanticKernel\Vyral.Bridge.SemanticKernel.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Server\Vyral.Server.csproj" />
     <ProjectReference Include="..\..\samples\Vyral.CanonicalProjectionStarter\Vyral.CanonicalProjectionStarter.csproj" />

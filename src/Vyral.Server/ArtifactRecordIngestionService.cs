@@ -158,6 +158,11 @@ public sealed class ArtifactRecordIngestionService
 public sealed class ArtifactRecordIngestionOptions
 {
     public long MaxArtifactBytes { get; init; } = 16 * 1024 * 1024;
+    /// <summary>
+    /// Private, non-published object container used between request-bound admission and durable
+    /// completion. Hosted API and worker deployments must use the same value.
+    /// </summary>
+    public string StagingContainer { get; init; } = ArtifactRecordIngestionHostedPlugin.DefaultStagingContainer;
     public ExternalContextVerificationOptions ExternalContext { get; init; } = new();
 
     public static ArtifactRecordIngestionOptions FromConfiguration(IConfiguration configuration)
@@ -166,9 +171,15 @@ public sealed class ArtifactRecordIngestionOptions
             configuration["Ingest:MaxArtifactBytes"],
             configuration["VYRAL_INGEST_MAX_ARTIFACT_BYTES"],
             16 * 1024 * 1024);
+        var stagingContainer = FirstNonEmpty(
+            configuration["Ingest:StagingContainer"],
+            configuration["VYRAL_INGEST_STAGING_CONTAINER"],
+            ArtifactRecordIngestionHostedPlugin.DefaultStagingContainer)!;
+        ObjectNameValidator.ValidateContainer(stagingContainer);
         return new ArtifactRecordIngestionOptions
         {
             MaxArtifactBytes = max,
+            StagingContainer = stagingContainer,
             ExternalContext = ExternalContextVerificationOptions.FromConfiguration(configuration)
         };
     }
@@ -184,6 +195,9 @@ public sealed class ArtifactRecordIngestionOptions
         }
         return fallback;
     }
+
+    private static string? FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
 }
 
 /// <summary>

@@ -14,6 +14,19 @@ namespace Vyral.Tests.Local;
 public sealed class ExecutionRuntimeFactoryTests
 {
     [Fact]
+    public async Task GoogleExecutionTokenValidator_MapsMalformedTokensToAccessDenied()
+    {
+        var validator = new GoogleExecutionTokenValidator();
+
+        var error = await Assert.ThrowsAsync<ExecutionAccessDeniedException>(() =>
+            validator.ValidateAsync(
+                "not-a-google-identity-token",
+                new HashSet<string>(StringComparer.Ordinal) { "https://vyral.example.test" }));
+
+        Assert.Equal("Google OIDC identity token is invalid.", error.Message);
+    }
+
+    [Fact]
     public async Task Server_CanComposeConfiguredProviderFactoryWithoutChangingRuntimeSwitch()
     {
         var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-configured-runtime-factory-{Guid.NewGuid():N}.sqlite");

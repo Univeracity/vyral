@@ -11,12 +11,16 @@ public sealed class ExecutionWorkerClientTests
     [Fact]
     public async Task Client_UsesEveryWorkerRouteWithoutLeakingLeaseOrBearerTokens()
     {
-        var requests = new List<(string Path, string Authorization, string Body)>();
+        var requests = new List<(string Path, string Authorization, string ApiKey, string Body)>();
         var telemetry = new List<ExecutionWorkerClientTelemetry>();
         using var client = new HttpClient(new DelegateHandler(async request =>
         {
             var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync();
-            requests.Add((request.RequestUri!.AbsolutePath, request.Headers.Authorization?.ToString() ?? string.Empty, body));
+            requests.Add((
+                request.RequestUri!.AbsolutePath,
+                request.Headers.Authorization?.ToString() ?? string.Empty,
+                request.Headers.GetValues("X-Vyral-Api-Key").SingleOrDefault() ?? string.Empty,
+                body));
             return request.RequestUri.AbsolutePath switch
             {
                 "/execution/workers/leases" => Json(HttpStatusCode.OK, """{"leaseKey":"lease-a","leaseToken":"lease-secret","workerId":"worker-a","run":{"id":"run-a","handlerId":"handler-a","attempt":1,"status":"running"}}"""),
@@ -37,6 +41,7 @@ public sealed class ExecutionWorkerClientTests
             WorkerId = "worker-a",
             HandlerIds = ["handler-a"],
             TokenSource = new DelegateExecutionWorkerTokenSource(_ => Task.FromResult("identity-secret")),
+            ApiKey = "api-key-secret",
             Observe = telemetry.Add
         });
 
@@ -54,6 +59,7 @@ public sealed class ExecutionWorkerClientTests
 
         Assert.Equal(9, requests.Count);
         Assert.All(requests, request => Assert.Equal("Bearer identity-secret", request.Authorization));
+        Assert.All(requests, request => Assert.Equal("api-key-secret", request.ApiKey));
         Assert.DoesNotContain("lease-secret", requests[0].Body, StringComparison.Ordinal);
         Assert.All(requests.Skip(1), request => Assert.Contains("lease-secret", request.Body, StringComparison.Ordinal));
         Assert.All(telemetry, item =>

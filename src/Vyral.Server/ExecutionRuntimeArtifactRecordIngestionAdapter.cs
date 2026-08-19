@@ -14,9 +14,9 @@ namespace Vyral.Server;
 /// </summary>
 public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
 {
-    public const string PluginId = "vyral.artifacts";
-    public const string HandlerId = "vyral.artifacts.record-ingest";
-    private const string StagingContainer = "vyral-admission-staging";
+    public const string PluginId = ArtifactRecordIngestionHostedPlugin.PluginId;
+    public const string HandlerId = ArtifactRecordIngestionHostedPlugin.HandlerId;
+    public const string StagingContainer = ArtifactRecordIngestionHostedPlugin.DefaultStagingContainer;
 
     private readonly IExecutionRuntime _runtime;
     private readonly IObjectStore _objects;
@@ -26,12 +26,16 @@ public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
         IExecutionRuntime runtime,
         IObjectStore objects,
         ArtifactRecordIngestionService ingestion,
-        ArtifactRecordIngestionOptions options)
+        ArtifactRecordIngestionOptions options,
+        bool registerInProcessHandler = true)
     {
         _runtime = runtime;
         _objects = objects;
         _options = options;
-        _runtime.RegisterPlugin(new ArtifactRecordIngestionPlugin(objects, ingestion));
+        if (registerInProcessHandler)
+        {
+            _runtime.RegisterPlugin(new ArtifactRecordIngestionHostedPlugin(objects, ingestion));
+        }
     }
 
     public async Task<ExecutionRun> StartAsync(
@@ -62,9 +66,8 @@ public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
                 Payload = JsonSerializer.SerializeToNode(new ArtifactRecordIngestionPayload
                 {
                     Manifest = manifest,
-                    StagingContainer = StagingContainer,
+                    StagingContainer = _options.StagingContainer,
                     StagingKey = stagingKey,
-                    StagingEtag = staged.Info.Etag,
                     ContentHash = contentHash
                 }, ExecutionJson.Options),
                 IdempotencyKey = idempotencyKey,
@@ -106,7 +109,7 @@ public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
             await using var content = new MemoryStream(bytes, writable: false);
             var info = await _objects.PutObjectAsync(new ObjectWriteRequest
             {
-                Container = StagingContainer,
+                Container = _options.StagingContainer,
                 Key = key,
                 Content = content,
                 ContentType = "application/octet-stream",
@@ -124,7 +127,7 @@ public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
         {
             var existing = await _objects.GetObjectAsync(new ObjectReadRequest
             {
-                Container = StagingContainer,
+                Container = _options.StagingContainer,
                 Key = key
             }, ct);
             if (existing is null ||
@@ -159,7 +162,7 @@ public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
         {
             await _objects.DeleteObjectAsync(new ObjectDeleteRequest
             {
-                Container = StagingContainer,
+                Container = _options.StagingContainer,
                 Key = key,
                 IfMatch = etag
             }, ct);
@@ -179,107 +182,4 @@ public sealed class ExecutionRuntimeArtifactRecordIngestionAdapter
     }
 
     private sealed record StagingWrite(ObjectInfo Info, bool Created);
-
-    private sealed class ArtifactRecordIngestionPlugin : IExecutionPlugin
-    {
-        private readonly IReadOnlyList<IExecutionHandler> _handlers;
-
-        public ArtifactRecordIngestionPlugin(
-            IObjectStore objects,
-            ArtifactRecordIngestionService ingestion)
-        {
-            _handlers = new[] { new ArtifactRecordIngestionHandler(objects, ingestion) };
-        }
-
-        public ExecutionPluginDescriptor Descriptor { get; } = new()
-        {
-            PluginId = PluginId,
-            Name = "Vyral artifact/record ingestion",
-            Version = "1.0.0",
-            Handlers =
-            {
-                new ExecutionHandlerDescriptor
-                {
-                    HandlerId = HandlerId,
-                    PluginId = PluginId,
-                    DisplayName = "Ingest an artifact and its record",
-                    Description = "Completes a staged cross-store artifact/record ingestion.",
-                    MaxAttempts = 3,
-                    ConcurrencyKey = "vyral.artifacts.record-ingest"
-                }
-            }
-        };
-
-        public IReadOnlyList<IExecutionHandler> Handlers => _handlers;
-    }
-
-    private sealed class ArtifactRecordIngestionHandler : IExecutionHandler
-    {
-        private readonly IObjectStore _objects;
-        private readonly ArtifactRecordIngestionService _ingestion;
-
-        public ArtifactRecordIngestionHandler(
-            IObjectStore objects,
-            ArtifactRecordIngestionService ingestion)
-        {
-            _objects = objects;
-            _ingestion = ingestion;
-        }
-
-        public ExecutionHandlerDescriptor Descriptor { get; } = new()
-        {
-            HandlerId = HandlerId,
-            PluginId = PluginId,
-            DisplayName = "Ingest an artifact and its record",
-            MaxAttempts = 3,
-            ConcurrencyKey = "vyral.artifacts.record-ingest"
-        };
-
-        public async Task<ExecutionRunResult> ExecuteAsync(
-            IExecutionRunContext context,
-            CancellationToken ct = default)
-        {
-            var payload = context.Run.Payload?.Deserialize<ArtifactRecordIngestionPayload>(ExecutionJson.Options)
-                ?? throw new InvalidOperationException("Artifact record ingestion payload is required.");
-            var staged = await _objects.GetObjectAsync(new ObjectReadRequest
-            {
-                Container = payload.StagingContainer,
-                Key = payload.StagingKey
-            }, ct) ?? throw new InvalidOperationException("Staged artifact content is missing.");
-
-            ArtifactRecordIngestReceipt receipt;
-            await using (staged.Content)
-            {
-                if (!string.Equals(staged.ContentHash, payload.ContentHash, StringComparison.Ordinal))
-                    throw new InvalidOperationException("Staged artifact content hash does not match its admission payload.");
-                receipt = await _ingestion.IngestAsync(payload.Manifest, staged.Content, ct);
-            }
-
-            try
-            {
-                await _objects.DeleteObjectAsync(new ObjectDeleteRequest
-                {
-                    Container = payload.StagingContainer,
-                    Key = payload.StagingKey,
-                    IfMatch = staged.Etag
-                }, ct);
-            }
-            catch (InvalidOperationException)
-            {
-                // Successful published work is authoritative; staging cleanup is best-effort.
-            }
-
-            return ExecutionRunResult.Succeeded(
-                JsonSerializer.SerializeToNode(receipt, ExecutionJson.Options));
-        }
-    }
-
-    private sealed class ArtifactRecordIngestionPayload
-    {
-        public ArtifactRecordIngestManifest Manifest { get; set; } = new();
-        public string StagingContainer { get; set; } = string.Empty;
-        public string StagingKey { get; set; } = string.Empty;
-        public string? StagingEtag { get; set; }
-        public string ContentHash { get; set; } = string.Empty;
-    }
 }
