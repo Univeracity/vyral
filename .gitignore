@@ -34,6 +34,8 @@ docs/*
 docs/assets/*
 !docs/assets/vyral-logo-50.png
 !docs/assets/vyral-logo.png
+!docs/assets/vyral-portability-proof.png
+!docs/assets/vyral-portability-proof-static.png
 !docs/concepts/
 docs/concepts/*
 !docs/concepts/canonical-store.md

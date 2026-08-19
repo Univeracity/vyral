@@ -43,6 +43,18 @@ providers without changing application code. Language-neutral conformance
 fixtures and a versioned qualification matrix make adapter behavior explicit
 instead of assumed.
 
+<p align="center">
+  <a href="https://openvyral.com/#architecture">
+    <picture>
+      <source media="(prefers-reduced-motion: reduce)" srcset="./docs/assets/vyral-portability-proof-static.png">
+      <img src="./docs/assets/vyral-portability-proof.png" alt="The same Vyral durable-execution request and admission receipt remain unchanged while the selected runtime moves among locally conformant SQLite and live-qualified AWS, Azure, and Google adapters." width="1100">
+    </picture>
+  </a>
+</p>
+<p align="center">
+  <sub><a href="https://openvyral.com/#architecture">Explore the contract architecture →</a></sub>
+</p>
+
 ## Quick start
 
 Try the end-to-end local path from a source checkout:
@@ -125,7 +137,7 @@ paths; other capabilities carry their own boundary below. See the
 | Python-native embedded runtime and REST/MCP host | Prototype; clean-artifact qualified on Python 3.10–3.12 across Linux, macOS, and Windows; independent security review remains |
 | Source-native ripgrep integration | Experimental; bounded exact-literal search over authorized code and Markdown, outside the stable wire/MCP contract |
 | Stateless MCP `2026-07-28` endpoint | Preview; opt-in and REST-backed |
-| Local SQLite, Azure, and Google execution | Local reference path; Azure and Google execution are live qualified |
+| Local SQLite, AWS, Azure, and Google execution | Local reference path; AWS, Azure, and Google execution are live qualified |
 | Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
 
 Package availability does not itself establish a service-level commitment. The
