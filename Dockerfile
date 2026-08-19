@@ -3,9 +3,15 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1fc6e423f543119c406d24e2e687d67c5
 WORKDIR /src
 COPY . .
 RUN dotnet restore src/Vyral.Server/Vyral.Server.csproj --locked-mode --disable-parallel \
+    && dotnet restore src/Vyral.HostedWorker/Vyral.HostedWorker.csproj --locked-mode --disable-parallel \
     && dotnet publish src/Vyral.Server/Vyral.Server.csproj \
     -c Release \
-    -o /app/publish \
+    -o /app/publish/server \
+    --no-restore \
+    /p:UseAppHost=false \
+    && dotnet publish src/Vyral.HostedWorker/Vyral.HostedWorker.csproj \
+    -c Release \
+    -o /app/publish/worker \
     --no-restore \
     /p:UseAppHost=false \
     && mkdir -p /app/publish/.vyral
@@ -31,4 +37,6 @@ ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
 COPY --from=build --chown=1654:1654 /app/publish .
 USER 1654
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "Vyral.Server.dll"]
+# The default is the public API server. Deploy the same pinned image as the
+# least-privilege generic worker with: dotnet worker/Vyral.HostedWorker.dll
+ENTRYPOINT ["dotnet", "server/Vyral.Server.dll"]

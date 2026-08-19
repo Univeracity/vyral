@@ -300,6 +300,7 @@ DEFAULT_OIDC_AUDIENCE="$(config_value "ExecutionRuntime__Google__OidcAudience")"
 ARTIFACT_OBJECT_CONTAINER="$(config_value "ExecutionRuntime__Google__ArtifactObjectContainer")"
 OBJECT_STORE="$(config_value "VYRAL_OBJECT_STORE")"
 GCS_BUCKET="$(config_value "VYRAL_GCS_BUCKET")"
+INGEST_STAGING_CONTAINER="$(config_value "VYRAL_INGEST_STAGING_CONTAINER")"
 AUTH_MODE="$(config_value "Server__ExecutionAccess__AuthenticationMode")"
 RECORD_ROOT="$(config_value "VYRAL_FIRESTORE_ROOT_COLLECTION")"
 RUNTIME_ADAPTER="$(config_value "ExecutionRuntime__Adapter")"
@@ -367,6 +368,15 @@ fi
 if has_run_invoker "$SERVER_SERVICE" "$WORKER_SERVICE_ACCOUNT"; then pass "worker service account can invoke Vyral server"; else fail "worker service account lacks roles/run.invoker on Vyral server"; fi
 if has_project_role "$SERVER_SERVICE_ACCOUNT" "roles/datastore.user"; then pass "Vyral runtime can use Firestore"; else fail "Vyral runtime lacks roles/datastore.user"; fi
 if has_project_role "$SERVER_SERVICE_ACCOUNT" "roles/cloudtasks.enqueuer"; then pass "Vyral runtime can enqueue Cloud Tasks"; else fail "Vyral runtime lacks roles/cloudtasks.enqueuer"; fi
+for handler_id in "${HANDLER_IDS[@]}"; do
+  if [[ "$handler_id" != "vyral.artifacts.record-ingest" ]]; then
+    continue
+  fi
+  config_value_is_real "VYRAL_INGEST_STAGING_CONTAINER" "$INGEST_STAGING_CONTAINER" || true
+  if [[ "$INGEST_STAGING_CONTAINER" == "$GCS_BUCKET" ]]; then pass "generic ingestion staging uses the Vyral object bucket"; else fail "VYRAL_INGEST_STAGING_CONTAINER must equal VYRAL_GCS_BUCKET for least-privilege hosted ingestion"; fi
+  if has_project_role "$WORKER_SERVICE_ACCOUNT" "roles/datastore.user"; then pass "Vyral hosted artifact worker can use Firestore records"; else fail "Vyral hosted artifact worker lacks roles/datastore.user"; fi
+  if [[ -n "$GCS_BUCKET" ]] && has_bucket_object_access "$GCS_BUCKET" "$WORKER_SERVICE_ACCOUNT"; then pass "Vyral hosted artifact worker can read and write generic objects"; else fail "Vyral hosted artifact worker lacks object access on $GCS_BUCKET"; fi
+done
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)' 2>/dev/null || true)"
 TASKS_AGENT="service-${PROJECT_NUMBER}@gcp-sa-cloudtasks.iam.gserviceaccount.com"
 for tasks_service_account in $(printf '%s\n' "${ROUTE_TASKS_SERVICE_ACCOUNTS[@]}" | sort -u); do

@@ -101,6 +101,11 @@ Vyral is most useful when an application needs to cross one or more provider
 seams without giving those providers ownership of its data and execution
 semantics.
 
+Vyral grows by portable capability, not by reproducing provider APIs. A shared
+contract earns its place when independent provider shapes—or an established
+application model—show a durable common core; provider-native behavior remains
+explicit at the edge.
+
 Vyral does not assume vector search is always the answer. For current,
 structured sources that an application can safely access, direct source search
 is often the simplest first path. Indexed lexical, vector, hybrid, and reranked
@@ -353,6 +358,11 @@ Vyral uses two canonical mutation shapes:
 - receipt-bound asynchronous operations durably admit work and return a run or
   job receipt whose status can be queried independently.
 
+Vyral-owned generic handlers can also run through a separately deployed,
+same-version hosted worker (preview), so consumers retain the public admission
+contract without reimplementing Vyral storage or lease behavior. The initial
+deployment shape is documented for [Google Cloud Run](deploy/README.md#vyral-hosted-generic-handlers).
+
 The local SQLite runtime is the reference implementation. Azure Durable,
 AWS, Google Cloud Tasks, and Temporal adapters implement different subsets and
 carry separate qualification evidence. External workers use leases,
@@ -392,7 +402,7 @@ Adapter authors should begin with the
 ## Repository map
 
 ```text
-src/           .NET contracts, runtimes, server, and provider adapters
+src/           .NET contracts, runtimes, API/hosted-worker services, and provider adapters
 clients/       Python and JavaScript HTTP SDKs; Go external-worker client
 runtimes/      Peer runtime implementations, currently Python
 contracts/     OpenAPI-derived public SDK catalog and JSON schemas

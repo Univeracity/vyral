@@ -5,6 +5,7 @@ using Vyral.Abstractions.Interfaces;
 using Vyral.Abstractions.Models;
 using Vyral.Execution;
 using Vyral.Execution.Local;
+using Vyral.Execution.WorkerClient;
 using Vyral.Local;
 using Vyral.Primitives;
 using Vyral.Server;
@@ -1258,6 +1259,77 @@ public class ExecutionRuntimeConformanceTests
         Assert.Contains(
             await runtime.GetHistoryAsync(accepted.Id),
             item => item.Type == ExecutionEventTypes.RetryScheduled);
+    }
+
+    [Fact]
+    public async Task ArtifactRecordIngestion_HostedWorkerCompletesGenericExternalHandlerWithoutConsumerImplementation()
+    {
+        var runtime = CreateRuntime();
+        var objects = new FileObjectStore(Path.Combine(
+            Path.GetTempPath(),
+            $"vyral-hosted-artifact-worker-{Guid.NewGuid():N}"));
+        var records = new SqliteRecordCollectionStore(Path.Combine(
+            Path.GetTempPath(),
+            $"vyral-hosted-artifact-records-{Guid.NewGuid():N}.sqlite"));
+        await records.InitializeAsync();
+        await records.CreateCollectionAsync(new RecordCollectionPolicy { Name = "receipts" });
+        var options = new ArtifactRecordIngestionOptions { StagingContainer = "vyral-system-objects" };
+        var ingestion = new ArtifactRecordIngestionService(records, objects, options);
+        runtime.RegisterExternalHandler(ArtifactRecordIngestionHostedPlugin.CreateHandlerDescriptor());
+        var admission = new ExecutionRuntimeArtifactRecordIngestionAdapter(
+            runtime,
+            objects,
+            ingestion,
+            options,
+            registerInProcessHandler: false);
+        var worker = new ExecutionPluginWorker(
+            new InProcessExecutionWorkerTransport(
+                runtime,
+                "vyral-hosted-worker",
+                [ArtifactRecordIngestionHostedPlugin.HandlerId]),
+            [new ArtifactRecordIngestionHostedPlugin(objects, ingestion)],
+            new ExecutionPluginWorkerOptions { HeartbeatInterval = Timeout.InfiniteTimeSpan });
+        var manifest = new ArtifactRecordIngestManifest
+        {
+            Collection = "receipts",
+            Record = new VyralRecord
+            {
+                Id = "hosted-receipt-1",
+                PartitionKey = "tenant-a",
+                Type = "test.receipt"
+            },
+            Artifact = new ArtifactRecordDescriptor
+            {
+                Container = "published",
+                Key = "receipts/hosted-receipt-1.json",
+                ContentType = "application/json"
+            }
+        };
+
+        await using var content = new MemoryStream("{\"hosted\":true}"u8.ToArray(), writable: false);
+        var accepted = await admission.StartAsync(manifest, content, "hosted-artifact-1");
+
+        Assert.Equal(ExecutionRunStatuses.Queued, accepted.Status);
+        Assert.False(accepted.Payload!.AsObject().ContainsKey("stagingEtag"));
+        var completed = await worker.RunOnceAsync(accepted.Id);
+        Assert.NotNull(completed);
+        Assert.Equal(ExecutionRunStatuses.Succeeded, completed!.Status);
+        Assert.NotNull(completed.Result);
+        Assert.True(completed.Result!["accepted"]!.GetValue<bool>());
+        Assert.Null(await worker.RunOnceAsync(accepted.Id)); // Duplicate task delivery is harmless.
+
+        var staged = await objects.GetObjectAsync(new ObjectReadRequest
+        {
+            Container = options.StagingContainer,
+            Key = "record-artifact/" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData("hosted-artifact-1"u8.ToArray())).ToLowerInvariant() + ".bin"
+        });
+        Assert.Null(staged);
+
+        await using var replayContent = new MemoryStream("{\"hosted\":true}"u8.ToArray(), writable: false);
+        var replayed = await admission.StartAsync(manifest, replayContent, "hosted-artifact-1");
+        Assert.Equal(accepted.Id, replayed.Id);
+        Assert.True(replayed.AdmissionReplayed);
+        Assert.Equal(ExecutionRunStatuses.Succeeded, replayed.Status);
     }
 
     private static LocalExecutionRuntime CreateRuntime(ExecutionRuntimeLimits? limits = null)

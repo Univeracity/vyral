@@ -87,9 +87,13 @@ Consumers decide whether and how to derive pseudonymous identifiers. Vyral
 stores only the metadata and content that their manifest supplies.
 
 For Cloud Run, keep specialized work request-bound and let Vyral own generic
-durable acceptance of the supplied artifact and record. A producer may select
-inline or queue-backed processing without changing the contract. Its integration
-owns the queue, callback identity, retry policy, and route.
+durable acceptance of the supplied artifact and record. The public operation
+returns a `202` admission receipt; a Vyral-hosted generic worker completes the
+configured external execution route. Consumer-owned workers remain for
+consumer-defined handlers, not Vyral's generic staging, storage publication, or
+lease-completion behavior. The Vyral deployment owns the generic queue, callback
+identity, and reconciliation. A producer owns a queue, callback identity, retry
+policy, and route only for its own consumer-defined handler.
 
 An upstream may attach a signed external context to its manifest. The host
 configures a public-key verifier and expected issuer, audience, and key id.
