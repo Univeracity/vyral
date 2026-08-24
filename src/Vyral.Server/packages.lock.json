@@ -4,50 +4,50 @@
     "net10.0": {
       "AWSSDK.DynamoDBv2": {
         "type": "Direct",
-        "requested": "[4.0.103.1, )",
-        "resolved": "4.0.103.1",
-        "contentHash": "lWjDWid4uPdgi1b5dARsvvsFDUmgJf+uAnInD3yGSdNXZoEPd2nDZfVTKFxi9ny4BdlmV4znmVFf2uQoqPPIfg==",
+        "requested": "[4.0.103.4, )",
+        "resolved": "4.0.103.4",
+        "contentHash": "uXH67JhaTnD64vnX6DfNsRk/KSCdw9npdhsreWi33MZE0pdzr6KDj5m6iWsd+PDkI1tAjB7ht2S20rwdwhuppA==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.101, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102, 5.0.0)"
         }
       },
       "AWSSDK.SQS": {
         "type": "Direct",
-        "requested": "[4.0.100.8, )",
-        "resolved": "4.0.100.8",
-        "contentHash": "6WZzJc+1T6VJuFDorQmGbhLabJhkFIp2zTK9y6fbGprCqUCtnzF/FufmpjKcAJZ17xxDpxpgo/wQ0leZHHTQ8g==",
+        "requested": "[4.0.100.10, )",
+        "resolved": "4.0.100.10",
+        "contentHash": "u2IjUITEZgsz2zoBL4MSgsy3TrUuvmLxiQOp0uBzqYckyMcth8XB7Td4lFVY8Be8rwygsl671Jta1GyRLE098w==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.101, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102, 5.0.0)"
         }
       },
       "Google.Apis.Auth": {
         "type": "Direct",
-        "requested": "[1.75.0, )",
-        "resolved": "1.75.0",
-        "contentHash": "hzuGwUBIQYdFkChXm62E5Suxe+q5PHt2uE5EunGBco2j01uQJGlUgzNujZvGHMlAIEHaytzhdn3v3v52ZPgv2Q==",
+        "requested": "[1.76.0, )",
+        "resolved": "1.76.0",
+        "contentHash": "WzRCykQ0OApOEFdUYYBJ6riIxs+xk635s0KsGb83zJcABa66DCgaAXiWZuZjSqnwA3hjm7u8mmzR4EUHpJ1UfQ==",
         "dependencies": {
-          "Google.Apis": "1.75.0",
-          "Google.Apis.Core": "1.75.0",
+          "Google.Apis": "1.76.0",
+          "Google.Apis.Core": "1.76.0",
           "System.Management": "7.0.2"
         }
       },
       "AWSSDK.Core": {
         "type": "Transitive",
-        "resolved": "4.0.101",
-        "contentHash": "7Q0z0fLpy+w6h4G5z/qZ6PYGzZ0DgYjYkVdGMnhtjkgQaKX+Sjm0YxfFxFILRewxC4o6wwnrbvwaSj41LgRRfg=="
+        "resolved": "4.0.102",
+        "contentHash": "sjkYreyNPlYTnAxdnqd3MBoeTNZHXOzV9lKULS5VAn+6MJIqu87aZLlm56KhDANOBXRxwDJIW668ZlsFhaB6Zw=="
       },
       "AWSSDK.S3": {
         "type": "Transitive",
-        "resolved": "4.0.102.1",
-        "contentHash": "zGP3FW4D0wfbmYxoOWgNoPcwoA8E+kWH6KezOBPiLpAOi3l4cygFF15jiWdma6R7D+M9qu3DzdpWq/VlyIJX+Q==",
+        "resolved": "4.0.102.3",
+        "contentHash": "3UBPFahEW62lNqHutA94if/9YguOXswDkz+CMh8fo3qCl7PUdynwSEvE0rhHnRPok0rDkDEDpwddfk7h8Mg0gw==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.101, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102, 5.0.0)"
         }
       },
       "AWSSDK.Signin": {
         "type": "Transitive",
-        "resolved": "4.0.101.5",
-        "contentHash": "+XVnd+4efxEkdC74RTdHmxwJ2VhyPLT5TeGBoDTQ8LSQXYTfsN4Q2JWcS/ZAw151xjS5W89+i8FyvCM8Z7zGQg==",
+        "resolved": "4.0.101.7",
+        "contentHash": "TcmZZ9fQVjfuhnCKs1r/DUN5jDkKH7AOwLv7GOv8Jlx2j81iviOhN5SGyiyJwLR5hJGVHiYsDIgGUHIyWuKLOQ==",
         "dependencies": {
           "BouncyCastle.Cryptography": "2.6.2"
         }
@@ -128,16 +128,16 @@
       },
       "Google.Apis": {
         "type": "Transitive",
-        "resolved": "1.75.0",
-        "contentHash": "ZqODi2IvyTBezeGztemXv6U/+VinyqxxPiyoW2CZbzIrUp+a35Rt5tzUjXHPXK9nA1YQi/w8ABpYQpBm31ditw==",
+        "resolved": "1.76.0",
+        "contentHash": "sIhJW2vT1cXE/yUFp1q1Mv7EUgbGu2uMIcqqv+BgElRdGQApxiYpZ/jG6hFkQB8/AG9kGurJOzLOM9PZ++GEtA==",
         "dependencies": {
-          "Google.Apis.Core": "1.75.0"
+          "Google.Apis.Core": "1.76.0"
         }
       },
       "Google.Apis.Core": {
         "type": "Transitive",
-        "resolved": "1.75.0",
-        "contentHash": "7AuI44XP4LzMFiOjdk4GCtCxJTIWZcjrXLeGjLYYSpTHHbiPkvm76XNym7zPOnD90sIg+zdTulg+I6D5W5spTQ==",
+        "resolved": "1.76.0",
+        "contentHash": "P2nFbC0SsnUe8sGjhpCLs6CHIWFzURgUS2M9l9aUV1vJjVXpesRbegEYZS/dLKehcgx8twDP7xA5OMGygMD55g==",
         "dependencies": {
           "Newtonsoft.Json": "13.0.4"
         }
@@ -508,9 +508,9 @@
       "vyral.aws": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.DynamoDBv2": "[4.0.103.1, )",
-          "AWSSDK.S3": "[4.0.102.1, )",
-          "AWSSDK.Signin": "[4.0.101.5, )",
+          "AWSSDK.DynamoDBv2": "[4.0.103.4, )",
+          "AWSSDK.S3": "[4.0.102.3, )",
+          "AWSSDK.Signin": "[4.0.101.7, )",
           "System.Numerics.Tensors": "[10.0.11, )",
           "Vyral.Abstractions": "[0.3.0, )"
         }
@@ -528,7 +528,7 @@
       "vyral.cloudflare": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.S3": "[4.0.102.1, )",
+          "AWSSDK.S3": "[4.0.102.3, )",
           "Vyral.Abstractions": "[0.3.0, )",
           "Vyral.Aws": "[0.3.0, )"
         }
@@ -550,8 +550,8 @@
       "vyral.execution.aws": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.DynamoDBv2": "[4.0.103.1, )",
-          "AWSSDK.SQS": "[4.0.100.8, )",
+          "AWSSDK.DynamoDBv2": "[4.0.103.4, )",
+          "AWSSDK.SQS": "[4.0.100.10, )",
           "Vyral.Abstractions": "[0.3.0, )",
           "Vyral.Execution": "[0.2.0, )"
         }
@@ -574,8 +574,8 @@
       "vyral.google": {
         "type": "Project",
         "dependencies": {
-          "Google.Apis.Auth": "[1.75.0, )",
-          "Google.Apis.Core": "[1.75.0, )",
+          "Google.Apis.Auth": "[1.76.0, )",
+          "Google.Apis.Core": "[1.76.0, )",
           "Google.Cloud.Firestore": "[4.4.0, )",
           "Google.Cloud.Storage.V1": "[4.15.0, )",
           "Google.Cloud.Tasks.V2": "[3.6.0, )",

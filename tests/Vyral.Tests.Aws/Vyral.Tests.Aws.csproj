@@ -12,9 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.103.1" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.102.1" />
-    <PackageReference Include="AWSSDK.SQS" Version="4.0.100.8" />
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.103.4" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.102.3" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.100.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">

@@ -59,7 +59,7 @@ def main() -> int:
         "packages: write",
         "attestations: write",
         "id-token: write",
-        "docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435",
+        "docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
         "driver: docker-container",
         "docker/login-action@dbcb813823bdd20940b903addbd779551569679f",
         "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
