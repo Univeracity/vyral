@@ -5,11 +5,6 @@
       "vyral.primitives": {
         "type": "Project"
       }
-    },
-    "net8.0": {
-      "vyral.primitives": {
-        "type": "Project"
-      }
     }
   }
 }
