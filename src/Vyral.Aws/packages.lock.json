@@ -4,27 +4,27 @@
     "net10.0": {
       "AWSSDK.DynamoDBv2": {
         "type": "Direct",
-        "requested": "[4.0.103.1, )",
-        "resolved": "4.0.103.1",
-        "contentHash": "lWjDWid4uPdgi1b5dARsvvsFDUmgJf+uAnInD3yGSdNXZoEPd2nDZfVTKFxi9ny4BdlmV4znmVFf2uQoqPPIfg==",
+        "requested": "[4.0.103.4, )",
+        "resolved": "4.0.103.4",
+        "contentHash": "uXH67JhaTnD64vnX6DfNsRk/KSCdw9npdhsreWi33MZE0pdzr6KDj5m6iWsd+PDkI1tAjB7ht2S20rwdwhuppA==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.101, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102, 5.0.0)"
         }
       },
       "AWSSDK.S3": {
         "type": "Direct",
-        "requested": "[4.0.102.1, )",
-        "resolved": "4.0.102.1",
-        "contentHash": "zGP3FW4D0wfbmYxoOWgNoPcwoA8E+kWH6KezOBPiLpAOi3l4cygFF15jiWdma6R7D+M9qu3DzdpWq/VlyIJX+Q==",
+        "requested": "[4.0.102.3, )",
+        "resolved": "4.0.102.3",
+        "contentHash": "3UBPFahEW62lNqHutA94if/9YguOXswDkz+CMh8fo3qCl7PUdynwSEvE0rhHnRPok0rDkDEDpwddfk7h8Mg0gw==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.101, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102, 5.0.0)"
         }
       },
       "AWSSDK.Signin": {
         "type": "Direct",
-        "requested": "[4.0.101.5, )",
-        "resolved": "4.0.101.5",
-        "contentHash": "+XVnd+4efxEkdC74RTdHmxwJ2VhyPLT5TeGBoDTQ8LSQXYTfsN4Q2JWcS/ZAw151xjS5W89+i8FyvCM8Z7zGQg==",
+        "requested": "[4.0.101.7, )",
+        "resolved": "4.0.101.7",
+        "contentHash": "TcmZZ9fQVjfuhnCKs1r/DUN5jDkKH7AOwLv7GOv8Jlx2j81iviOhN5SGyiyJwLR5hJGVHiYsDIgGUHIyWuKLOQ==",
         "dependencies": {
           "BouncyCastle.Cryptography": "2.6.2"
         }
@@ -37,8 +37,8 @@
       },
       "AWSSDK.Core": {
         "type": "Transitive",
-        "resolved": "4.0.101",
-        "contentHash": "7Q0z0fLpy+w6h4G5z/qZ6PYGzZ0DgYjYkVdGMnhtjkgQaKX+Sjm0YxfFxFILRewxC4o6wwnrbvwaSj41LgRRfg=="
+        "resolved": "4.0.102",
+        "contentHash": "sjkYreyNPlYTnAxdnqd3MBoeTNZHXOzV9lKULS5VAn+6MJIqu87aZLlm56KhDANOBXRxwDJIW668ZlsFhaB6Zw=="
       },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",

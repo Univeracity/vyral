@@ -14,9 +14,9 @@
       },
       "Microsoft.Azure.Functions.Worker.Extensions.DurableTask": {
         "type": "Direct",
-        "requested": "[1.18.0, )",
-        "resolved": "1.18.0",
-        "contentHash": "Y8xSOFJ8m+PYAixnvJJuPj2O4d7SYc10Bkm4gh4cnt3QXCozKRVvbcpwVJKI8uG/qioVPY/Kel71aY/tqk/1cQ==",
+        "requested": "[1.19.0, )",
+        "resolved": "1.19.0",
+        "contentHash": "2j1MHOLOOI8g3MC79NV+stBmK6q+4XuAZ5ks3ZZYD9XB53Q3IiZQJLbmQMGQWXGQndR90ZSX/8NcJPedl7sqbA==",
         "dependencies": {
           "Grpc.Net.Client": "2.76.0",
           "Microsoft.Azure.Functions.Worker.Core": "2.51.0",

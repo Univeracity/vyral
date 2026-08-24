@@ -13,9 +13,9 @@
       },
       "Microsoft.SemanticKernel.Abstractions": {
         "type": "Direct",
-        "requested": "[1.79.0, )",
-        "resolved": "1.79.0",
-        "contentHash": "Ls9yuHB24uX6Q2fhMuREZLvVZjihy5x25OP5P2WYixKqJkL5j3+nqugLgV+hh4GInzRl+O5dyZKdGt/A7ePHsA==",
+        "requested": "[1.80.0, )",
+        "resolved": "1.80.0",
+        "contentHash": "l0MnUvjXGYWEUEbJ+pD9796+p4lGWDhe787WhNaP7mcG4d9z6apNuSZQEI0WrI9aiWgee6tPngBwRrP7In40xg==",
         "dependencies": {
           "Microsoft.Bcl.HashCode": "1.1.1",
           "Microsoft.Extensions.AI": "10.5.0",
