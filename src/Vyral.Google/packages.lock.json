@@ -15,9 +15,9 @@
       },
       "Google.Apis.Core": {
         "type": "Direct",
-        "requested": "[1.75.0, )",
-        "resolved": "1.75.0",
-        "contentHash": "7AuI44XP4LzMFiOjdk4GCtCxJTIWZcjrXLeGjLYYSpTHHbiPkvm76XNym7zPOnD90sIg+zdTulg+I6D5W5spTQ==",
+        "requested": "[1.76.0, )",
+        "resolved": "1.76.0",
+        "contentHash": "P2nFbC0SsnUe8sGjhpCLs6CHIWFzURgUS2M9l9aUV1vJjVXpesRbegEYZS/dLKehcgx8twDP7xA5OMGygMD55g==",
         "dependencies": {
           "Newtonsoft.Json": "13.0.4"
         }
