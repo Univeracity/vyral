@@ -2,7 +2,7 @@
   "$schema": "https://openvyral.com/qualification/retrieval-projection-qualification.schema.json",
   "schemaVersion": "1.0",
   "coreContractVersion": "0.3.0",
-  "generatedAtUtc": "2026-08-27T18:41:00Z",
+  "generatedAtUtc": "2026-08-27T19:17:00Z",
   "qualificationExpiresAfterDays": 90,
   "adapters": [
     {
@@ -155,24 +155,24 @@
       "evidence": [
         {
           "kind": "unit_gate",
-          "observedAtUtc": "2026-08-27T18:38:00Z",
-          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "observedAtUtc": "2026-08-27T19:15:12Z",
+          "expiresAtUtc": "2026-11-25T19:15:12Z",
           "reference": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/verify.mjs",
           "disclosure": "public",
-          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
-          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceCommit": "7db0be8d97b151752105c4efb54d6c06f04cfda0",
+          "sourceTreeDigest": "sha256:c49743c03747580a291cd1e032120fbf192264ddec456be8ff5010c6636a8fb6",
           "sourceDirty": false,
           "generationIds": [],
           "descriptorDigests": []
         },
         {
           "kind": "local_gate",
-          "observedAtUtc": "2026-08-27T18:38:00Z",
-          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "observedAtUtc": "2026-08-27T19:15:12Z",
+          "expiresAtUtc": "2026-11-25T19:15:12Z",
           "reference": "scripts/verify-worker-r2-generation-projection.py",
           "disclosure": "public",
-          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
-          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceCommit": "7db0be8d97b151752105c4efb54d6c06f04cfda0",
+          "sourceTreeDigest": "sha256:c49743c03747580a291cd1e032120fbf192264ddec456be8ff5010c6636a8fb6",
           "sourceDirty": false,
           "generationIds": [],
           "descriptorDigests": []
@@ -213,24 +213,24 @@
       "evidence": [
         {
           "kind": "unit_gate",
-          "observedAtUtc": "2026-08-27T18:38:00Z",
-          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "observedAtUtc": "2026-08-27T19:15:12Z",
+          "expiresAtUtc": "2026-11-25T19:15:12Z",
           "reference": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/object-reader.mjs",
           "disclosure": "public",
-          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
-          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceCommit": "7db0be8d97b151752105c4efb54d6c06f04cfda0",
+          "sourceTreeDigest": "sha256:c49743c03747580a291cd1e032120fbf192264ddec456be8ff5010c6636a8fb6",
           "sourceDirty": false,
           "generationIds": [],
           "descriptorDigests": []
         },
         {
           "kind": "local_gate",
-          "observedAtUtc": "2026-08-27T18:38:00Z",
-          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "observedAtUtc": "2026-08-27T19:15:12Z",
+          "expiresAtUtc": "2026-11-25T19:15:12Z",
           "reference": "scripts/verify-worker-r2-generation-projection.py",
           "disclosure": "public",
-          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
-          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceCommit": "7db0be8d97b151752105c4efb54d6c06f04cfda0",
+          "sourceTreeDigest": "sha256:c49743c03747580a291cd1e032120fbf192264ddec456be8ff5010c6636a8fb6",
           "sourceDirty": false,
           "generationIds": [],
           "descriptorDigests": []
