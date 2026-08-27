@@ -39,6 +39,7 @@ docs/assets/*
 !docs/concepts/
 docs/concepts/*
 !docs/concepts/canonical-store.md
+!docs/concepts/generation-bound-retrieval.md
 !docs/contributing/
 docs/contributing/*
 !docs/contributing/adapter-contributor.md
