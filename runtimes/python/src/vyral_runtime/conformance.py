@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
+import hmac
 from importlib import resources
 import json
 from pathlib import Path, PurePosixPath
 import struct
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Callable, Mapping, Protocol, cast
 
 from ._datetime import parse_iso_datetime
 from ._version import CONTRACT_VERSION, FIXTURE_VERSION, RUNTIME_VERSION
@@ -76,6 +78,14 @@ class ConformanceManifest:
 
 @dataclass(frozen=True)
 class GoldenResult:
+    scenario_id: str
+    step_id: str
+    operation: str
+    value: JSONValue
+
+
+@dataclass(frozen=True)
+class ProjectionGenerationScenarioResult:
     scenario_id: str
     step_id: str
     operation: str
@@ -521,12 +531,475 @@ def _operation_rag_ingestion_plan(
     }
 
 
+def _operation_projection_generation_descriptor_hash(
+    arguments: Mapping[str, Any],
+) -> JSONValue:
+    raw_descriptor = arguments.get("descriptor")
+    if not isinstance(raw_descriptor, Mapping):
+        raise ConformanceError("arguments.descriptor must be an object.")
+
+    descriptor = dict(raw_descriptor)
+    required = (
+        "schema",
+        "collection",
+        "generationId",
+        "providerId",
+        "profileId",
+        "strategyVersion",
+        "sourceManifestDigest",
+        "recordRevisionSetDigest",
+        "projectionSchemaDigest",
+        "configurationDigest",
+        "expectedItemCount",
+        "expectedPartitions",
+        "capabilities",
+        "artifacts",
+        "createdAtUtc",
+    )
+    for name in required:
+        if name not in descriptor:
+            raise ConformanceError(
+                f"arguments.descriptor.{name} is required."
+            )
+
+    expected_partitions = descriptor["expectedPartitions"]
+    capabilities = descriptor["capabilities"]
+    artifacts = descriptor["artifacts"]
+    if not isinstance(expected_partitions, list) or not all(
+        isinstance(value, str) and value for value in expected_partitions
+    ):
+        raise ConformanceError(
+            "arguments.descriptor.expectedPartitions must be a string array."
+        )
+    if not isinstance(capabilities, list) or not all(
+        isinstance(value, str) and value for value in capabilities
+    ):
+        raise ConformanceError(
+            "arguments.descriptor.capabilities must be a string array."
+        )
+    if not isinstance(artifacts, list) or not all(
+        isinstance(value, Mapping) for value in artifacts
+    ):
+        raise ConformanceError(
+            "arguments.descriptor.artifacts must be an object array."
+        )
+
+    material = {
+        "schema": descriptor["schema"],
+        "collection": descriptor["collection"],
+        "generationId": descriptor["generationId"],
+        "providerId": descriptor["providerId"],
+        "profileId": descriptor["profileId"],
+        "strategyVersion": descriptor["strategyVersion"],
+        "sourceManifestDigest": descriptor["sourceManifestDigest"],
+        "recordRevisionSetDigest": descriptor["recordRevisionSetDigest"],
+        "projectionSchemaDigest": descriptor["projectionSchemaDigest"],
+        "analyzerDigest": descriptor.get("analyzerDigest"),
+        "configurationDigest": descriptor["configurationDigest"],
+        "expectedItemCount": descriptor["expectedItemCount"],
+        "expectedPartitions": sorted(expected_partitions),
+        "capabilities": sorted(capabilities),
+        "artifacts": sorted(
+            (dict(value) for value in artifacts),
+            key=lambda value: str(value.get("id", "")),
+        ),
+        "createdAtUtc": descriptor["createdAtUtc"],
+    }
+    encoded = json.dumps(
+        material,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return "sha256:" + sha256(encoded).hexdigest()
+
+
+class _ProjectionGenerationFixtureRuntime:
+    """Independent stateful runner for the portable generation lifecycle fixture."""
+
+    _SIGNING_KEY = sha256(b"portable-generation-fixture-key").digest()
+
+    def __init__(self) -> None:
+        self._generations: dict[tuple[str, str], dict[str, Any]] = {}
+        self._active: dict[str, str] = {}
+        self._continuations: dict[str, str] = {}
+
+    def execute(self, operation: str, arguments: Mapping[str, Any]) -> JSONValue:
+        if operation == "records.projection-generation-publish":
+            self._publish(arguments)
+            return {"status": "ok"}
+        if operation == "records.projection-generation-activate":
+            generation = self._generation(arguments)
+            collection = _require_string(arguments.get("collection"), "arguments.collection")
+            prior_id = self._active.get(collection)
+            if prior_id is not None:
+                self._generations[(collection, prior_id)]["state"] = "retained"
+            generation["state"] = "active"
+            self._active[collection] = cast(str, generation["descriptor"]["generationId"])
+            return {"status": "ok"}
+        if operation == "records.projection-generation-retire":
+            generation = self._generation(arguments)
+            generation["state"] = "retired"
+            generation["availablePartitions"] = []
+            return {"status": "ok"}
+        if operation == "records.projection-generation-set-available":
+            generation = self._generation(arguments)
+            raw = arguments.get("availablePartitions")
+            if not isinstance(raw, list) or not all(isinstance(value, str) for value in raw):
+                raise ConformanceError("availablePartitions must be a string array.")
+            generation["availablePartitions"] = sorted(raw)
+            return {"status": "ok"}
+        if operation == "records.projection-generation-inspect":
+            return self._inspect(arguments)
+        if operation == "records.projection-generation-search":
+            return self._search(arguments)
+        raise ConformanceError(f"Unsupported projection generation operation {operation!r}.")
+
+    def _publish(self, arguments: Mapping[str, Any]) -> None:
+        raw_descriptor = arguments.get("descriptor")
+        raw_documents = arguments.get("documents")
+        if not isinstance(raw_descriptor, Mapping) or not isinstance(raw_documents, list):
+            raise ConformanceError("Projection publication requires descriptor and documents.")
+        descriptor = dict(raw_descriptor)
+        expected_digest = _require_string(
+            descriptor.get("descriptorDigest"),
+            "descriptor.descriptorDigest",
+        )
+        actual_digest = _operation_projection_generation_descriptor_hash(
+            {"descriptor": descriptor}
+        )
+        if actual_digest != expected_digest:
+            raise ConformanceError("Published projection descriptor digest is invalid.")
+        collection = _require_string(descriptor.get("collection"), "descriptor.collection")
+        generation_id = _require_string(
+            descriptor.get("generationId"), "descriptor.generationId"
+        )
+        expected_partitions = descriptor.get("expectedPartitions")
+        if not isinstance(expected_partitions, list) or not all(
+            isinstance(value, str) for value in expected_partitions
+        ):
+            raise ConformanceError("descriptor.expectedPartitions must be a string array.")
+        documents: list[dict[str, Any]] = []
+        for raw_document in raw_documents:
+            if not isinstance(raw_document, Mapping):
+                raise ConformanceError("Every projection document must be an object.")
+            documents.append(dict(raw_document))
+        if len(documents) != descriptor.get("expectedItemCount"):
+            raise ConformanceError("Projection document count does not match the descriptor.")
+        self._generations[(collection, generation_id)] = {
+            "descriptor": descriptor,
+            "documents": documents,
+            "availablePartitions": sorted(expected_partitions),
+            "state": "retained",
+        }
+
+    def _generation(self, arguments: Mapping[str, Any]) -> dict[str, Any]:
+        collection = _require_string(arguments.get("collection"), "arguments.collection")
+        generation_id = _require_string(
+            arguments.get("generationId"), "arguments.generationId"
+        )
+        generation = self._generations.get((collection, generation_id))
+        if generation is None:
+            raise ConformanceError("The fixture generation is unavailable.")
+        return generation
+
+    def _inspect(self, arguments: Mapping[str, Any]) -> JSONValue:
+        collection = _require_string(arguments.get("collection"), "arguments.collection")
+        generation_id = self._active.get(collection)
+        if generation_id is None:
+            raise ConformanceError("The fixture collection has no active generation.")
+        generation = self._generations[(collection, generation_id)]
+        descriptor = cast(dict[str, Any], generation["descriptor"])
+        available = cast(list[str], generation["availablePartitions"])
+        expected = cast(list[str], descriptor["expectedPartitions"])
+        coverage = "complete" if available == sorted(expected) else "incomplete"
+        return {
+            "generationId": generation_id,
+            "state": cast(str, generation["state"]),
+            "coverageStatus": coverage,
+            "availablePartitions": cast(list[JSONValue], list(available)),
+        }
+
+    def _search(self, arguments: Mapping[str, Any]) -> JSONValue:
+        collection = _require_string(arguments.get("collection"), "arguments.collection")
+        query = _require_text(arguments.get("query"), "arguments.query")
+        raw_partitions = arguments.get("partitionKeys")
+        if not isinstance(raw_partitions, list) or not all(
+            isinstance(value, str) for value in raw_partitions
+        ):
+            raise ConformanceError("partitionKeys must be a string array.")
+        partitions = sorted(raw_partitions)
+        raw_limit = arguments.get("limit")
+        if isinstance(raw_limit, bool) or not isinstance(raw_limit, int) or raw_limit <= 0:
+            raise ConformanceError("limit must be a positive integer.")
+
+        continuation: Mapping[str, Any] | None = None
+        continuation_ref = arguments.get("continuationRef")
+        tamper_ref = arguments.get("tamperContinuationRef")
+        if continuation_ref is not None:
+            token = self._continuations[
+                _require_string(continuation_ref, "arguments.continuationRef")
+            ]
+            continuation = self._read_continuation(token)
+        elif tamper_ref is not None:
+            token = self._continuations[
+                _require_string(tamper_ref, "arguments.tamperContinuationRef")
+            ]
+            continuation = self._read_continuation(self._tamper(token))
+            if continuation is None:
+                return self._failed(
+                    None,
+                    "unavailable",
+                    [],
+                    partitions,
+                    "invalidContinuation",
+                )
+
+        generation_id = (
+            _require_string(continuation.get("generationId"), "continuation.generationId")
+            if continuation is not None
+            else self._active.get(collection)
+        )
+        if generation_id is None:
+            return self._failed(None, "unavailable", [], partitions, "generationUnavailable")
+        generation = self._generations.get((collection, generation_id))
+        if generation is None:
+            return self._failed(generation_id, "unavailable", [], partitions, "generationUnavailable")
+        if generation["state"] == "retired":
+            return self._failed(generation_id, "unavailable", [], partitions, "generationRetired")
+
+        descriptor = cast(dict[str, Any], generation["descriptor"])
+        available = cast(list[str], generation["availablePartitions"])
+        covered = sorted(set(partitions).intersection(available))
+        missing = sorted(set(partitions).difference(covered))
+        if missing:
+            return self._failed(
+                generation_id,
+                "incomplete",
+                covered,
+                missing,
+                "coverageIncomplete",
+            )
+        expected_digest = arguments.get("expectedDescriptorDigest")
+        if expected_digest is not None and expected_digest != descriptor["descriptorDigest"]:
+            return self._failed(
+                generation_id,
+                "complete",
+                covered,
+                [],
+                "generationDescriptorMismatch",
+            )
+
+        fingerprint = self._request_fingerprint(
+            collection,
+            generation_id,
+            cast(str, descriptor["descriptorDigest"]),
+            query,
+            partitions,
+            raw_limit,
+        )
+        offset = 0
+        if continuation is not None:
+            if continuation.get("fingerprint") != fingerprint:
+                return self._failed(
+                    generation_id,
+                    "complete",
+                    covered,
+                    [],
+                    "invalidContinuation",
+                )
+            raw_offset = continuation.get("offset")
+            if isinstance(raw_offset, bool) or not isinstance(raw_offset, int) or raw_offset < 0:
+                return self._failed(
+                    generation_id,
+                    "complete",
+                    covered,
+                    [],
+                    "invalidContinuation",
+                )
+            offset = raw_offset
+
+        query_tokens = query.casefold().split()
+        matches: list[dict[str, Any]] = []
+        for document in cast(list[dict[str, Any]], generation["documents"]):
+            if document.get("partitionKey") not in partitions:
+                continue
+            text_tokens = _require_text(
+                document.get("searchText"), "document.searchText"
+            ).casefold().split()
+            score = sum(text_tokens.count(token) for token in query_tokens)
+            if not query_tokens or score > 0:
+                match = dict(document)
+                match["score"] = score
+                matches.append(match)
+        matches.sort(
+            key=lambda item: (
+                -cast(int, item["score"]),
+                cast(str, item["partitionKey"]),
+                cast(str, item["id"]),
+            )
+        )
+        page = matches[offset : offset + raw_limit]
+        next_offset = offset + len(page)
+        next_token: str | None = None
+        if next_offset < len(matches):
+            next_token = self._write_continuation(
+                {
+                    "generationId": generation_id,
+                    "fingerprint": fingerprint,
+                    "offset": next_offset,
+                }
+            )
+        save_as = arguments.get("saveContinuationAs")
+        if save_as is not None:
+            if next_token is None:
+                raise ConformanceError("The fixture expected a continuation to save.")
+            self._continuations[_require_string(save_as, "arguments.saveContinuationAs")] = next_token
+        return {
+            "status": "succeeded",
+            "generationId": generation_id,
+            "ids": cast(list[JSONValue], [cast(str, item["id"]) for item in page]),
+            "continuation": "present" if next_token is not None else "absent",
+            "coverageStatus": "complete",
+            "coveredPartitions": cast(list[JSONValue], covered),
+            "missingPartitions": [],
+            "failureCode": None,
+        }
+
+    @staticmethod
+    def _failed(
+        generation_id: str | None,
+        coverage: str,
+        covered: list[str],
+        missing: list[str],
+        code: str,
+    ) -> JSONValue:
+        return {
+            "status": "failed",
+            "generationId": generation_id,
+            "ids": [],
+            "continuation": "absent",
+            "coverageStatus": coverage,
+            "coveredPartitions": cast(list[JSONValue], covered),
+            "missingPartitions": cast(list[JSONValue], missing),
+            "failureCode": code,
+        }
+
+    @staticmethod
+    def _request_fingerprint(
+        collection: str,
+        generation_id: str,
+        descriptor_digest: str,
+        query: str,
+        partitions: list[str],
+        limit: int,
+    ) -> str:
+        material = {
+            "collection": collection,
+            "generationId": generation_id,
+            "descriptorDigest": descriptor_digest,
+            "query": query,
+            "partitionKeys": partitions,
+            "limit": limit,
+        }
+        encoded = json.dumps(material, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        return "sha256:" + sha256(encoded).hexdigest()
+
+    def _write_continuation(self, payload: Mapping[str, Any]) -> str:
+        body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        signature = hmac.digest(self._SIGNING_KEY, body, "sha256")
+        return self._encode(body) + "." + self._encode(signature)
+
+    def _read_continuation(self, token: str) -> Mapping[str, Any] | None:
+        if len(token) > 8192 or token.count(".") != 1:
+            return None
+        raw_body, raw_signature = token.split(".", 1)
+        try:
+            body = self._decode(raw_body)
+            signature = self._decode(raw_signature)
+        except ValueError:
+            return None
+        expected = hmac.digest(self._SIGNING_KEY, body, "sha256")
+        if not hmac.compare_digest(signature, expected):
+            return None
+        try:
+            value = json.loads(body)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return None
+        return value if isinstance(value, Mapping) else None
+
+    @staticmethod
+    def _encode(value: bytes) -> str:
+        return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+    @staticmethod
+    def _decode(value: str) -> bytes:
+        try:
+            return base64.b64decode(
+                value + "=" * (-len(value) % 4),
+                altchars=b"-_",
+                validate=True,
+            )
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Invalid base64url value.") from exc
+
+    @staticmethod
+    def _tamper(token: str) -> str:
+        signature_start = token.index(".") + 1
+        replacement = "B" if token[signature_start] == "A" else "A"
+        return token[:signature_start] + replacement + token[signature_start + 1 :]
+
+
+def run_bundled_projection_generation_scenario(
+    root: str | Path | None = None,
+) -> tuple[ProjectionGenerationScenarioResult, ...]:
+    manifest = load_conformance_manifest(root)
+    descriptor = next(
+        (
+            item
+            for item in manifest.scenarios
+            if item.scenario_id == "records.projection-generation-lifecycle.v1"
+        ),
+        None,
+    )
+    if descriptor is None:
+        raise ConformanceError("The projection generation lifecycle scenario is unavailable.")
+    scenario = manifest.scenario(descriptor)
+    runtime = _ProjectionGenerationFixtureRuntime()
+    results: list[ProjectionGenerationScenarioResult] = []
+    for raw_step in scenario["steps"]:
+        step = cast(Mapping[str, Any], raw_step)
+        operation = _require_string(step.get("operation"), "step.operation")
+        arguments = step.get("arguments")
+        expectation = step.get("expect")
+        if not isinstance(arguments, Mapping) or not isinstance(expectation, Mapping):
+            raise ConformanceError("Projection lifecycle steps require arguments and expectations.")
+        actual = runtime.execute(operation, arguments)
+        expected = expectation.get("value")
+        if actual != expected:
+            raise ConformanceError(
+                f"Projection lifecycle step {step.get('id')!r} produced {actual!r}, expected {expected!r}."
+            )
+        results.append(
+            ProjectionGenerationScenarioResult(
+                scenario_id=descriptor.scenario_id,
+                step_id=_require_string(step.get("id"), "step.id"),
+                operation=operation,
+                value=actual,
+            )
+        )
+    return tuple(results)
+
+
 _GOLDEN_OPERATIONS: dict[str, Callable[[Mapping[str, Any]], JSONValue]] = {
     "hash.sha256-utf8": _operation_sha256,
     "canonical.transaction-id": _operation_transaction_id,
     "canonical.lease-token-hash": _operation_lease_hash,
     "admission.receipt": _operation_admission_receipt,
     "records.snapshot-hash": _operation_snapshot_hash,
+    "records.projection-generation-descriptor-hash": (
+        _operation_projection_generation_descriptor_hash
+    ),
     "embeddings.generate": _operation_embedding,
     "graph.record-map": _operation_graph_record_map,
     "rag.ingestion-plan": _operation_rag_ingestion_plan,

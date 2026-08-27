@@ -297,7 +297,7 @@ requests:
 | --- | --- | --- |
 | Records | SQLite | Firestore, AlloyDB/pgvector, Azure Cosmos DB, DynamoDB |
 | Objects | Filesystem | Google Cloud Storage, Cloudflare R2, Azure Blob Storage, S3 |
-| Retrieval | SQLite/local providers | pgvector and provider-shaped adapters |
+| Retrieval | SQLite/local providers | pgvector, OpenSearch, and Cloudflare Worker/R2 projections |
 | Traces | SQLite | Firestore and deployment-specific sinks |
 
 Exercise the portable data boundary without cloud credentials:
@@ -315,6 +315,13 @@ configurable fusion and reranking; reusable profiles; and evaluation receipts.
 The deterministic local embedding provider is for mechanics and repeatability,
 not semantic quality. ONNX and provider-backed models require explicit model or
 credential configuration.
+
+For derived indexes that need stronger evidence, the optional
+[generation-bound retrieval contract](docs/concepts/generation-bound-retrieval.md)
+pins every result and continuation to one immutable descriptor and fails closed
+unless all requested logical partitions are covered. Local, OpenSearch, and
+Cloudflare Worker/R2 implementations share the candidate-only boundary;
+applications still authorize and hydrate canonical records before use.
 
 RAG ingestion separates planning from commit, persists manifests, and admits
 large mutations through durable execution. RAG context responses preserve
@@ -406,6 +413,7 @@ Start with the [execution design](design/execution-runtime.md),
 | Google execution | Live qualified; other Google adapters retain their separate qualification posture |
 | Temporal coordinator and projection | Prototype; disposable and operator-provisioned qualification gates |
 | Cloudflare R2 | Preview object-store adapter |
+| Generation-bound retrieval projections | Local reference plus OpenSearch and Worker/R2 shapes; maturity is topology- and evidence-scoped |
 
 An adapter is `live_qualified` only when the versioned
 [qualification matrix](qualification/README.md) records the required evidence.
@@ -423,6 +431,7 @@ runtimes/      Peer runtime implementations, currently Python
 contracts/     OpenAPI-derived public SDK catalog and JSON schemas
 conformance/   Language-neutral cross-runtime fixtures
 examples/      Short HTTP client recipes
+experiments/   Consumer-neutral provider proofs that are not published packages
 samples/       Runnable .NET and execution examples
 tests/         Unit, integration, conformance, and adapter suites
 qualification/ Versioned adapter qualification report and policy

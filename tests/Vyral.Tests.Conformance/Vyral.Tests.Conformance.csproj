@@ -42,6 +42,10 @@
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-admission-receipts.json" />
     <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\collection-snapshot-hash.json"
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-collection-snapshot-hash.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\record-search-projection-generation.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-record-search-projection-generation.json" />
+    <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\retrieval\generation-bound-lifecycle.json"
+                      LogicalName="Vyral.Tests.Conformance.runtime-v1-generation-bound-lifecycle.json" />
     <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\embedding-vectors.json"
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-embedding-vectors.json" />
     <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\goldens\rag-ingestion-plan.json"
@@ -54,6 +58,18 @@
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-canonical-strong-profile.json" />
     <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\execution\native-lifecycle.json"
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-native-execution-lifecycle.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\src\Vyral.Abstractions\contracts\record-search-projection-generation.v1.schema.json"
+          Link="contracts\record-search-projection-generation.v1.schema.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Vyral.Abstractions\contracts\fixtures\record-search-projection-generation.v1.valid.json"
+          Link="Fixtures\record-search-projection-generation.v1.valid.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\qualification\retrieval-projection-qualification.schema.json"
+          Link="qualification\retrieval-projection-qualification.schema.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

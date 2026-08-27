@@ -105,13 +105,22 @@ public sealed class OpenSearchRecordSearchProjection : IRecordSearchProjection, 
         ThrowForFailure("project the canonical record into OpenSearch", response);
     }
 
-    public async Task<RecordSearchProjectionResult> SearchAsync(
+    public Task<RecordSearchProjectionResult> SearchAsync(
         RecordCollectionPolicy policy,
         QueryEnvelope query,
+        CancellationToken ct = default) =>
+        SearchIndexAsync(policy, query, _options.GetIndexName(policy), requireCompleteResponse: false, ct);
+
+    internal async Task<RecordSearchProjectionResult> SearchIndexAsync(
+        RecordCollectionPolicy policy,
+        QueryEnvelope query,
+        string index,
+        bool requireCompleteResponse,
         CancellationToken ct = default)
     {
         ValidatePolicy(policy);
         ArgumentNullException.ThrowIfNull(query);
+        index = OpenSearchRecordSearchProjectionOptions.ValidateIndexName(index);
         if (query.Vector is null)
             throw new NotSupportedException("The OpenSearch projection currently supports vector candidate retrieval only.");
         if (query.Lexical is not null || query.OrderBy is { Count: > 0 })
@@ -160,7 +169,9 @@ public sealed class OpenSearchRecordSearchProjection : IRecordSearchProjection, 
             }
         };
         var response = await _transport.SendAsync(HttpMethod.Post,
-            $"/{_options.GetIndexName(policy)}/_search",
+            requireCompleteResponse
+                ? $"/{index}/_search?allow_partial_search_results=false"
+                : $"/{index}/_search",
             request.ToJsonString(JsonOptions),
             ct);
         if (response.StatusCode is < 200 or >= 300) ThrowForFailure("search the OpenSearch projection", response);
@@ -168,10 +179,22 @@ public sealed class OpenSearchRecordSearchProjection : IRecordSearchProjection, 
         try
         {
             using var document = JsonDocument.Parse(response.Body);
-            var hits = document.RootElement.GetProperty("hits").GetProperty("hits");
+            var root = document.RootElement;
+            if (requireCompleteResponse)
+            {
+                ValidateCompleteSearchResponse(root, index);
+            }
+            var hits = root.GetProperty("hits").GetProperty("hits");
             var results = new List<RecordSearchProjectionCandidate>();
             foreach (var hit in hits.EnumerateArray())
             {
+                if (requireCompleteResponse &&
+                    (!hit.TryGetProperty("_index", out var hitIndex) ||
+                     hitIndex.ValueKind != JsonValueKind.String ||
+                     !string.Equals(hitIndex.GetString(), index, StringComparison.Ordinal)))
+                {
+                    throw new InvalidOperationException("OpenSearch returned a candidate from outside the selected immutable generation index.");
+                }
                 var source = hit.GetProperty("_source");
                 if (!source.TryGetProperty("partitionKey", out var partitionKey) ||
                     !source.TryGetProperty("id", out var id) ||
@@ -203,6 +226,28 @@ public sealed class OpenSearchRecordSearchProjection : IRecordSearchProjection, 
         catch (JsonException exception)
         {
             throw new InvalidOperationException("OpenSearch returned an invalid projection search response.", exception);
+        }
+    }
+
+    private static void ValidateCompleteSearchResponse(JsonElement root, string expectedIndex)
+    {
+        if (!root.TryGetProperty("timed_out", out var timedOut) ||
+            timedOut.ValueKind is not JsonValueKind.True and not JsonValueKind.False ||
+            timedOut.GetBoolean())
+        {
+            throw new InvalidOperationException("OpenSearch did not prove a complete non-timeout search response.");
+        }
+        if (!root.TryGetProperty("_shards", out var shards) ||
+            !shards.TryGetProperty("total", out var total) ||
+            !shards.TryGetProperty("successful", out var successful) ||
+            !shards.TryGetProperty("failed", out var failed) ||
+            !total.TryGetInt32(out var totalValue) || totalValue <= 0 ||
+            !successful.TryGetInt32(out var successfulValue) ||
+            !failed.TryGetInt32(out var failedValue) ||
+            failedValue != 0 || successfulValue != totalValue)
+        {
+            throw new InvalidOperationException(
+                $"OpenSearch did not prove complete shard coverage for immutable index '{expectedIndex}'.");
         }
     }
 

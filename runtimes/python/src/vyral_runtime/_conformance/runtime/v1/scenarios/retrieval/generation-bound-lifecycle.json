@@ -1,0 +1,273 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "records.projection-generation-lifecycle.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.retrieval-generation.v1",
+  "kind": "stateful",
+  "description": "Generation activation, retained continuations, fail-closed coverage, descriptor fences, tamper rejection, and retirement.",
+  "steps": [
+    {
+      "id": "publish-generation-a",
+      "operation": "records.projection-generation-publish",
+      "arguments": {
+        "descriptor": {
+          "schema": "vyral.record-search-projection-generation.v1",
+          "collection": "library",
+          "generationId": "generation-a",
+          "providerId": "local-exhaustive",
+          "profileId": "lexical-exhaustive-v1",
+          "strategyVersion": "exhaustive-token-v1",
+          "sourceManifestDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recordRevisionSetDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "projectionSchemaDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "analyzerDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "configurationDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "expectedItemCount": 3,
+          "expectedPartitions": ["public-a", "public-b"],
+          "capabilities": ["completeCoverage", "generationPinnedContinuation", "lexical"],
+          "artifacts": [],
+          "createdAtUtc": "2026-08-27T12:00:00Z",
+          "descriptorDigest": "sha256:01666b57bb8922e1360b5662219fb7955cb1ba5f8e8865f4fd46eecddaeb50de"
+        },
+        "documents": [
+          { "partitionKey": "public-a", "id": "a-1", "revision": 1, "searchText": "portable contracts" },
+          { "partitionKey": "public-a", "id": "a-2", "revision": 1, "searchText": "provider native semantics" },
+          { "partitionKey": "public-b", "id": "b-1", "revision": 1, "searchText": "portable retrieval" }
+        ]
+      },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "activate-generation-a",
+      "operation": "records.projection-generation-activate",
+      "arguments": { "collection": "library", "generationId": "generation-a" },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "inspect-active-generation-a",
+      "operation": "records.projection-generation-inspect",
+      "arguments": { "collection": "library" },
+      "expect": {
+        "value": {
+          "generationId": "generation-a",
+          "state": "active",
+          "coverageStatus": "complete",
+          "availablePartitions": ["public-a", "public-b"]
+        }
+      }
+    },
+    {
+      "id": "search-generation-a-first-page",
+      "operation": "records.projection-generation-search",
+      "arguments": {
+        "collection": "library",
+        "query": "portable",
+        "partitionKeys": ["public-a", "public-b"],
+        "limit": 1,
+        "saveContinuationAs": "generation-a-page-2"
+      },
+      "expect": {
+        "value": {
+          "status": "succeeded",
+          "generationId": "generation-a",
+          "ids": ["a-1"],
+          "continuation": "present",
+          "coverageStatus": "complete",
+          "coveredPartitions": ["public-a", "public-b"],
+          "missingPartitions": [],
+          "failureCode": null
+        }
+      }
+    },
+    {
+      "id": "publish-generation-b",
+      "operation": "records.projection-generation-publish",
+      "arguments": {
+        "descriptor": {
+          "schema": "vyral.record-search-projection-generation.v1",
+          "collection": "library",
+          "generationId": "generation-b",
+          "providerId": "local-exhaustive",
+          "profileId": "lexical-exhaustive-v1",
+          "strategyVersion": "exhaustive-token-v1",
+          "sourceManifestDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "recordRevisionSetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "projectionSchemaDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "analyzerDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "configurationDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "expectedItemCount": 3,
+          "expectedPartitions": ["public-a", "public-b"],
+          "capabilities": ["completeCoverage", "generationPinnedContinuation", "lexical"],
+          "artifacts": [],
+          "createdAtUtc": "2026-08-27T12:05:00Z",
+          "descriptorDigest": "sha256:a025b15641dbacea0af4bffa84c707bd4171dc48b8d58fce1135c8402d7f1d3b"
+        },
+        "documents": [
+          { "partitionKey": "public-a", "id": "a-1", "revision": 2, "searchText": "portable execution" },
+          { "partitionKey": "public-a", "id": "a-3", "revision": 1, "searchText": "provider evidence" },
+          { "partitionKey": "public-b", "id": "b-2", "revision": 1, "searchText": "portable qualification" }
+        ]
+      },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "activate-generation-b",
+      "operation": "records.projection-generation-activate",
+      "arguments": { "collection": "library", "generationId": "generation-b" },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "continue-retained-generation-a",
+      "operation": "records.projection-generation-search",
+      "arguments": {
+        "collection": "library",
+        "query": "portable",
+        "partitionKeys": ["public-a", "public-b"],
+        "limit": 1,
+        "continuationRef": "generation-a-page-2"
+      },
+      "expect": {
+        "value": {
+          "status": "succeeded",
+          "generationId": "generation-a",
+          "ids": ["b-1"],
+          "continuation": "absent",
+          "coverageStatus": "complete",
+          "coveredPartitions": ["public-a", "public-b"],
+          "missingPartitions": [],
+          "failureCode": null
+        }
+      }
+    },
+    {
+      "id": "reject-tampered-continuation",
+      "operation": "records.projection-generation-search",
+      "arguments": {
+        "collection": "library",
+        "query": "portable",
+        "partitionKeys": ["public-a", "public-b"],
+        "limit": 1,
+        "tamperContinuationRef": "generation-a-page-2"
+      },
+      "expect": {
+        "value": {
+          "status": "failed",
+          "generationId": null,
+          "ids": [],
+          "continuation": "absent",
+          "coverageStatus": "unavailable",
+          "coveredPartitions": [],
+          "missingPartitions": ["public-a", "public-b"],
+          "failureCode": "invalidContinuation"
+        }
+      }
+    },
+    {
+      "id": "remove-generation-b-partition",
+      "operation": "records.projection-generation-set-available",
+      "arguments": {
+        "collection": "library",
+        "generationId": "generation-b",
+        "availablePartitions": ["public-a"]
+      },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "fail-closed-on-incomplete-generation-b",
+      "operation": "records.projection-generation-search",
+      "arguments": {
+        "collection": "library",
+        "query": "portable",
+        "partitionKeys": ["public-a", "public-b"],
+        "limit": 10
+      },
+      "expect": {
+        "value": {
+          "status": "failed",
+          "generationId": "generation-b",
+          "ids": [],
+          "continuation": "absent",
+          "coverageStatus": "incomplete",
+          "coveredPartitions": ["public-a"],
+          "missingPartitions": ["public-b"],
+          "failureCode": "coverageIncomplete"
+        }
+      }
+    },
+    {
+      "id": "inspect-incomplete-generation-b",
+      "operation": "records.projection-generation-inspect",
+      "arguments": { "collection": "library" },
+      "expect": {
+        "value": {
+          "generationId": "generation-b",
+          "state": "active",
+          "coverageStatus": "incomplete",
+          "availablePartitions": ["public-a"]
+        }
+      }
+    },
+    {
+      "id": "restore-generation-b-coverage",
+      "operation": "records.projection-generation-set-available",
+      "arguments": {
+        "collection": "library",
+        "generationId": "generation-b",
+        "availablePartitions": ["public-a", "public-b"]
+      },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "reject-wrong-descriptor-fence",
+      "operation": "records.projection-generation-search",
+      "arguments": {
+        "collection": "library",
+        "query": "portable",
+        "partitionKeys": ["public-a", "public-b"],
+        "limit": 10,
+        "expectedDescriptorDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "expect": {
+        "value": {
+          "status": "failed",
+          "generationId": "generation-b",
+          "ids": [],
+          "continuation": "absent",
+          "coverageStatus": "complete",
+          "coveredPartitions": ["public-a", "public-b"],
+          "missingPartitions": [],
+          "failureCode": "generationDescriptorMismatch"
+        }
+      }
+    },
+    {
+      "id": "retire-generation-a",
+      "operation": "records.projection-generation-retire",
+      "arguments": { "collection": "library", "generationId": "generation-a" },
+      "expect": { "value": { "status": "ok" } }
+    },
+    {
+      "id": "reject-retired-generation-a-continuation",
+      "operation": "records.projection-generation-search",
+      "arguments": {
+        "collection": "library",
+        "query": "portable",
+        "partitionKeys": ["public-a", "public-b"],
+        "limit": 1,
+        "continuationRef": "generation-a-page-2"
+      },
+      "expect": {
+        "value": {
+          "status": "failed",
+          "generationId": "generation-a",
+          "ids": [],
+          "continuation": "absent",
+          "coverageStatus": "unavailable",
+          "coveredPartitions": [],
+          "missingPartitions": ["public-a", "public-b"],
+          "failureCode": "generationRetired"
+        }
+      }
+    }
+  ]
+}

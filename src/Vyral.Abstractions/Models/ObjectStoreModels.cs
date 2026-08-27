@@ -106,3 +106,15 @@ public class ObjectListResult
     [JsonPropertyName("continuationToken")]
     public string? ContinuationToken { get; set; }
 }
+
+public sealed class ContentAddressedObjectReceipt
+{
+    [JsonPropertyName("object")]
+    public ObjectInfo Object { get; set; } = new();
+
+    [JsonPropertyName("contentHash")]
+    public string ContentHash { get; set; } = string.Empty;
+
+    [JsonPropertyName("replayed")]
+    public bool Replayed { get; set; }
+}

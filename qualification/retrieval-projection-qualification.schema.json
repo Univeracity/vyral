@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvyral.com/qualification/retrieval-projection-qualification.schema.json",
+  "title": "Vyral retrieval projection adapter qualification artifact",
+  "description": "Aging evidence for immutable candidate-only retrieval projection implementations. This adapter-level artifact is distinct from the rollout receipt for each concrete generation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "coreContractVersion",
+    "generatedAtUtc",
+    "qualificationExpiresAfterDays",
+    "adapters"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "1.0" },
+    "coreContractVersion": { "$ref": "#/$defs/version" },
+    "generatedAtUtc": { "type": "string", "format": "date-time" },
+    "qualificationExpiresAfterDays": { "type": "integer", "minimum": 1, "maximum": 365 },
+    "adapters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/adapter" }
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$",
+      "maxLength": 150
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterId",
+        "displayName",
+        "implementation",
+        "provider",
+        "topology",
+        "profileId",
+        "strategyVersion",
+        "qualification",
+        "status",
+        "capabilities",
+        "generationEvidencePolicy",
+        "evidence"
+      ],
+      "properties": {
+        "adapterId": { "$ref": "#/$defs/identifier" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "implementation": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "provider": { "$ref": "#/$defs/identifier" },
+        "topology": { "$ref": "#/$defs/identifier" },
+        "profileId": { "$ref": "#/$defs/identifier" },
+        "strategyVersion": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "qualification": {
+          "enum": ["prototype", "local_conformant", "live_qualified", "consumer_validated"]
+        },
+        "status": { "enum": ["current", "stale"] },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "generationEvidencePolicy": { "$ref": "#/$defs/generationEvidencePolicy" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+    "generationEvidencePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptorSchema",
+        "requiresExactGenerationBinding",
+        "requiresCompleteRequestedCoverage",
+        "mutableHealthEstablishesCompleteness"
+      ],
+      "properties": {
+        "descriptorSchema": { "const": "vyral.record-search-projection-generation.v1" },
+        "requiresExactGenerationBinding": { "const": true },
+        "requiresCompleteRequestedCoverage": { "const": true },
+        "mutableHealthEstablishesCompleteness": { "const": false }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "observedAtUtc",
+        "expiresAtUtc",
+        "reference",
+        "sourceCommit",
+        "sourceTreeDigest",
+        "sourceDirty",
+        "generationIds",
+        "descriptorDigests"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "unit_gate",
+            "shared_conformance",
+            "local_gate",
+            "fault_restart",
+            "live_gate",
+            "cleanup",
+            "consumer_validation"
+          ]
+        },
+        "observedAtUtc": { "type": "string", "format": "date-time" },
+        "expiresAtUtc": { "type": "string", "format": "date-time" },
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "disclosure": {
+          "enum": ["public", "private_opaque"]
+        },
+        "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "sourceTreeDigest": { "$ref": "#/$defs/sha256" },
+        "sourceDirty": { "type": "boolean" },
+        "generationIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "descriptorDigests": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  }
+}

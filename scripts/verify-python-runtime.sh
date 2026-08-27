@@ -78,11 +78,13 @@ required_package_files = {
     "vyral_runtime/_conformance/runtime/v1/scenario.schema.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/goldens/primitives-hashing.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/goldens/collection-snapshot-hash.json",
+    "vyral_runtime/_conformance/runtime/v1/scenarios/goldens/record-search-projection-generation.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/goldens/embedding-vectors.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/goldens/rag-ingestion-plan.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/goldens/graph-record-mapping.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/records/core-crud.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/records/query-semantics.json",
+    "vyral_runtime/_conformance/runtime/v1/scenarios/retrieval/generation-bound-lifecycle.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/external-workers/handler-lifecycle.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/canonical/strong-profile.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/execution/native-lifecycle.json",
@@ -123,11 +125,13 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "src/vyral_runtime/_conformance/runtime/v1/manifest.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/primitives-hashing.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/collection-snapshot-hash.json",
+        "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/record-search-projection-generation.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/embedding-vectors.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/rag-ingestion-plan.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/goldens/graph-record-mapping.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/records/core-crud.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/records/query-semantics.json",
+        "src/vyral_runtime/_conformance/runtime/v1/scenarios/retrieval/generation-bound-lifecycle.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/external-workers/handler-lifecycle.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/canonical/strong-profile.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/execution/native-lifecycle.json",
@@ -149,6 +153,7 @@ from vyral_runtime import (
     run_bundled_native_execution_scenario,
     run_bundled_external_worker_scenario,
     run_bundled_goldens,
+    run_bundled_projection_generation_scenario,
     run_bundled_record_store_scenario,
     run_bundled_record_store_scenarios,
 )
@@ -161,7 +166,8 @@ assert readiness.contract is not None
 assert readiness.contract.operation_count == 129
 assert readiness.contract.rest_operation_count == 133
 assert readiness.contract.schema_count == 263
-assert len(run_bundled_goldens()) == 12
+assert len(run_bundled_goldens()) == 13
+assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17
 assert len(run_bundled_record_store_scenarios()) == 30
 assert len(run_bundled_external_worker_scenario()) == 3
@@ -253,6 +259,7 @@ from vyral_runtime import (
     run_bundled_native_execution_scenario,
     run_bundled_external_worker_scenario,
     run_bundled_goldens,
+    run_bundled_projection_generation_scenario,
     run_bundled_record_store_scenario,
 )
 
@@ -261,7 +268,8 @@ readiness = runtime.readiness()
 assert readiness.status == "ok"
 assert readiness.contract is not None
 assert readiness.contract.operation_count == 129
-assert len(run_bundled_goldens()) == 12
+assert len(run_bundled_goldens()) == 13
+assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17
 assert len(run_bundled_external_worker_scenario()) == 3
 assert len(run_bundled_canonical_scenario()) == 6

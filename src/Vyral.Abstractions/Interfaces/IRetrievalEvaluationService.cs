@@ -66,6 +66,17 @@ public class RetrievalEvaluationVariant
     [JsonPropertyName("label")]
     public string? Label { get; set; }
 
+    /// <summary>
+    /// Optional host-resolved evaluation target. This is deliberately separate from the variant
+    /// id: a variant names one comparison arm, while the target selects an exact registered
+    /// retrieval implementation and, when supplied, fences an immutable generation.
+    /// </summary>
+    // This remains an in-process experiment until the versioned wire schemas and peer SDKs are
+    // deliberately expanded. JsonIgnore prevents the .NET DTO from silently creating an
+    // undocumented server contract in the meantime.
+    [JsonIgnore]
+    public RetrievalEvaluationTargetReference? Target { get; set; }
+
     [JsonPropertyName("profile")]
     public string? Profile { get; set; }
 
@@ -429,6 +440,9 @@ public class RetrievalEvaluationVariantResult
     [JsonPropertyName("label")]
     public string? Label { get; set; }
 
+    [JsonIgnore]
+    public RetrievalEvaluationTargetEvidence? Target { get; set; }
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
 
@@ -446,6 +460,36 @@ public class RetrievalEvaluationVariantResult
 
     [JsonPropertyName("cases")]
     public List<RetrievalEvaluationCaseResult> Cases { get; set; } = new();
+}
+
+/// <summary>
+/// Host-resolved target selection for evaluation. The identifier refers to configured code, not a
+/// caller-controlled URL or provider SDK. Generation fields are optional caller fences; the
+/// resolved evidence always reports the exact target actually used.
+/// </summary>
+public sealed class RetrievalEvaluationTargetReference
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("generationId")]
+    public string? GenerationId { get; set; }
+
+    [JsonPropertyName("expectedGenerationDescriptorDigest")]
+    public string? ExpectedGenerationDescriptorDigest { get; set; }
+}
+
+/// <summary>Immutable identity reported for the resolved evaluation target.</summary>
+public sealed class RetrievalEvaluationTargetEvidence
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("generationId")]
+    public string? GenerationId { get; set; }
+
+    [JsonPropertyName("generationDescriptorDigest")]
+    public string? GenerationDescriptorDigest { get; set; }
 }
 
 public class RetrievalEvaluationMetrics

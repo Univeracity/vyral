@@ -24,6 +24,7 @@ from vyral_runtime import (
     run_bundled_canonical_scenario,
     run_bundled_external_worker_scenario,
     run_bundled_goldens,
+    run_bundled_projection_generation_scenario,
     run_bundled_native_execution_scenario,
     run_bundled_record_store_scenario,
 )
@@ -36,7 +37,8 @@ assert readiness.contract is not None
 assert readiness.contract.operation_count == 129
 assert readiness.contract.rest_operation_count == 133
 assert readiness.contract.schema_count == 263
-assert len(run_bundled_goldens()) == 12
+assert len(run_bundled_goldens()) == 13
+assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17
 assert len(run_bundled_external_worker_scenario()) == 3
 assert len(run_bundled_canonical_scenario()) == 6

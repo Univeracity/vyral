@@ -28,6 +28,7 @@ from vyral_runtime import (  # noqa: E402
     run_bundled_record_store_scenario,
     run_bundled_record_store_scenarios,
     run_bundled_goldens,
+    run_bundled_projection_generation_scenario,
 )
 
 
@@ -88,6 +89,9 @@ def main() -> int:
     native_results = run_bundled_native_execution_scenario(
         FIXTURE_ROOT
     )
+    projection_generation_results = run_bundled_projection_generation_scenario(
+        FIXTURE_ROOT
+    )
     print(
         f"runtime-conformance=ok fixture={FIXTURE_VERSION} contract={CONTRACT_VERSION} "
         f"runner={RUNTIME_VERSION} minimum-runner={manifest.runner_version} "
@@ -96,7 +100,8 @@ def main() -> int:
         f"record-steps={len(record_scenario_results)} "
         f"external-worker-steps={len(worker_results)} "
         f"canonical-steps={len(canonical_results)} "
-        f"native-execution-steps={len(native_results)}"
+        f"native-execution-steps={len(native_results)} "
+        f"projection-generation-steps={len(projection_generation_results)}"
     )
     return 0
 

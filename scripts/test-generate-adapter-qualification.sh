@@ -56,4 +56,49 @@ if VYRAL_ADAPTER_QUALIFICATION_SOURCE="$work_root/invalid-capability.json" \
   exit 1
 fi
 
+python3 - "qualification/adapter-qualification.json" "$work_root/invalid-consumer.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+qualification = source["adapters"][0]["qualification"]
+qualification["level"] = "consumer_validated"
+qualification["environmentClass"] = "consumer_environment"
+qualification["evidence"].append({
+    "kind": "consumer_validation",
+    "result": "passed",
+    "reference": "consumer-project/private-receipt.json",
+    "command": "consumer-project/scripts/qualify.sh",
+})
+Path(sys.argv[2]).write_text(json.dumps(source), encoding="utf-8")
+PY
+if VYRAL_ADAPTER_QUALIFICATION_SOURCE="$work_root/invalid-consumer.json" \
+  scripts/generate-adapter-qualification.sh "$work_root/invalid-output.json" >/dev/null 2>&1; then
+  echo "Qualification generation accepted identity-bearing consumer evidence." >&2
+  exit 1
+fi
+
+python3 - "$work_root/invalid-consumer.json" "$work_root/private-consumer.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+evidence = source["adapters"][0]["qualification"]["evidence"][-1]
+evidence.update({
+    "reference": "urn:vyral:private-consumer-evidence:sha256:" + "a" * 64,
+    "command": "withheld",
+    "disclosure": "private_opaque",
+})
+Path(sys.argv[2]).write_text(json.dumps(source), encoding="utf-8")
+PY
+VYRAL_ADAPTER_QUALIFICATION_SOURCE="$work_root/private-consumer.json" \
+  scripts/generate-adapter-qualification.sh "$work_root/private-consumer-output.json" >/dev/null
+jq -e '
+  .adapters[0].qualification.level == "consumer_validated" and
+  .adapters[0].qualification.evidence[-1].disclosure == "private_opaque" and
+  .adapters[0].qualification.evidence[-1].command == "withheld"
+' "$work_root/private-consumer-output.json" >/dev/null
+
 printf 'adapter-qualification-generator-test=ok\n'

@@ -14,8 +14,10 @@ from .conformance import (
     ConformanceError,
     ConformanceManifest,
     GoldenResult,
+    ProjectionGenerationScenarioResult,
     load_conformance_manifest,
     run_bundled_goldens,
+    run_bundled_projection_generation_scenario,
 )
 from .contracts import (
     ContractBundle,
@@ -477,6 +479,7 @@ __all__ = [
     "MAX_EXPECTED_GRAPH_ITEMS",
     "MAX_RAG_EVALUATION_CASES",
     "OrderExpression",
+    "ProjectionGenerationScenarioResult",
     "ObjectDeleteRequest",
     "ObjectInfo",
     "ObjectListRequest",
@@ -607,6 +610,7 @@ __all__ = [
     "normalize_embedding_purpose",
     "prepare_embedding_text",
     "run_bundled_goldens",
+    "run_bundled_projection_generation_scenario",
     "run_bundled_external_worker_scenario",
     "run_bundled_native_execution_scenario",
     "run_bundled_record_store_scenario",

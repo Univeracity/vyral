@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvyral.com/contracts/record-search-projection-generation.v1.schema.json",
+  "title": "Vyral immutable record-search projection generation",
+  "description": "Provider-neutral identity and completeness evidence for one immutable candidate-only record-search projection generation.",
+  "$ref": "#/$defs/generationDescriptor",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^\\S(?:.*\\S)?$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "contentHash", "sizeBytes", "mediaType"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "$ref": "#/$defs/identifier" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "sizeBytes": { "type": "integer", "minimum": 0 },
+        "mediaType": { "type": ["string", "null"], "maxLength": 200 }
+      }
+    },
+    "generationDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "collection",
+        "generationId",
+        "providerId",
+        "profileId",
+        "strategyVersion",
+        "sourceManifestDigest",
+        "recordRevisionSetDigest",
+        "projectionSchemaDigest",
+        "analyzerDigest",
+        "configurationDigest",
+        "expectedItemCount",
+        "expectedPartitions",
+        "capabilities",
+        "artifacts",
+        "createdAtUtc",
+        "descriptorDigest"
+      ],
+      "properties": {
+        "schema": { "const": "vyral.record-search-projection-generation.v1" },
+        "collection": { "$ref": "#/$defs/identifier" },
+        "generationId": { "$ref": "#/$defs/identifier" },
+        "providerId": { "$ref": "#/$defs/identifier" },
+        "profileId": { "$ref": "#/$defs/identifier" },
+        "strategyVersion": { "$ref": "#/$defs/identifier" },
+        "sourceManifestDigest": { "$ref": "#/$defs/sha256" },
+        "recordRevisionSetDigest": { "$ref": "#/$defs/sha256" },
+        "projectionSchemaDigest": { "$ref": "#/$defs/sha256" },
+        "analyzerDigest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "expectedItemCount": { "type": "integer", "minimum": 0 },
+        "expectedPartitions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" },
+          "allOf": [
+            { "contains": { "const": "completeCoverage" } },
+            { "contains": { "const": "generationPinnedContinuation" } }
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact" }
+        },
+        "createdAtUtc": { "type": "string", "format": "date-time" },
+        "descriptorDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "queryEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "partitionKeys": {
+          "type": ["array", "null"],
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "filter": { "type": ["object", "null"] },
+        "vector": { "type": ["object", "null"] },
+        "lexical": { "type": ["object", "null"] },
+        "orderBy": { "type": ["array", "null"] },
+        "limit": { "type": ["integer", "null"], "minimum": 1 },
+        "continuationToken": { "type": ["string", "null"], "maxLength": 8192 }
+      }
+    },
+    "searchRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "generationId", "expectedDescriptorDigest", "query", "deadlineUtc"],
+      "properties": {
+        "schema": { "const": "vyral.record-search-projection-request.v1" },
+        "generationId": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
+        },
+        "expectedDescriptorDigest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "query": { "$ref": "#/$defs/queryEnvelope" },
+        "deadlineUtc": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partitionKey", "id", "revision", "score"],
+      "properties": {
+        "partitionKey": { "$ref": "#/$defs/identifier" },
+        "id": { "$ref": "#/$defs/identifier" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "score": { "type": "number" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "requestedPartitions", "coveredPartitions", "missingPartitions"],
+      "properties": {
+        "status": { "enum": ["complete", "incomplete", "unavailable"] },
+        "requestedPartitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "coveredPartitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "missingPartitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workLimit",
+        "workUnits",
+        "candidateBound",
+        "candidateCount",
+        "returnedCount",
+        "cacheStatus",
+        "details"
+      ],
+      "properties": {
+        "workLimit": { "type": ["integer", "null"], "minimum": 0 },
+        "workUnits": { "type": ["integer", "null"], "minimum": 0 },
+        "candidateBound": { "type": ["integer", "null"], "minimum": 0 },
+        "candidateCount": { "type": ["integer", "null"], "minimum": 0 },
+        "returnedCount": { "type": "integer", "minimum": 0 },
+        "cacheStatus": { "enum": ["hit", "miss", "bypass", "notApplicable"] },
+        "details": { "type": ["object", "null"] }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "$ref": "#/$defs/identifier" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "retryable": { "type": "boolean" }
+      }
+    },
+    "searchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "status",
+        "generationId",
+        "generationDescriptorDigest",
+        "items",
+        "continuationToken",
+        "consistency",
+        "coverage",
+        "diagnostics",
+        "failure"
+      ],
+      "properties": {
+        "schema": { "const": "vyral.record-search-projection-result.v1" },
+        "status": { "enum": ["succeeded", "failed"] },
+        "generationId": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
+        },
+        "generationDescriptorDigest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/candidate" } },
+        "continuationToken": { "type": ["string", "null"], "maxLength": 8192 },
+        "consistency": { "const": "immutableGeneration" },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "diagnostics": { "$ref": "#/$defs/diagnostics" },
+        "failure": {
+          "oneOf": [
+            { "$ref": "#/$defs/failure" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "succeeded" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "generationId": { "$ref": "#/$defs/identifier" },
+              "generationDescriptorDigest": { "$ref": "#/$defs/sha256" },
+              "coverage": {
+                "allOf": [
+                  { "$ref": "#/$defs/coverage" },
+                  { "properties": { "status": { "const": "complete" }, "missingPartitions": { "maxItems": 0 } } }
+                ]
+              },
+              "failure": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "items": { "maxItems": 0 },
+              "continuationToken": { "type": "null" },
+              "failure": { "$ref": "#/$defs/failure" }
+            }
+          }
+        }
+      ]
+    },
+    "buildRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "collection",
+        "generationId",
+        "builderId",
+        "providerId",
+        "profileId",
+        "strategyVersion",
+        "sourceManifestRef",
+        "sourceManifestDigest",
+        "expectedRecordRevisionSetDigest",
+        "projectionSchemaDigest",
+        "analyzerDigest",
+        "configurationDigest",
+        "expectedItemCount",
+        "expectedPartitions",
+        "deadlineUtc"
+      ],
+      "properties": {
+        "schema": { "const": "vyral.record-search-projection-build-request.v1" },
+        "collection": { "$ref": "#/$defs/identifier" },
+        "generationId": { "$ref": "#/$defs/identifier" },
+        "builderId": { "$ref": "#/$defs/identifier" },
+        "providerId": { "$ref": "#/$defs/identifier" },
+        "profileId": { "$ref": "#/$defs/identifier" },
+        "strategyVersion": { "$ref": "#/$defs/identifier" },
+        "sourceManifestRef": { "$ref": "#/$defs/identifier" },
+        "sourceManifestDigest": { "$ref": "#/$defs/sha256" },
+        "expectedRecordRevisionSetDigest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "projectionSchemaDigest": { "$ref": "#/$defs/sha256" },
+        "analyzerDigest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "expectedItemCount": { "type": "integer", "minimum": 0 },
+        "expectedPartitions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "deadlineUtc": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "buildProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "completed", "total", "checkpoint"],
+      "properties": {
+        "stage": { "$ref": "#/$defs/identifier" },
+        "completed": { "type": "integer", "minimum": 0 },
+        "total": { "type": ["integer", "null"], "minimum": 0 },
+        "checkpoint": { "type": ["object", "null"] }
+      }
+    },
+    "buildReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "status",
+        "builderId",
+        "descriptor",
+        "evaluationReceiptDigest",
+        "builtAtUtc"
+      ],
+      "properties": {
+        "schema": { "const": "vyral.record-search-projection-build-receipt.v1" },
+        "status": { "const": "verified" },
+        "builderId": { "$ref": "#/$defs/identifier" },
+        "descriptor": { "$ref": "#/$defs/generationDescriptor" },
+        "evaluationReceiptDigest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "builtAtUtc": { "type": "string", "format": "date-time" }
+      }
+    },
+    "inspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "descriptor", "state", "availablePartitions", "coverageStatus", "observedAtUtc"],
+      "properties": {
+        "schema": { "const": "vyral.record-search-projection-inspection.v1" },
+        "descriptor": { "$ref": "#/$defs/generationDescriptor" },
+        "state": { "enum": ["active", "retained", "retired"] },
+        "availablePartitions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "coverageStatus": { "enum": ["complete", "incomplete", "unavailable"] },
+        "observedAtUtc": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "retired" } }, "required": ["state"] },
+          "then": {
+            "properties": {
+              "availablePartitions": { "maxItems": 0 },
+              "coverageStatus": { "const": "unavailable" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

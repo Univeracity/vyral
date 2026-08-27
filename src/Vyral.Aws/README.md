@@ -38,3 +38,22 @@ scripts/validate-opensearch-local.sh
 
 This local gate deliberately does not validate a managed endpoint's SigV4
 authorization, IAM policy, VPC/networking, encryption, or stream delivery.
+
+## Generation-bound OpenSearch
+
+`OpenSearchGenerationBoundRecordSearchProjection` implements the optional
+`IGenerationBoundRecordSearchProjection` contract for exact, immutable provider indexes. Hosts
+register an allowlisted index name and provider-issued UUID together with a portable generation
+descriptor. Inspection and search verify that binding, require the index to remain read-only,
+disable partial search results, reject timeouts or incomplete shard participation, and accept hits
+only from the selected index.
+
+The adapter returns identities, canonical revisions, and scores only. Use
+`SearchGenerationAndHydrateAsync` to retrieve matching revisions from the canonical record store;
+stale candidates are discarded rather than promoted to authoritative data. This implementation is
+first-page-only and rejects continuations rather than claiming unproven paging behavior.
+
+The local OpenSearch gate exercises the exact generation binding and fail-closed writable-index
+transition. It remains local conformance evidence: managed AWS identity separation, SigV4, VPC
+policy, service scaling, availability, and administrator mutation risks require their own live
+qualification.

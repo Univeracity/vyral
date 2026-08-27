@@ -10,6 +10,9 @@ here so each document has a clear audience and owner.
   readiness, common workflows, and failure interpretation.
 - [CanonicalStore](concepts/canonical-store.md) — strong-storage transactions,
   identity policy, export/restore, and provider qualification.
+- [Generation-bound retrieval](concepts/generation-bound-retrieval.md) —
+  immutable index generations, complete logical coverage, candidate hydration,
+  and provider-specific evidence boundaries.
 - [Execution runtime limitations](reference/execution-runtime-limitations.md) —
   portable guarantees and adapter-specific boundaries.
 - [Extropic execution](guides/extropic-execution.md) — experimental,

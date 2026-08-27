@@ -1,0 +1,60 @@
+{
+  "$schema": "../../scenario.schema.json",
+  "id": "records.projection-generation.v1",
+  "fixtureVersion": "1.0.0",
+  "profile": "vyral.runtime.retrieval-generation.v1",
+  "kind": "golden",
+  "description": "Immutable record-search projection descriptor hashing shared by embedded and hosted adapters.",
+  "steps": [
+    {
+      "id": "descriptor-hash-two-partitions",
+      "operation": "records.projection-generation-descriptor-hash",
+      "arguments": {
+        "descriptor": {
+          "schema": "vyral.record-search-projection-generation.v1",
+          "collection": "library",
+          "generationId": "gen-2026-08-27-a",
+          "providerId": "local-exhaustive",
+          "profileId": "lexical-exhaustive-v1",
+          "strategyVersion": "exhaustive-token-v1",
+          "sourceManifestDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recordRevisionSetDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "projectionSchemaDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "analyzerDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "configurationDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "expectedItemCount": 3,
+          "expectedPartitions": [
+            "public-a",
+            "public-b"
+          ],
+          "capabilities": [
+            "completeCoverage",
+            "generationPinnedContinuation",
+            "lexical"
+          ],
+          "artifacts": [
+            {
+              "id": "partition-public-a",
+              "kind": "index-part",
+              "contentHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "sizeBytes": 128,
+              "mediaType": "application/octet-stream"
+            },
+            {
+              "id": "partition-public-b",
+              "kind": "index-part",
+              "contentHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "sizeBytes": 96,
+              "mediaType": "application/octet-stream"
+            }
+          ],
+          "createdAtUtc": "2026-08-27T12:00:00Z",
+          "descriptorDigest": "sha256:3b92c8927a2a93f12d99e64e03d118e29ac57284663943fa257568ae178d31d5"
+        }
+      },
+      "expect": {
+        "value": "sha256:3b92c8927a2a93f12d99e64e03d118e29ac57284663943fa257568ae178d31d5"
+      }
+    }
+  ]
+}

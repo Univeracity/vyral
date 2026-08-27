@@ -37,6 +37,7 @@ from vyral_runtime import (  # noqa: E402
     run_bundled_canonical_scenario,
     run_bundled_native_execution_scenario,
     run_bundled_goldens,
+    run_bundled_projection_generation_scenario,
     run_bundled_record_store_scenarios,
     sha256_utf8,
 )
@@ -366,6 +367,8 @@ class ConformanceManifestTests(unittest.TestCase):
                 "records.core-crud.v1",
                 "records.query-semantics.v1",
                 "records.snapshot-hash.v1",
+                "records.projection-generation.v1",
+                "records.projection-generation-lifecycle.v1",
                 "embeddings.vectors.v1",
                 "rag.ingestion-plan.v1",
                 "graph.record-mapping.v1",
@@ -385,6 +388,7 @@ class ConformanceManifestTests(unittest.TestCase):
                 "replayed-receipt-keeps-identity",
                 "rejected-receipt",
                 "snapshot-hash-unicode-float32",
+                "descriptor-hash-two-partitions",
                 "deterministic-hash-unicode",
                 "token-hash-lexical",
                 "dry-run-plan-hash-and-chunk-boundaries",
@@ -395,6 +399,31 @@ class ConformanceManifestTests(unittest.TestCase):
         self.assertEqual(
             30,
             len(run_bundled_record_store_scenarios(FIXTURE_ROOT)),
+        )
+        self.assertEqual(
+            [
+                "publish-generation-a",
+                "activate-generation-a",
+                "inspect-active-generation-a",
+                "search-generation-a-first-page",
+                "publish-generation-b",
+                "activate-generation-b",
+                "continue-retained-generation-a",
+                "reject-tampered-continuation",
+                "remove-generation-b-partition",
+                "fail-closed-on-incomplete-generation-b",
+                "inspect-incomplete-generation-b",
+                "restore-generation-b-coverage",
+                "reject-wrong-descriptor-fence",
+                "retire-generation-a",
+                "reject-retired-generation-a-continuation",
+            ],
+            [
+                result.step_id
+                for result in run_bundled_projection_generation_scenario(
+                    FIXTURE_ROOT
+                )
+            ],
         )
         self.assertEqual(
             [

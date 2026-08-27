@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vyral.Abstractions.Interfaces;
 using Vyral.Abstractions.Models;
 using Vyral.Local;
 using Xunit;
@@ -11,6 +12,56 @@ namespace Vyral.Tests.Local;
 
 public class FileObjectStoreTests
 {
+    [Fact]
+    public async Task ContentAddressedWrite_IsImmutableAndReplaySafe()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-objects-{Guid.NewGuid():N}");
+        var store = new FileObjectStore(root);
+        var content = Encoding.UTF8.GetBytes("immutable generation part");
+
+        var first = await store.PutContentAddressedAsync(
+            "objects",
+            "retrieval/generations/generation-a",
+            content,
+            "application/octet-stream");
+        var second = await store.PutContentAddressedAsync(
+            "objects",
+            "retrieval/generations/generation-a",
+            content,
+            "application/octet-stream");
+
+        Assert.False(first.Replayed);
+        Assert.True(second.Replayed);
+        Assert.Equal(first.ContentHash, second.ContentHash);
+        Assert.Equal(first.Object.Key, second.Object.Key);
+        Assert.Contains("/sha256/", first.Object.Key, StringComparison.Ordinal);
+        Assert.EndsWith(first.ContentHash[7..], first.Object.Key, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StreamingContentAddressedWrite_RejectsAndRemovesMismatchedContent()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-objects-{Guid.NewGuid():N}");
+        var store = new FileObjectStore(root);
+        var actual = Encoding.UTF8.GetBytes("actual");
+        var expected = Encoding.UTF8.GetBytes("expected");
+        var expectedHash = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(expected));
+        await using var stream = new MemoryStream(actual, writable: false);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.PutContentAddressedAsync(
+            "objects",
+            "retrieval/generations/generation-a",
+            stream,
+            actual.Length,
+            expectedHash));
+
+        Assert.Null(await store.GetObjectAsync(new ObjectReadRequest
+        {
+            Container = "objects",
+            Key = "retrieval/generations/generation-a/sha256/" + expectedHash[7..]
+        }));
+    }
+
     [Fact]
     public async Task PutGetListDelete_RoundTripsObjectDeterministically()
     {

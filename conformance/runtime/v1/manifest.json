@@ -13,6 +13,7 @@
     "vyral.runtime.external-worker.v1",
     "vyral.runtime.providers.v1",
     "vyral.runtime.canonical.v1",
+    "vyral.runtime.retrieval-generation.v1",
     "vyral.runtime.execution.local.v1",
     "vyral.runtime.rest.v1",
     "vyral.runtime.mcp.stateless-2026-07-28.v1",
@@ -53,6 +54,20 @@
       "sha256": "sha256:26412edeb2795af7fba53c49eaa650d6e7abbd48e1c7cfbabc82e663f63f27fc",
       "profile": "vyral.runtime.data-rag.v1",
       "kind": "golden"
+    },
+    {
+      "id": "records.projection-generation.v1",
+      "path": "scenarios/goldens/record-search-projection-generation.json",
+      "sha256": "sha256:98e7a37d649b8008d29118a8cfe51c1ca3a178e58c3a602145717fb26fd8f0ca",
+      "profile": "vyral.runtime.retrieval-generation.v1",
+      "kind": "golden"
+    },
+    {
+      "id": "records.projection-generation-lifecycle.v1",
+      "path": "scenarios/retrieval/generation-bound-lifecycle.json",
+      "sha256": "sha256:7a5433eb745637004155322a76abbb0a5eaf6cf26148b7e18397c1e26c194875",
+      "profile": "vyral.runtime.retrieval-generation.v1",
+      "kind": "stateful"
     },
     {
       "id": "embeddings.vectors.v1",

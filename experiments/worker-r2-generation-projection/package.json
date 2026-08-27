@@ -1,0 +1,22 @@
+{
+  "name": "vyral-worker-r2-generation-proof",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/worker.mjs && node --check src/object-reader.mjs && node --check verify.mjs",
+    "verify": "node verify.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "miniflare": "4.20260730.0"
+  },
+  "overrides": {
+    "undici": "7.29.0"
+  },
+  "allowScripts": {
+    "workerd": false
+  }
+}

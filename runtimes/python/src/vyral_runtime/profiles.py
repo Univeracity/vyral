@@ -19,6 +19,7 @@ class RuntimeProfileId(str, Enum):
     EXTERNAL_WORKER = "vyral.runtime.external-worker.v1"
     PROVIDERS = "vyral.runtime.providers.v1"
     CANONICAL = "vyral.runtime.canonical.v1"
+    RETRIEVAL_GENERATION = "vyral.runtime.retrieval-generation.v1"
     EXECUTION_LOCAL = "vyral.runtime.execution.local.v1"
     REST = "vyral.runtime.rest.v1"
     MCP_STATELESS = "vyral.runtime.mcp.stateless-2026-07-28.v1"
@@ -91,6 +92,16 @@ _PROFILE_STATUSES: ProfileTuple = (
         "documents, revisions, fences, idempotency, outbox leasing, migrations, "
         "hash-verified snapshots, and byte-identical .NET archive goldens; "
         "supported-platform and multi-provider promotion remain incomplete.",
+    ),
+    ProfileStatus(
+        RuntimeProfileId.RETRIEVAL_GENERATION,
+        Maturity.PROTOTYPE,
+        True,
+        False,
+        "Immutable generation descriptors, complete-coverage outcomes, and "
+        "generation-pinned candidate-search fixtures are available as an "
+        "optional contract experiment; provider lifecycle semantics remain "
+        "intentionally unpromoted.",
     ),
     ProfileStatus(
         RuntimeProfileId.EXECUTION_LOCAL,

@@ -19,15 +19,28 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
     private const int MaxComparisonVariants = 12;
     private const int MaxK = 100;
     private readonly IRetrievalService _retrievalService;
+    private readonly IRetrievalEvaluationTargetResolver? _targetResolver;
 
-    public LocalRetrievalEvaluationService(IRetrievalService retrievalService)
+    public LocalRetrievalEvaluationService(
+        IRetrievalService retrievalService,
+        IRetrievalEvaluationTargetResolver? targetResolver = null)
     {
         _retrievalService = retrievalService;
+        _targetResolver = targetResolver;
     }
 
     public async Task<RetrievalEvaluationResult> EvaluateAsync(
         RetrievalEvaluationRequest request,
         CancellationToken ct = default,
+        IProgress<RetrievalEvaluationProgress>? progress = null)
+    {
+        return await EvaluateTargetAsync(_retrievalService, request, ct, progress);
+    }
+
+    private static async Task<RetrievalEvaluationResult> EvaluateTargetAsync(
+        IRetrievalService retrievalService,
+        RetrievalEvaluationRequest request,
+        CancellationToken ct,
         IProgress<RetrievalEvaluationProgress>? progress = null)
     {
         ValidateRequest(request);
@@ -43,7 +56,7 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
             var start = DateTime.UtcNow;
             try
             {
-                var caseResult = await EvaluateCaseAsync(request, testCase, i, ct);
+                var caseResult = await EvaluateCaseAsync(retrievalService, request, testCase, i, ct);
                 caseResult.DurationMs = (DateTime.UtcNow - start).TotalMilliseconds;
                 result.Cases.Add(caseResult);
                 result.Succeeded++;
@@ -109,13 +122,19 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
             var start = DateTime.UtcNow;
             try
             {
-                var evaluation = await EvaluateAsync(new RetrievalEvaluationRequest
+                var resolvedTarget = ResolveTarget(variant);
+                var evaluation = await EvaluateTargetAsync(resolvedTarget.Service, new RetrievalEvaluationRequest
                 {
                     Cases = ApplyVariant(request.Cases, variant, ct),
                     ContinueOnError = request.ContinueOnError,
                     DefaultK = request.DefaultK,
                     IncludeTopResults = request.IncludeTopResults
                 }, ct);
+                if (variant.Target is not null && evaluation.Failed != 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Retrieval evaluation target '{variant.Target.Id}' failed {evaluation.Failed} case(s).");
+                }
                 var metrics = ToMetrics(evaluation);
                 if (i == 0)
                 {
@@ -126,6 +145,7 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
                 {
                     Id = variant.Id,
                     Label = variant.Label,
+                    Target = variant.Target is null ? null : resolvedTarget.Evidence,
                     Status = EvaluationVariantStatuses.Succeeded,
                     DurationMs = (DateTime.UtcNow - start).TotalMilliseconds,
                     Metrics = metrics,
@@ -142,6 +162,7 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
                 {
                     Id = variant.Id,
                     Label = variant.Label,
+                    Target = null,
                     Status = EvaluationVariantStatuses.Failed,
                     Error = ex.Message,
                     DurationMs = (DateTime.UtcNow - start).TotalMilliseconds,
@@ -162,6 +183,24 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
         result.VariantsAttempted = result.Variants.Count;
         ReportComparisonProgress(progress, result);
         return result;
+    }
+
+    private RetrievalEvaluationResolvedTarget ResolveTarget(RetrievalEvaluationVariant variant)
+    {
+        if (variant.Target is null)
+        {
+            return new RetrievalEvaluationResolvedTarget
+            {
+                Service = _retrievalService,
+                Evidence = new RetrievalEvaluationTargetEvidence { Id = "default" }
+            };
+        }
+        if (_targetResolver is null)
+        {
+            throw new InvalidOperationException(
+                $"Retrieval evaluation target '{variant.Target.Id}' is not configured.");
+        }
+        return _targetResolver.Resolve(variant.Target);
     }
 
     private static void ReportComparisonProgress(
@@ -213,7 +252,8 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
         return JsonSerializer.Deserialize<RetrievalEvaluationComparisonResult>(json, JsonOptions)!;
     }
 
-    private async Task<RetrievalEvaluationCaseResult> EvaluateCaseAsync(
+    private static async Task<RetrievalEvaluationCaseResult> EvaluateCaseAsync(
+        IRetrievalService retrievalService,
         RetrievalEvaluationRequest request,
         RetrievalEvaluationCase testCase,
         int index,
@@ -224,7 +264,7 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
 
         var k = ResolveK(request, testCase);
         var retrievalRequest = CloneRetrievalRequest(testCase.Request, k, request.IncludeTopResults);
-        var retrieval = await _retrievalService.SearchAsync(retrievalRequest, ct);
+        var retrieval = await retrievalService.SearchAsync(retrievalRequest, ct);
         ct.ThrowIfCancellationRequested();
         var topResults = retrieval.Results.OrderBy(match => match.Rank).Take(k).ToList();
         var rerankEnabled = GetTraceBool(retrieval.Trace, "rerankEnabled") ?? (retrievalRequest.Rerank?.Enabled == true);
@@ -929,6 +969,39 @@ public class LocalRetrievalEvaluationService : IRetrievalEvaluationService
             {
                 throw new InvalidOperationException("Retrieval evaluation comparison variant limit must be greater than zero when provided.");
             }
+
+            ValidateTargetReference(variant.Target);
+        }
+    }
+
+    private static void ValidateTargetReference(RetrievalEvaluationTargetReference? target)
+    {
+        if (target is null)
+        {
+            return;
+        }
+        ValidateTargetIdentifier(target.Id, "target id");
+        if (target.GenerationId is not null)
+        {
+            ValidateTargetIdentifier(target.GenerationId, "target generationId");
+        }
+        if (target.ExpectedGenerationDescriptorDigest is { } digest &&
+            (digest.Length != 71 || !digest.StartsWith("sha256:", StringComparison.Ordinal) ||
+             digest[7..].Any(character =>
+                 !((character >= '0' && character <= '9') || (character >= 'a' && character <= 'f')))))
+        {
+            throw new InvalidOperationException(
+                "Retrieval evaluation target expectedGenerationDescriptorDigest must be a lowercase SHA-256 digest.");
+        }
+    }
+
+    private static void ValidateTargetIdentifier(string value, string label)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 200 ||
+            !string.Equals(value, value.Trim(), StringComparison.Ordinal) || value.Any(char.IsControl))
+        {
+            throw new InvalidOperationException(
+                $"Retrieval evaluation {label} must be a bounded non-whitespace identifier.");
         }
     }
 

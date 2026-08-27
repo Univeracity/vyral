@@ -73,6 +73,9 @@ portable_capabilities = {
 commit_pattern = re.compile(r"^[0-9a-f]{40}$")
 identifier_pattern = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
 version_pattern = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
+opaque_consumer_reference = re.compile(
+    r"^urn:vyral:private-consumer-evidence:sha256:[0-9a-f]{64}$"
+)
 
 
 def fail(message: str) -> None:
@@ -218,15 +221,32 @@ for index, adapter in enumerate(adapters):
         item_where = f"{where}.qualification.evidence[{evidence_index}]"
         if not isinstance(item, dict):
             fail(f"{item_where} must be an object")
-        check_keys(item, item_where, {"kind", "result", "reference", "command"}, {"resultArtifact"})
+        check_keys(
+            item,
+            item_where,
+            {"kind", "result", "reference", "command"},
+            {"resultArtifact", "disclosure"},
+        )
         kind = require_string(item.get("kind"), f"{item_where}.kind", 100)
         if kind not in {"unit_gate", "shared_conformance", "fault_restart", "public_surface", "live_gate", "cleanup", "consumer_validation"}:
             fail(f"{item_where}.kind is invalid")
         evidence_kinds.add(kind)
         if item.get("result") != "passed":
             fail(f"{item_where}.result must be passed")
-        require_string(item.get("reference"), f"{item_where}.reference", 300)
-        require_string(item.get("command"), f"{item_where}.command", 500)
+        reference = require_string(item.get("reference"), f"{item_where}.reference", 300)
+        command = require_string(item.get("command"), f"{item_where}.command", 500)
+        disclosure = item.get("disclosure", "public")
+        if disclosure not in {"public", "private_opaque"}:
+            fail(f"{item_where}.disclosure is invalid")
+        if kind == "consumer_validation" and disclosure != "private_opaque":
+            fail(f"{item_where} consumer validation must remain private_opaque")
+        if disclosure == "private_opaque":
+            if not opaque_consumer_reference.fullmatch(reference):
+                fail(f"{item_where} private evidence must use an opaque consumer-evidence reference")
+            if command != "withheld" or "resultArtifact" in item:
+                fail(f"{item_where} private evidence must withhold commands and result artifacts")
+        elif opaque_consumer_reference.fullmatch(reference):
+            fail(f"{item_where} opaque evidence must declare private_opaque disclosure")
     missing_evidence = level_requirements[level] - evidence_kinds
     if missing_evidence:
         fail(f"{where} lacks required {level} evidence: {', '.join(sorted(missing_evidence))}")

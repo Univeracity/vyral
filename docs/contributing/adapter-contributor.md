@@ -321,6 +321,10 @@ Rules:
 - `advertisedCapabilities` must match runtime descriptor capabilities.
 - Every advertised capability must appear in the qualification capability list.
 - Evidence ages out (90-day freshness by default).
+- Consumer validation may raise the maturity claim without naming the validating consumer. Record
+  it publicly as `private_opaque` with an opaque evidence digest; keep consumer identities,
+  repositories, commands, result paths, deployment identifiers, and generation names in private
+  maintainer evidence unless separately authorized for publication.
 - **Do not** mark `live_qualified` because a script exists or passed once on a laptop.
 - Release generation:
 

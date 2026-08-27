@@ -29,4 +29,4 @@ The checked evidence baseline was generated on `2026-08-14`. Evidence is current
 | Live qualified | Current provider version, isolated live gate, redacted result artifact, and cleanup evidence. |
 | Consumer validated | Live qualification plus evidence from a representative consumer environment. |
 
-Provider endpoints, account or tenant identifiers, credentials, and consumer identities do not belong in this public artifact. A workflow run or package presence does not promote an adapter automatically; the checked qualification record is the claim boundary.
+Provider endpoints, account or tenant identifiers, credentials, and consumer identities do not belong in this public artifact. Consumer-validation evidence is represented by an opaque content digest; the private identity-to-receipt mapping remains outside the repository unless the consumer separately authorizes disclosure. A workflow run or package presence does not promote an adapter automatically; the checked qualification record is the claim boundary.

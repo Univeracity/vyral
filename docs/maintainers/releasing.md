@@ -15,7 +15,11 @@ retained as release evidence.
    SBOM, and `qualification/adapter-qualification.json` as build evidence.
 2. Review dependency, secret, and release-ownership scan results, the SBOM and third-party
    notices, package metadata, adapter qualification matrix, and clean consumer validation for
-   .NET, JavaScript, Python, and Go.
+   .NET, JavaScript, Python, and Go. A public `consumer_validation` item must use
+   `private_opaque` disclosure, an opaque `urn:vyral:private-consumer-evidence:sha256:...`
+   reference, and no consumer command, result path, generation identifier, repository, deployment
+   identity, or name. Keep the identity-to-receipt mapping in ignored operator evidence. Naming a
+   validating consumer requires separate, explicit publication authorization from that consumer.
 3. Record contract additions, behavior changes, qualification changes, migrations, and known
    limits in the release notes. Package availability or an advertised capability must not be
    presented as `live_qualified` without a current live receipt in the release artifact.

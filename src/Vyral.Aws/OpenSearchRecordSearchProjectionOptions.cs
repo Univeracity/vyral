@@ -58,7 +58,7 @@ public sealed class OpenSearchRecordSearchProjectionOptions
         return ValidateIndexName(IndexNameFactory(collection));
     }
 
-    private static string ValidateIndexName(string? index)
+    internal static string ValidateIndexName(string? index)
     {
         if (string.IsNullOrWhiteSpace(index) || index.Length > MaximumIndexNameLength ||
             !char.IsLetterOrDigit(index[0]) ||
