@@ -18,7 +18,7 @@ import jsonschema
 
 
 ROOT = Path(__file__).resolve().parent.parent
-EXPERIMENT = ROOT / "experiments" / "worker-r2-generation-projection"
+PROJECTION = ROOT / "src" / "Vyral.Cloudflare" / "WorkerR2GenerationProjection"
 CONTRACT_SCHEMA = (
     ROOT
     / "src"
@@ -460,13 +460,13 @@ def main() -> int:
             completed = subprocess.run(
                 [
                     "node",
-                    str(EXPERIMENT / "verify.mjs"),
+                    str(PROJECTION / "verify.mjs"),
                     "--bundle",
                     str(bundle_path),
                     "--mode",
                     mode,
                 ],
-                cwd=EXPERIMENT,
+                cwd=PROJECTION,
                 check=False,
                 stdout=subprocess.PIPE,
                 text=True,
@@ -485,9 +485,9 @@ def main() -> int:
         "status": "complete",
         "generation": generation,
         "implementation": {
-            "workerSha256": digest_bytes((EXPERIMENT / "src" / "worker.mjs").read_bytes()),
+            "workerSha256": digest_bytes((PROJECTION / "src" / "worker.mjs").read_bytes()),
             "objectReaderSha256": digest_bytes(
-                (EXPERIMENT / "src" / "object-reader.mjs").read_bytes()
+                (PROJECTION / "src" / "object-reader.mjs").read_bytes()
             ),
         },
         "verification": {

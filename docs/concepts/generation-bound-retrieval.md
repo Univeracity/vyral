@@ -58,7 +58,7 @@ those operations can be promoted into a credible portable contract.
 The Cloudflare service-reader topology gives the public query Worker no R2 binding. A separate
 non-public Worker alone binds the bucket and exposes only an authenticated, allowlisted read
 operation over a service binding. The query Worker fails closed when neither or both read modes are
-configured. See the [reference implementation and proof harness](../../experiments/worker-r2-generation-projection).
+configured. See the [reference implementation and proof harness](../../src/Vyral.Cloudflare/WorkerR2GenerationProjection).
 
 The consumer validation used a small synthetic corpus and does not establish representative
 traffic, production capacity, availability, cost, or provider observability. The public evidence

@@ -1,8 +1,8 @@
 # Worker/R2 generation-bound projection
 
-This experiment implements Vyral's optional generation-bound candidate contract on Cloudflare
-Workers and R2. It is consumer-neutral reference code, not a published package or a portable index
-file format.
+This reference integration implements Vyral's optional generation-bound candidate contract on
+Cloudflare Workers and R2. It is consumer-neutral reference code, not a published package or a
+portable index file format.
 
 The query Worker:
 
@@ -53,7 +53,7 @@ Install the exact locked dependency graph and exercise both topologies against a
 consumer-neutral fixture:
 
 ```shell
-npm ci --ignore-scripts --prefix experiments/worker-r2-generation-projection
+npm ci --ignore-scripts --prefix src/Vyral.Cloudflare/WorkerR2GenerationProjection
 python3 scripts/verify-worker-r2-generation-projection.py \
   --output /tmp/vyral-worker-r2-proof.json
 ```

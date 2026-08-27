@@ -128,10 +128,10 @@
     {
       "adapterId": "worker-r2-generation-direct",
       "displayName": "Cloudflare Worker/R2 generation-bound projection (direct R2)",
-      "implementation": "experiments/worker-r2-generation-projection/src/worker.mjs",
+      "implementation": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/worker.mjs",
       "implementationArtifacts": [
         {
-          "path": "experiments/worker-r2-generation-projection/src/worker.mjs",
+          "path": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/worker.mjs",
           "sha256": "sha256:e9311869f2e671397b6f2a017882002bde33b46b9a78d4367d3e7ea192f0d6fc"
         }
       ],
@@ -157,7 +157,7 @@
           "kind": "unit_gate",
           "observedAtUtc": "2026-08-27T18:38:00Z",
           "expiresAtUtc": "2026-11-25T18:38:00Z",
-          "reference": "experiments/worker-r2-generation-projection/verify.mjs",
+          "reference": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/verify.mjs",
           "disclosure": "public",
           "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
           "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
@@ -182,14 +182,14 @@
     {
       "adapterId": "worker-r2-generation-service-reader",
       "displayName": "Cloudflare Worker/R2 generation-bound projection (service reader)",
-      "implementation": "experiments/worker-r2-generation-projection/src/worker.mjs + src/object-reader.mjs",
+      "implementation": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/worker.mjs + src/object-reader.mjs",
       "implementationArtifacts": [
         {
-          "path": "experiments/worker-r2-generation-projection/src/object-reader.mjs",
+          "path": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/object-reader.mjs",
           "sha256": "sha256:9fe0cba9c743210314ef6a91d9306a867527a6267068f75108fd5d868bd15a28"
         },
         {
-          "path": "experiments/worker-r2-generation-projection/src/worker.mjs",
+          "path": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/worker.mjs",
           "sha256": "sha256:e9311869f2e671397b6f2a017882002bde33b46b9a78d4367d3e7ea192f0d6fc"
         }
       ],
@@ -215,7 +215,7 @@
           "kind": "unit_gate",
           "observedAtUtc": "2026-08-27T18:38:00Z",
           "expiresAtUtc": "2026-11-25T18:38:00Z",
-          "reference": "experiments/worker-r2-generation-projection/src/object-reader.mjs",
+          "reference": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/src/object-reader.mjs",
           "disclosure": "public",
           "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
           "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",

@@ -431,7 +431,6 @@ runtimes/      Peer runtime implementations, currently Python
 contracts/     OpenAPI-derived public SDK catalog and JSON schemas
 conformance/   Language-neutral cross-runtime fixtures
 examples/      Short HTTP client recipes
-experiments/   Consumer-neutral provider proofs that are not published packages
 samples/       Runnable .NET and execution examples
 tests/         Unit, integration, conformance, and adapter suites
 qualification/ Versioned adapter qualification report and policy
