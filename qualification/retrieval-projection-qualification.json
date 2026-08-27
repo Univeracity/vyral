@@ -1,0 +1,277 @@
+{
+  "$schema": "https://openvyral.com/qualification/retrieval-projection-qualification.schema.json",
+  "schemaVersion": "1.0",
+  "coreContractVersion": "0.3.0",
+  "generatedAtUtc": "2026-08-27T18:41:00Z",
+  "qualificationExpiresAfterDays": 90,
+  "adapters": [
+    {
+      "adapterId": "local-exhaustive-generation",
+      "displayName": "Local exhaustive generation-bound projection",
+      "implementation": "Vyral.Local.LocalGenerationBoundRecordSearchProjection",
+      "implementationArtifacts": [
+        {
+          "path": "src/Vyral.Local/LocalGenerationBoundRecordSearchProjection.cs",
+          "sha256": "sha256:5168c9e1d491528d15448c1b0733a995af9f6809681f86298c6c1871a990caae"
+        }
+      ],
+      "provider": "local",
+      "topology": "in-process-exhaustive",
+      "profileId": "lexical-exhaustive-v1",
+      "strategyVersion": "exhaustive-token-v1",
+      "qualification": "local_conformant",
+      "status": "current",
+      "capabilities": [
+        "complete-coverage",
+        "generation-pinned-continuation",
+        "lexical"
+      ],
+      "generationEvidencePolicy": {
+        "descriptorSchema": "vyral.record-search-projection-generation.v1",
+        "requiresExactGenerationBinding": true,
+        "requiresCompleteRequestedCoverage": true,
+        "mutableHealthEstablishesCompleteness": false
+      },
+      "evidence": [
+        {
+          "kind": "unit_gate",
+          "observedAtUtc": "2026-08-27T18:40:00Z",
+          "expiresAtUtc": "2026-11-25T18:40:00Z",
+          "reference": "tests/Vyral.Tests.Local/LocalGenerationBoundRecordSearchProjectionTests.cs",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "local_gate",
+          "observedAtUtc": "2026-08-27T18:40:00Z",
+          "expiresAtUtc": "2026-11-25T18:40:00Z",
+          "reference": "tests/Vyral.Tests.Local/GenerationBoundRetrievalEvaluationTargetTests.cs",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "shared_conformance",
+          "observedAtUtc": "2026-08-27T18:38:00Z",
+          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "reference": "conformance/runtime/v1/scenarios/retrieval/generation-bound-lifecycle.json",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        }
+      ]
+    },
+    {
+      "adapterId": "opensearch-generation",
+      "displayName": "OpenSearch generation-bound projection",
+      "implementation": "Vyral.Aws.OpenSearchGenerationBoundRecordSearchProjection",
+      "implementationArtifacts": [
+        {
+          "path": "src/Vyral.Aws/OpenSearchGenerationBoundRecordSearchProjection.cs",
+          "sha256": "sha256:b9fbd3d2c7004b9cd3e7c99515bd7d748cb3cf92f13e3bc2e80b318ab5935c38"
+        }
+      ],
+      "provider": "opensearch",
+      "topology": "single-node-container",
+      "profileId": "vector-v1",
+      "strategyVersion": "opensearch-3.8",
+      "qualification": "local_conformant",
+      "status": "current",
+      "capabilities": [
+        "complete-coverage",
+        "generation-pinned-continuation",
+        "vector"
+      ],
+      "generationEvidencePolicy": {
+        "descriptorSchema": "vyral.record-search-projection-generation.v1",
+        "requiresExactGenerationBinding": true,
+        "requiresCompleteRequestedCoverage": true,
+        "mutableHealthEstablishesCompleteness": false
+      },
+      "evidence": [
+        {
+          "kind": "unit_gate",
+          "observedAtUtc": "2026-08-27T18:40:00Z",
+          "expiresAtUtc": "2026-11-25T18:40:00Z",
+          "reference": "tests/Vyral.Tests.Aws/OpenSearchGenerationBoundRecordSearchProjectionTests.cs",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "local_gate",
+          "observedAtUtc": "2026-08-27T13:31:58Z",
+          "expiresAtUtc": "2026-11-25T13:31:58Z",
+          "reference": "urn:vyral:private-evidence:sha256:2b85bfdf7253c3c58d8dede99e8a0abb2c37c9dbb3a0c0b6fdc118daefd56f48",
+          "disclosure": "private_opaque",
+          "sourceCommit": "10636ae6aa0e31e05a2cc908a5038ed99ada1504",
+          "sourceTreeDigest": "sha256:6ef183e8e29f1b42158f28a53a99ede7ed01f37a3c88b9f52c24c4bfa4095fd4",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        }
+      ]
+    },
+    {
+      "adapterId": "worker-r2-generation-direct",
+      "displayName": "Cloudflare Worker/R2 generation-bound projection (direct R2)",
+      "implementation": "experiments/worker-r2-generation-projection/src/worker.mjs",
+      "implementationArtifacts": [
+        {
+          "path": "experiments/worker-r2-generation-projection/src/worker.mjs",
+          "sha256": "sha256:e9311869f2e671397b6f2a017882002bde33b46b9a78d4367d3e7ea192f0d6fc"
+        }
+      ],
+      "provider": "cloudflare",
+      "topology": "worker-r2-miniflare-direct",
+      "profileId": "lexical-global-bm25-v1",
+      "strategyVersion": "private-json-shards-v1",
+      "qualification": "local_conformant",
+      "status": "current",
+      "capabilities": [
+        "complete-coverage",
+        "generation-pinned-continuation",
+        "lexical"
+      ],
+      "generationEvidencePolicy": {
+        "descriptorSchema": "vyral.record-search-projection-generation.v1",
+        "requiresExactGenerationBinding": true,
+        "requiresCompleteRequestedCoverage": true,
+        "mutableHealthEstablishesCompleteness": false
+      },
+      "evidence": [
+        {
+          "kind": "unit_gate",
+          "observedAtUtc": "2026-08-27T18:38:00Z",
+          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "reference": "experiments/worker-r2-generation-projection/verify.mjs",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "local_gate",
+          "observedAtUtc": "2026-08-27T18:38:00Z",
+          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "reference": "scripts/verify-worker-r2-generation-projection.py",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        }
+      ]
+    },
+    {
+      "adapterId": "worker-r2-generation-service-reader",
+      "displayName": "Cloudflare Worker/R2 generation-bound projection (service reader)",
+      "implementation": "experiments/worker-r2-generation-projection/src/worker.mjs + src/object-reader.mjs",
+      "implementationArtifacts": [
+        {
+          "path": "experiments/worker-r2-generation-projection/src/object-reader.mjs",
+          "sha256": "sha256:9fe0cba9c743210314ef6a91d9306a867527a6267068f75108fd5d868bd15a28"
+        },
+        {
+          "path": "experiments/worker-r2-generation-projection/src/worker.mjs",
+          "sha256": "sha256:e9311869f2e671397b6f2a017882002bde33b46b9a78d4367d3e7ea192f0d6fc"
+        }
+      ],
+      "provider": "cloudflare",
+      "topology": "worker-r2-miniflare-service-reader",
+      "profileId": "lexical-global-bm25-v1",
+      "strategyVersion": "private-json-shards-v1",
+      "qualification": "consumer_validated",
+      "status": "current",
+      "capabilities": [
+        "complete-coverage",
+        "generation-pinned-continuation",
+        "lexical"
+      ],
+      "generationEvidencePolicy": {
+        "descriptorSchema": "vyral.record-search-projection-generation.v1",
+        "requiresExactGenerationBinding": true,
+        "requiresCompleteRequestedCoverage": true,
+        "mutableHealthEstablishesCompleteness": false
+      },
+      "evidence": [
+        {
+          "kind": "unit_gate",
+          "observedAtUtc": "2026-08-27T18:38:00Z",
+          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "reference": "experiments/worker-r2-generation-projection/src/object-reader.mjs",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "local_gate",
+          "observedAtUtc": "2026-08-27T18:38:00Z",
+          "expiresAtUtc": "2026-11-25T18:38:00Z",
+          "reference": "scripts/verify-worker-r2-generation-projection.py",
+          "disclosure": "public",
+          "sourceCommit": "3f35a88b5e9d7e4e6840ab64dfe786fe612d14a2",
+          "sourceTreeDigest": "sha256:2663cd143a60fb2f54522116f9b63c9c5549f36073855e6b230d5ec770bd28f7",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "live_gate",
+          "observedAtUtc": "2026-08-27T17:53:27Z",
+          "expiresAtUtc": "2026-11-25T17:53:27Z",
+          "reference": "urn:vyral:private-consumer-evidence:sha256:cdc973c71ac0abba92dd2ec0fa3eb016b4e35233e9a059bf96f6b97b93a197da",
+          "disclosure": "private_opaque",
+          "sourceCommit": "04612e9d528e901ede19c182068bbd782008a2ae",
+          "sourceTreeDigest": "sha256:f5c682b5ff2dbfcc30d4ece24aa9d6c1c268165e3fcb27b696a084a64e961c54",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "cleanup",
+          "observedAtUtc": "2026-08-27T17:53:27Z",
+          "expiresAtUtc": "2026-11-25T17:53:27Z",
+          "reference": "urn:vyral:private-consumer-evidence:sha256:cdc973c71ac0abba92dd2ec0fa3eb016b4e35233e9a059bf96f6b97b93a197da",
+          "disclosure": "private_opaque",
+          "sourceCommit": "04612e9d528e901ede19c182068bbd782008a2ae",
+          "sourceTreeDigest": "sha256:f5c682b5ff2dbfcc30d4ece24aa9d6c1c268165e3fcb27b696a084a64e961c54",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        },
+        {
+          "kind": "consumer_validation",
+          "observedAtUtc": "2026-08-27T17:53:27Z",
+          "expiresAtUtc": "2026-11-25T17:53:27Z",
+          "reference": "urn:vyral:private-consumer-evidence:sha256:cdc973c71ac0abba92dd2ec0fa3eb016b4e35233e9a059bf96f6b97b93a197da",
+          "disclosure": "private_opaque",
+          "sourceCommit": "04612e9d528e901ede19c182068bbd782008a2ae",
+          "sourceTreeDigest": "sha256:f5c682b5ff2dbfcc30d4ece24aa9d6c1c268165e3fcb27b696a084a64e961c54",
+          "sourceDirty": false,
+          "generationIds": [],
+          "descriptorDigests": []
+        }
+      ]
+    }
+  ]
+}

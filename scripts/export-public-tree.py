@@ -187,6 +187,7 @@ REQUIRED_FILES = {
     "design/public-sdk-surface-and-stateless-mcp.md",
     "design/python-runtime.md",
     "qualification/adapter-qualification.json",
+    "qualification/retrieval-projection-qualification.json",
     "runtimes/python/pyproject.toml",
     "runtimes/python/LICENSE",
     "scripts/benchmark-python-runtime.py",

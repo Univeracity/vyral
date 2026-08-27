@@ -30,3 +30,8 @@ The checked evidence baseline was generated on `2026-08-14`. Evidence is current
 | Consumer validated | Live qualification plus evidence from a representative consumer environment. |
 
 Provider endpoints, account or tenant identifiers, credentials, and consumer identities do not belong in this public artifact. Consumer-validation evidence is represented by an opaque content digest; the private identity-to-receipt mapping remains outside the repository unless the consumer separately authorizes disclosure. A workflow run or package presence does not promote an adapter automatically; the checked qualification record is the claim boundary.
+
+Generation-bound retrieval projections use a separate
+[qualification artifact](retrieval-projection-qualification.json) because adapter/profile evidence
+and per-generation rollout receipts are distinct from execution-runtime admission evidence. Its
+implementation digests keep opaque live evidence bound to the exact public source components.

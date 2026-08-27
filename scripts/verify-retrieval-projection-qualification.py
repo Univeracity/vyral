@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timedelta, timezone
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = ROOT / "qualification/retrieval-projection-qualification.schema.json"
 SOURCE_EVIDENCE_HELPER = ROOT / "scripts/compute-source-tree-evidence.py"
 OPAQUE_CONSUMER_REFERENCE = re.compile(
-    r"^urn:vyral:private-consumer-evidence:sha256:[0-9a-f]{64}$"
+    r"^urn:vyral:private-(?:consumer-)?evidence:sha256:[0-9a-f]{64}$"
 )
 
 
@@ -32,7 +33,7 @@ def _timestamp(value: str, label: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _source_evidence(root: Path) -> dict[str, object]:
+def _source_evidence(root: Path, commit: str | None = None) -> dict[str, object]:
     specification = importlib.util.spec_from_file_location(
         "vyral_source_tree_evidence",
         SOURCE_EVIDENCE_HELPER,
@@ -41,7 +42,7 @@ def _source_evidence(root: Path) -> dict[str, object]:
         raise SystemExit("Could not load the source-tree evidence helper.")
     module = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(module)
-    return module.compute(root)
+    return module.compute_commit(root, commit) if commit else module.compute(root)
 
 
 def _schema_errors(artifact: Any) -> list[str]:
@@ -60,6 +61,7 @@ def validate(
     source: dict[str, object] | None,
     allow_dirty: bool,
     public_disclosure: bool = False,
+    source_root: Path | None = None,
 ) -> None:
     errors = _schema_errors(artifact)
     if errors:
@@ -70,6 +72,7 @@ def validate(
         raise SystemExit("generatedAtUtc cannot be in the future.")
     maximum_age = timedelta(days=artifact["qualificationExpiresAfterDays"])
     adapter_ids: set[str] = set()
+    historical_sources: dict[str, dict[str, object]] = {}
 
     required_kinds = {
         "prototype": {"unit_gate"},
@@ -93,6 +96,26 @@ def validate(
         if adapter_id in adapter_ids:
             raise SystemExit(f"Duplicate retrieval adapter ID: {adapter_id}")
         adapter_ids.add(adapter_id)
+        artifact_paths: set[str] = set()
+        for implementation_artifact in adapter["implementationArtifacts"]:
+            relative = implementation_artifact["path"]
+            parts = Path(relative).parts
+            if Path(relative).is_absolute() or ".." in parts or relative in artifact_paths:
+                raise SystemExit(
+                    f"Adapter {adapter_id} has an invalid or duplicate implementation artifact path."
+                )
+            artifact_paths.add(relative)
+            if source_root is not None:
+                path = source_root.resolve() / relative
+                if not path.is_file() or path.is_symlink():
+                    raise SystemExit(
+                        f"Adapter {adapter_id} implementation artifact is unavailable: {relative}"
+                    )
+                observed_digest = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+                if observed_digest != implementation_artifact["sha256"]:
+                    raise SystemExit(
+                        f"Adapter {adapter_id} implementation artifact digest does not match: {relative}"
+                    )
         evidence_kinds = {evidence["kind"] for evidence in adapter["evidence"]}
         missing_kinds = required_kinds[adapter["qualification"]] - evidence_kinds
         if missing_kinds:
@@ -143,7 +166,17 @@ def validate(
                     f"Adapter {adapter_id} evidence is bound to a dirty source tree; "
                     "use --allow-dirty only for private rehearsal."
                 )
-            if source is not None:
+            if source_root is not None and disclosure != "private_opaque":
+                commit = evidence["sourceCommit"]
+                if commit not in historical_sources:
+                    historical_sources[commit] = _source_evidence(source_root, commit)
+                historical = historical_sources[commit]
+                for field in ("sourceCommit", "sourceTreeDigest", "sourceDirty"):
+                    if evidence[field] != historical[field]:
+                        raise SystemExit(
+                            f"Adapter {adapter_id} evidence {field} does not match its source commit."
+                        )
+            elif source is not None and disclosure != "private_opaque":
                 for field in ("sourceCommit", "sourceTreeDigest", "sourceDirty"):
                     if evidence[field] != source[field]:
                         raise SystemExit(
@@ -172,13 +205,13 @@ def main() -> int:
 
     artifact = json.loads(arguments.artifact.read_text(encoding="utf-8"))
     as_of = _timestamp(arguments.as_of, "--as-of") if arguments.as_of else datetime.now(timezone.utc)
-    source = _source_evidence(arguments.source_root) if arguments.source_root else None
     validate(
         artifact,
         as_of=as_of,
-        source=source,
+        source=None,
         allow_dirty=arguments.allow_dirty,
         public_disclosure=arguments.public_disclosure,
+        source_root=arguments.source_root,
     )
     print(
         "retrieval-projection-qualification=ok "

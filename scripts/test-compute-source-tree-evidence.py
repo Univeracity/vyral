@@ -29,6 +29,18 @@ def _evidence(root: Path) -> dict[str, object]:
     return json.loads(result.stdout)
 
 
+def _commit_evidence(root: Path, commit: str) -> dict[str, object]:
+    result = _run(
+        sys.executable,
+        str(HELPER),
+        "--root",
+        str(root),
+        "--commit",
+        commit,
+    )
+    return json.loads(result.stdout)
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="vyral-source-tree-evidence-") as directory:
         root = Path(directory)
@@ -44,6 +56,9 @@ def main() -> int:
         repeated = _evidence(root)
         if clean != repeated or clean["sourceDirty"] is not False or clean["fileCount"] != 2:
             raise SystemExit("Clean source-tree evidence is not deterministic and exact.")
+        committed = _commit_evidence(root, str(clean["sourceCommit"]))
+        if committed != clean:
+            raise SystemExit("Commit and clean-worktree evidence do not use the same digest model.")
 
         (root / "ignored.tmp").write_text("ignored\n", encoding="utf-8")
         if _evidence(root) != clean:
@@ -53,6 +68,8 @@ def main() -> int:
         modified = _evidence(root)
         if modified["sourceDirty"] is not True or modified["sourceTreeDigest"] == clean["sourceTreeDigest"]:
             raise SystemExit("A tracked modification did not change dirty source-tree evidence.")
+        if _commit_evidence(root, str(clean["sourceCommit"])) != clean:
+            raise SystemExit("Dirty worktree state changed immutable commit evidence.")
 
         (root / "untracked.txt").write_text("new\n", encoding="utf-8")
         untracked = _evidence(root)

@@ -45,6 +45,12 @@ def _artifact() -> dict[str, object]:
                 "adapterId": "opensearch-generation",
                 "displayName": "OpenSearch generation projection",
                 "implementation": "OpenSearchGenerationBoundRecordSearchProjection",
+                "implementationArtifacts": [
+                    {
+                        "path": "src/Vyral.Aws/OpenSearchGenerationBoundRecordSearchProjection.cs",
+                        "sha256": "sha256:" + "3" * 64,
+                    }
+                ],
                 "provider": "opensearch",
                 "topology": "single-node-container",
                 "profileId": "vector-v1",
@@ -104,6 +110,12 @@ def main() -> int:
     substituted_source["adapters"][0]["evidence"][0]["sourceTreeDigest"] = "sha256:" + "2" * 64
     _rejects(substituted_source, "does not match")
 
+    duplicate_implementation = deepcopy(artifact)
+    duplicate_implementation["adapters"][0]["implementationArtifacts"].append(
+        duplicate_implementation["adapters"][0]["implementationArtifacts"][0]
+    )
+    _rejects(duplicate_implementation, "duplicate implementation artifact")
+
     unpaired_generation = deepcopy(artifact)
     unpaired_generation["adapters"][0]["evidence"][0]["generationIds"] = ["generation-a"]
     _rejects(unpaired_generation, "must be paired")
@@ -142,6 +154,18 @@ def main() -> int:
     )
     MODULE.validate(
         consumer_validated,
+        as_of=datetime(2026, 8, 27, 12, 10, tzinfo=timezone.utc),
+        source=SOURCE,
+        allow_dirty=True,
+        public_disclosure=True,
+    )
+
+    transferred_private_source = deepcopy(consumer_validated)
+    transferred_private_source["adapters"][0]["evidence"][-1]["sourceTreeDigest"] = (
+        "sha256:" + "9" * 64
+    )
+    MODULE.validate(
+        transferred_private_source,
         as_of=datetime(2026, 8, 27, 12, 10, tzinfo=timezone.utc),
         source=SOURCE,
         allow_dirty=True,

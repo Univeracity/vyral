@@ -73,11 +73,56 @@ def compute(root: Path) -> dict[str, object]:
     }
 
 
+def compute_commit(root: Path, commit: str) -> dict[str, object]:
+    """Compute the same source digest from one immutable Git commit."""
+    root = root.resolve()
+    if not (root / ".git").exists():
+        raise SystemExit(f"Not a Git worktree: {root}")
+    if not commit or any(character not in "0123456789abcdef" for character in commit):
+        raise SystemExit("Commit evidence requires a lowercase hexadecimal Git object ID.")
+    resolved = _git(root, "rev-parse", "--verify", f"{commit}^{{commit}}")
+    resolved_commit = resolved.decode("ascii").strip()
+    tree = _git(root, "ls-tree", "-r", "-z", "--full-tree", resolved_commit)
+    entries: list[tuple[str, str, str]] = []
+    for encoded in tree.split(b"\0"):
+        if not encoded:
+            continue
+        metadata, encoded_path = encoded.split(b"\t", 1)
+        mode, object_type, object_id = metadata.decode("ascii").split(" ")
+        if object_type != "blob":
+            raise SystemExit("Source-tree evidence permits only Git blobs.")
+        relative = encoded_path.decode("utf-8", errors="strict")
+        if "\n" in relative or "\r" in relative:
+            raise SystemExit("Source-tree evidence does not permit control characters in paths.")
+        if mode == "120000":
+            raise SystemExit(f"Source-tree evidence requires regular files: {relative}")
+        normalized_mode = "755" if mode == "100755" else "644"
+        content = _git(root, "cat-file", "blob", object_id)
+        entries.append((relative, normalized_mode, hashlib.sha256(content).hexdigest()))
+
+    tree_digest = hashlib.sha256()
+    for relative, mode, content_digest in sorted(entries):
+        tree_digest.update(f"{mode} {content_digest} {relative}\n".encode("utf-8"))
+    return {
+        "schemaVersion": "vyral.source-tree-evidence.v1",
+        "sourceCommit": resolved_commit,
+        "sourceDirty": False,
+        "sourceTreeDigest": "sha256:" + tree_digest.hexdigest(),
+        "fileCount": len(entries),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--commit", help="compute evidence for an immutable commit")
     arguments = parser.parse_args()
-    print(json.dumps(compute(arguments.root), sort_keys=True, separators=(",", ":")))
+    evidence = (
+        compute_commit(arguments.root, arguments.commit)
+        if arguments.commit
+        else compute(arguments.root)
+    )
+    print(json.dumps(evidence, sort_keys=True, separators=(",", ":")))
     return 0
 
 

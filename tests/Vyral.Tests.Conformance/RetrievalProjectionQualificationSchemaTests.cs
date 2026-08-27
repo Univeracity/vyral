@@ -32,5 +32,9 @@ public sealed class RetrievalProjectionQualificationSchemaTests
             .ToList();
         Assert.Contains("sourceTreeDigest", requiredEvidence);
         Assert.Contains("sourceDirty", requiredEvidence);
+        var adapterRequired = schema["$defs"]!["adapter"]!["required"]!.AsArray()
+            .Select(value => value!.GetValue<string>())
+            .ToList();
+        Assert.Contains("implementationArtifacts", adapterRequired);
     }
 }
