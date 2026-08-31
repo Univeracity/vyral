@@ -404,7 +404,7 @@
         "dependencies": {
           "Temporalio": "[1.18.0, )",
           "Temporalio.Extensions.Hosting": "[1.18.0, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution.Temporal": "[0.2.0, )"
         }
       },
@@ -422,7 +422,7 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )",
           "SQLitePCLRaw.core": "[3.0.5, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.primitives": {

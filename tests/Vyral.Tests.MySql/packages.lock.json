@@ -195,15 +195,15 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Data.Sqlite": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )",
-          "Vyral.Local": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )",
+          "Vyral.Local": "[0.3.1, )"
         }
       },
       "vyral.canonicalstore.benchmarks": {
         "type": "Project",
         "dependencies": {
           "MySqlConnector": "[2.6.2, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.MySql": "[0.3.0, )"
         }
       },
@@ -236,14 +236,14 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )",
           "SQLitePCLRaw.core": "[3.0.5, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.mysql": {
         "type": "Project",
         "dependencies": {
           "MySqlConnector": "[2.6.2, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.pgvector": {
@@ -251,7 +251,7 @@
         "dependencies": {
           "Npgsql": "[10.0.3, )",
           "Pgvector": "[0.3.2, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.primitives": {
@@ -261,11 +261,11 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.NET.Test.Sdk": "[18.9.0, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution": "[0.2.0, )",
           "Vyral.Execution.Local": "[0.2.0, )",
           "Vyral.Execution.WorkerClient": "[0.2.0, )",
-          "Vyral.Local": "[0.3.0, )",
+          "Vyral.Local": "[0.3.1, )",
           "Vyral.Primitives": "[0.2.0, )",
           "xunit": "[2.9.3, )"
         }

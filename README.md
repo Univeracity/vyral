@@ -14,7 +14,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-111111"></a>
   <a href="https://github.com/Univeracity/vyral/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/Univeracity/vyral/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="docs/reference/stability.md"><img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-111111"></a>
+  <a href="docs/reference/stability.md"><img alt="Version 0.3.1" src="https://img.shields.io/badge/version-0.3.1-111111"></a>
   <a href="runtimes/python"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/python-3.10%2B-111111"></a>
   <a href="design/public-sdk-surface-and-stateless-mcp.md"><img alt="MCP 2026-07-28" src="https://img.shields.io/badge/MCP-2026--07--28-111111"></a>
   <a href="#capability-boundaries"><img alt="Readiness is evidence-scoped" src="https://img.shields.io/badge/readiness-evidence--scoped-6b7280"></a>
@@ -194,7 +194,7 @@ also need TLS, rate limits, authenticated ingress, and deployment-specific
 identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
 and the [deployment guide](deploy).
 
-The worker-capable server image is `ghcr.io/univeracity/vyral-server:0.3.2`;
+The worker-capable server image is `ghcr.io/univeracity/vyral-server:0.3.3`;
 production deployments should pin its published digest and use the same API-key
 and runtime restrictions shown above. The default entrypoint remains the public
 API server. A separate, least-privilege deployment can run the preview generic

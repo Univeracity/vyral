@@ -140,7 +140,7 @@ class HostCliTests(unittest.TestCase):
             "rootPath": "/tmp/vyral-demo",
             "topology": "local-single-node",
             "runtime": {
-                "version": "0.1.1",
+                "version": "0.1.2",
                 "contractVersion": "0.3.0",
                 "maturity": "prototype",
                 "fullLocalReady": False,
@@ -180,7 +180,7 @@ class HostCliTests(unittest.TestCase):
             "rootPath": "/tmp/vyral-demo",
             "topology": "local-single-node",
             "runtime": {
-                "version": "0.1.1",
+                "version": "0.1.2",
                 "contractVersion": "0.3.0",
                 "maturity": "prototype",
                 "fullLocalReady": False,

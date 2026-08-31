@@ -34,7 +34,7 @@ def _receipt(system: str, python: str) -> dict[str, object]:
             "fts5Available": True,
         },
         "runtime": {
-            "version": "0.1.1",
+            "version": "0.1.2",
             "contractVersion": "0.3.0",
             "fixtureVersion": "1.0.0",
             "profiles": [{"id": "portable", "available": True}],

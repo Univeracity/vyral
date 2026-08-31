@@ -55,7 +55,7 @@
           "AWSSDK.S3": "[4.0.102.4, )",
           "AWSSDK.Signin": "[4.0.101.8, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.primitives": {

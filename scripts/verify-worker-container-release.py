@@ -16,7 +16,7 @@ EXPECTED = {
     "publicationAuthorized": True,
     "image": {
         "name": "ghcr.io/univeracity/vyral-server",
-        "version": "0.3.2",
+        "version": "0.3.3",
         "source": "Dockerfile",
         "environment": "publish-container",
         "maturity": "mixed",
@@ -28,13 +28,13 @@ EXPECTED = {
     },
     "authorization": {
         "mode": "manual-protected-environment",
-        "releaseTag": "server-v0.3.2",
+        "releaseTag": "server-v0.3.3",
         "workflow": ".github/workflows/publish-worker-container.yml",
         "requirements": [
             "a GitHub-verified signed annotated server tag that resolves to current main",
             "a successful canonical Release Integrity run for that exact commit, including the packaged hosted-worker receipt",
             "a manual dispatch from main through the publish-container protected environment",
-            "a passing hosted-worker qualification and vulnerability scan against the exact published digest",
+            "passing MCP and hosted-worker qualification plus a vulnerability scan against the exact published digest",
         ],
         "publisher": {
             "ecosystem": "container",
@@ -55,7 +55,7 @@ def main() -> int:
     workflow = WORKFLOW.read_text(encoding="utf-8")
     for requirement in (
         "workflow_dispatch:",
-        "server-v0.3.2",
+        "server-v0.3.3",
         'test "$GITHUB_REF" = "refs/heads/main"',
         'git cat-file -t "refs/tags/${RELEASE_TAG}"',
         ".verification.verified == true",
@@ -71,11 +71,12 @@ def main() -> int:
         "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
         "sbom: true",
         "provenance: mode=max",
-        "VYRAL_IMAGE_VERSION=0.3.2",
-        "ghcr.io/univeracity/vyral-server:0.3.2",
+        "VYRAL_IMAGE_VERSION=0.3.3",
+        "ghcr.io/univeracity/vyral-server:0.3.3",
         "scripts/verify-hosted-worker-container.sh",
+        "scripts/verify-mcp-container.sh",
         "aquasec/trivy:0.73.0@sha256:",
-        "worker-container-server-v0.3.2",
+        "server-container-server-v0.3.3",
     ):
         if requirement not in workflow:
             raise SystemExit(f"Worker container publisher is missing {requirement!r}.")
@@ -85,7 +86,7 @@ def main() -> int:
     if "\n  push:" in workflow:
         raise SystemExit("Worker container publisher must not have an automatic push trigger.")
 
-    print("worker-container-release=ok tag=server-v0.3.2 image=0.3.2")
+    print("worker-container-release=ok tag=server-v0.3.3 image=0.3.3")
     return 0
 
 

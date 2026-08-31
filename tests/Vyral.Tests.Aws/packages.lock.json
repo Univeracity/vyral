@@ -214,7 +214,7 @@
           "AWSSDK.S3": "[4.0.102.4, )",
           "AWSSDK.Signin": "[4.0.101.8, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.execution": {
@@ -228,7 +228,7 @@
         "dependencies": {
           "AWSSDK.DynamoDBv2": "[4.0.103.5, )",
           "AWSSDK.SQS": "[4.0.100.11, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution": "[0.2.0, )"
         }
       },
@@ -255,7 +255,7 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )",
           "SQLitePCLRaw.core": "[3.0.5, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.primitives": {
@@ -265,11 +265,11 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.NET.Test.Sdk": "[18.9.0, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution": "[0.2.0, )",
           "Vyral.Execution.Local": "[0.2.0, )",
           "Vyral.Execution.WorkerClient": "[0.2.0, )",
-          "Vyral.Local": "[0.3.0, )",
+          "Vyral.Local": "[0.3.1, )",
           "Vyral.Primitives": "[0.2.0, )",
           "xunit": "[2.9.3, )"
         }

@@ -419,7 +419,7 @@
           "Azure.Storage.Blobs": "[12.29.2, )",
           "Microsoft.Azure.Cosmos": "[3.62.1, )",
           "Newtonsoft.Json": "[13.0.4, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution.AzureDurable": "[0.2.0, )"
         }
       },

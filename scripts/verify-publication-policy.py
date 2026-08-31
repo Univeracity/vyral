@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify that first-cohort publishing is manual, bounded, and fail-closed."""
+"""Verify that package and container publishing is manual, bounded, and fail-closed."""
 
 from __future__ import annotations
 
@@ -94,11 +94,11 @@ def main() -> int:
     if cohort.get("publicationAuthorized") is not True:
         errors.append(
             "publication-cohort.json must explicitly authorize the reviewed "
-            "first cohort"
+            "package release"
         )
     publisher = workflow_text.get(FIRST_COHORT_PUBLISH_WORKFLOW)
     if publisher is None:
-        errors.append("the authorized first-cohort publisher workflow is missing")
+        errors.append("the authorized package publisher workflow is missing")
         publisher = ""
     container_publisher = workflow_text.get(CONTAINER_SECURITY_PUBLISH_WORKFLOW)
     if container_publisher is None:
@@ -126,10 +126,9 @@ def main() -> int:
     for requirement in (
         "workflow_dispatch:",
         "release_tag:",
-        "v0.3.0",
+        "v0.3.1",
         "confirm:",
         "type: boolean",
-        "npm_direct_token_published:",
         "GITHUB_TOKEN: ${{ github.token }}",
         "refs/heads/main",
         "git cat-file -t \"refs/tags/${RELEASE_TAG}\"",
@@ -137,20 +136,12 @@ def main() -> int:
         "release-integrity.yml/runs?head_sha=",
         "name: publish-nuget",
         "name: publish-pypi",
-        "name: publish-npm",
-        "name: publish-container",
-        "node-version: \"22.14.0\"",
-        "npm@11.5.1",
-        "Verify direct-token npm first cohort",
-        "Verify the authorized direct-token archive",
-        'npm view vyral-client@0.3.0 dist.integrity',
+        "name: package-release-v0.3.1",
+        'SOURCE_DATE_EPOCH: "315532800"',
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
         "skip-existing: true",
-        "docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
-        "driver: docker-container",
-        "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
-        "ghcr.io/univeracity/vyral-server:0.3.0",
+        "Verify public package availability",
     ):
         if requirement not in publisher:
             errors.append(
@@ -165,14 +156,16 @@ def main() -> int:
         pattern = PUBLISH_PATTERNS[label]
         if not pattern.search(publisher):
             errors.append(f"{FIRST_COHORT_PUBLISH_WORKFLOW} is missing expected {label}")
-    if not re.search(
-        r"npm\s+view\s+vyral-client@0\.3\.0\s+dist\.integrity",
-        publisher,
-        re.IGNORECASE,
+    for label in (
+        "JavaScript package publish",
+        "Docker push",
+        "OCI or Helm push",
+        "GitHub release creation",
     ):
-        errors.append(
-            f"{FIRST_COHORT_PUBLISH_WORKFLOW} is missing exact npm archive verification"
-        )
+        if PUBLISH_PATTERNS[label].search(publisher):
+            errors.append(
+                f"{FIRST_COHORT_PUBLISH_WORKFLOW} may publish only the reviewed NuGet and PyPI packages, not {label}"
+            )
     if re.search(
         r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
         publisher,
@@ -214,18 +207,19 @@ def main() -> int:
 
     for requirement in (
         "workflow_dispatch:",
-        "server-v0.3.2",
+        "server-v0.3.3",
         'test "$GITHUB_REF" = "refs/heads/main"',
         'git cat-file -t "refs/tags/${RELEASE_TAG}"',
         ".verification.verified == true",
         "release-integrity.yml/runs?head_sha=",
         "name: publish-container",
         "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
-        "VYRAL_IMAGE_VERSION=0.3.2",
-        "ghcr.io/univeracity/vyral-server:0.3.2",
+        "VYRAL_IMAGE_VERSION=0.3.3",
+        "ghcr.io/univeracity/vyral-server:0.3.3",
         "scripts/verify-hosted-worker-container.sh",
+        "scripts/verify-mcp-container.sh",
         "aquasec/trivy:0.73.0@sha256:",
-        "worker-container-server-v0.3.2",
+        "server-container-server-v0.3.3",
     ):
         if requirement not in worker_container_publisher:
             errors.append(
@@ -361,7 +355,7 @@ def main() -> int:
         else "frozen-requirements-missing"
     )
     print(
-        "publication-policy=ok mode=authorized-first-cohort "
+        "publication-policy=ok mode=authorized-package-patch "
         f"pausedQualificationWorkflows={len(PAUSED_QUALIFICATION_WORKFLOWS)} "
         f"coreAssuranceWorkflows={len(CORE_ASSURANCE_WORKFLOWS)} "
         f"authorizedPublishers={len(PUBLISH_WORKFLOWS)} "
