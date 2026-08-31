@@ -4,29 +4,29 @@
     "net10.0": {
       "AWSSDK.DynamoDBv2": {
         "type": "Direct",
-        "requested": "[4.0.103.4, )",
-        "resolved": "4.0.103.4",
-        "contentHash": "uXH67JhaTnD64vnX6DfNsRk/KSCdw9npdhsreWi33MZE0pdzr6KDj5m6iWsd+PDkI1tAjB7ht2S20rwdwhuppA==",
+        "requested": "[4.0.103.5, )",
+        "resolved": "4.0.103.5",
+        "contentHash": "mBueFVl4gl29uUuwK/cOclvESGLR7U2TuyVXuGjDi2afAGOS+7RlxK1Vn9eCYglFVpkz7aZs4IPDyXJRmy/nXg==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.1, 5.0.0)"
         }
       },
       "AWSSDK.S3": {
         "type": "Direct",
-        "requested": "[4.0.102.3, )",
-        "resolved": "4.0.102.3",
-        "contentHash": "3UBPFahEW62lNqHutA94if/9YguOXswDkz+CMh8fo3qCl7PUdynwSEvE0rhHnRPok0rDkDEDpwddfk7h8Mg0gw==",
+        "requested": "[4.0.102.4, )",
+        "resolved": "4.0.102.4",
+        "contentHash": "rfUhmzlQifO7Uk3AErPweV1FbwZYI+OuogPjfS/7mbVKVWCYYCLkkLozh2mS/qaHPNGPGFeSFAR1NbWnQyd2pQ==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.1, 5.0.0)"
         }
       },
       "AWSSDK.SQS": {
         "type": "Direct",
-        "requested": "[4.0.100.10, )",
-        "resolved": "4.0.100.10",
-        "contentHash": "u2IjUITEZgsz2zoBL4MSgsy3TrUuvmLxiQOp0uBzqYckyMcth8XB7Td4lFVY8Be8rwygsl671Jta1GyRLE098w==",
+        "requested": "[4.0.100.11, )",
+        "resolved": "4.0.100.11",
+        "contentHash": "71a2QN2WQZFTTcIWLUm6b+TSJb8ujo1pIefP4rKd36rbpK8n3D7JqXWr4w9fPgqgE7RXaQ9rdmOLani0MLT1HA==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.1, 5.0.0)"
         }
       },
       "coverlet.collector": {
@@ -64,13 +64,13 @@
       },
       "AWSSDK.Core": {
         "type": "Transitive",
-        "resolved": "4.0.102",
-        "contentHash": "sjkYreyNPlYTnAxdnqd3MBoeTNZHXOzV9lKULS5VAn+6MJIqu87aZLlm56KhDANOBXRxwDJIW668ZlsFhaB6Zw=="
+        "resolved": "4.0.102.1",
+        "contentHash": "vsf+/o+S/euH/wG7bO1cha+OWaHvjgvpDeGFO6l3Vcdio9GlSfXkZDD2BogMuAJ+/jDyqqSgqmYVolPKV9ie/A=="
       },
       "AWSSDK.Signin": {
         "type": "Transitive",
-        "resolved": "4.0.101.7",
-        "contentHash": "TcmZZ9fQVjfuhnCKs1r/DUN5jDkKH7AOwLv7GOv8Jlx2j81iviOhN5SGyiyJwLR5hJGVHiYsDIgGUHIyWuKLOQ==",
+        "resolved": "4.0.101.8",
+        "contentHash": "vhTBFe4accdDlaR6mjovY50C28WBC2XKT7aUf0aUBV7yLoD53yqXwWVfgzJbaPrAB7tVYVGbbyumBmgVI83KkA==",
         "dependencies": {
           "BouncyCastle.Cryptography": "2.6.2"
         }
@@ -210,9 +210,9 @@
       "vyral.aws": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.DynamoDBv2": "[4.0.103.4, )",
-          "AWSSDK.S3": "[4.0.102.3, )",
-          "AWSSDK.Signin": "[4.0.101.7, )",
+          "AWSSDK.DynamoDBv2": "[4.0.103.5, )",
+          "AWSSDK.S3": "[4.0.102.4, )",
+          "AWSSDK.Signin": "[4.0.101.8, )",
           "System.Numerics.Tensors": "[10.0.11, )",
           "Vyral.Abstractions": "[0.3.0, )"
         }
@@ -226,8 +226,8 @@
       "vyral.execution.aws": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.DynamoDBv2": "[4.0.103.4, )",
-          "AWSSDK.SQS": "[4.0.100.10, )",
+          "AWSSDK.DynamoDBv2": "[4.0.103.5, )",
+          "AWSSDK.SQS": "[4.0.100.11, )",
           "Vyral.Abstractions": "[0.3.0, )",
           "Vyral.Execution": "[0.2.0, )"
         }
