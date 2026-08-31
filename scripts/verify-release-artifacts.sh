@@ -309,6 +309,8 @@ for package in packages:
         package_id = value("id")
         package_version = value("version")
         expected_versions = {
+            "Vyral.Abstractions": "0.3.1",
+            "Vyral.Local": "0.3.1",
             "Vyral.Primitives": "0.2.0",
             "Vyral.Execution": "0.2.0",
             "Vyral.Execution.Aws": "0.2.0",
@@ -460,7 +462,7 @@ scripts/verify-python-runtime.sh
     --editable "runtimes/python[extropic]"
   "$extropic_venv/bin/python" scripts/verify-python-extropic-sdk-surface.py
 )
-python3 -m build \
+SOURCE_DATE_EPOCH=315532800 python3 -m build \
   --outdir "$ARTIFACT_ROOT/python-runtime" \
   runtimes/python
 (
@@ -514,8 +516,8 @@ from pathlib import Path
 import sys
 
 artifacts = Path(sys.argv[1])
-wheels = list(artifacts.glob("vyral-0.1.1-*.whl"))
-sdists = list(artifacts.glob("vyral-0.1.1.tar.gz"))
+wheels = list(artifacts.glob("vyral-0.1.2-*.whl"))
+sdists = list(artifacts.glob("vyral-0.1.2.tar.gz"))
 if len(wheels) != 1 or len(sdists) != 1:
     raise SystemExit(
         "Expected one vyral runtime wheel and one source distribution."

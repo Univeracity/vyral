@@ -251,7 +251,7 @@
         "dependencies": {
           "Npgsql": "[10.0.3, )",
           "Pgvector": "[0.3.2, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.primitives": {

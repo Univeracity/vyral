@@ -13,9 +13,10 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCT_VERSION = "0.3.0"
-SERVER_IMAGE_VERSION = "0.3.2"
+CORE_PACKAGE_VERSION = "0.3.1"
+SERVER_IMAGE_VERSION = "0.3.3"
 EXECUTION_VERSION = "0.2.0"
-PYTHON_RUNTIME_VERSION = "0.1.1"
+PYTHON_RUNTIME_VERSION = "0.1.2"
 PYTHON_RUNTIME_FIXTURE_MINIMUM = "0.1.0"
 GO_MINIMUM_VERSION = "1.25.0"
 GO_BUILD_VERSION = "1.26.6"
@@ -73,6 +74,14 @@ def require_python_constant(path: Path, name: str, expected: str) -> None:
 def main() -> int:
     directory_props = project_properties("Directory.Build.props")
     require(directory_props.get("VyralReleaseVersion"), PRODUCT_VERSION, "default product version")
+
+    for relative in (
+        "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
+        "src/Vyral.Local/Vyral.Local.csproj",
+    ):
+        properties = project_properties(relative)
+        require(properties.get("Version"), CORE_PACKAGE_VERSION, f"{relative} assembly version")
+        require(properties.get("PackageVersion"), CORE_PACKAGE_VERSION, f"{relative} package version")
 
     catalog = json.loads((ROOT / "contracts/public-sdk-surface.json").read_text(encoding="utf-8"))
     openapi = json.loads((ROOT / "src/Vyral.Server/contracts/vyral.openapi.json").read_text(encoding="utf-8"))
@@ -212,7 +221,7 @@ def main() -> int:
     if "| Server container | `0.3.x` |" not in stability:
         raise SystemExit("The stability policy must document the server container version line.")
 
-    allowed_explicit_versions = {PRODUCT_VERSION, EXECUTION_VERSION}
+    allowed_explicit_versions = {PRODUCT_VERSION, CORE_PACKAGE_VERSION, EXECUTION_VERSION}
     for project in sorted((ROOT / "src").glob("*/**/*.csproj")):
         text = project.read_text(encoding="utf-8-sig")
         explicit = set(re.findall(r"<(?:Version|PackageVersion)>([^<$]+)</", text))
@@ -223,7 +232,8 @@ def main() -> int:
             )
 
     print(
-        f"version-policy=ok product={PRODUCT_VERSION} server-image={SERVER_IMAGE_VERSION} execution={EXECUTION_VERSION} "
+        f"version-policy=ok product={PRODUCT_VERSION} core-packages={CORE_PACKAGE_VERSION} "
+        f"server-image={SERVER_IMAGE_VERSION} execution={EXECUTION_VERSION} "
         f"python-runtime={PYTHON_RUNTIME_VERSION} go-minimum={GO_MINIMUM_VERSION} "
         f"go-build={GO_BUILD_VERSION} bubblewrap-build={BUBBLEWRAP_BUILD_VERSION} "
         "core-tfms=net8.0,net10.0"

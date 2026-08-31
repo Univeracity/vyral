@@ -1,6 +1,6 @@
 [project]
 name = "vyral"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python-first local runtime for the portable Vyral contract"
 requires-python = ">=3.10"
 readme = "README.md"
@@ -57,7 +57,7 @@ Repository = "https://github.com/univeracity/vyral"
 Issues = "https://github.com/univeracity/vyral/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

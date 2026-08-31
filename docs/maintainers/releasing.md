@@ -93,14 +93,17 @@ retained as release evidence.
 The version lines and maturity promises are defined in the [stability policy](../reference/stability.md) and enforced by
 `scripts/verify-version-policy.py`. Source versions do not prove registry publication.
 
-The exact authorized first cohort is recorded in
+The exact currently authorized package cohort is recorded in
 [`packaging/publication-cohort.json`](../../packaging/publication-cohort.json).
-The manual [`Publish first cohort`](../../.github/workflows/publish-first-cohort.yml)
-workflow is the only source path allowed to publish that cohort. It accepts only the
-reviewed `v0.3.0` cohort, and before packaging requires a GitHub-verified signed
+The manual [`Publish package release`](../../.github/workflows/publish-first-cohort.yml)
+workflow is the only source path allowed to publish that cohort. Its filename is retained because
+NuGet and PyPI trusted-publisher identities include the workflow filename. It accepts only the
+reviewed `v0.3.1` package patch, and before packaging requires a GitHub-verified signed
 annotated tag at current `main` plus a successful canonical Release Integrity
 push run for that commit. Each registry job uses its own protected environment
-and least-privilege identity. It has no automatic trigger.
+and least-privilege identity. It has no automatic trigger. The patch publishes
+`Vyral.Abstractions` and `Vyral.Local` `0.3.1` plus the Python runtime `0.1.2`;
+unchanged execution and JavaScript packages are not rebuilt or republished.
 
 The server's `0.3.1` security correction is a deliberately separate,
 container-only delivery: [`packaging/container-security-release.json`](../../packaging/container-security-release.json)
@@ -110,13 +113,13 @@ GitHub-verified signed `server-v0.3.1` tag at current `main` and a successful
 Release Integrity run for that commit. It does not republish the unaffected
 NuGet, PyPI, or npm artifacts.
 
-The server's `0.3.2` worker-capable delivery is likewise container-only:
+The server's current `0.3.3` delivery is likewise container-only:
 [`packaging/worker-container-release.json`](../../packaging/worker-container-release.json)
-and the manual [`Publish worker-capable server container`](../../.github/workflows/publish-worker-container.yml)
-workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.2`. It requires a
-GitHub-verified signed `server-v0.3.2` tag at current `main`, successful canonical
+and the manual [`Publish server container`](../../.github/workflows/publish-worker-container.yml)
+workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.3`. It requires a
+GitHub-verified signed `server-v0.3.3` tag at current `main`, successful canonical
 Release Integrity evidence containing the hosted-worker receipt, and a second
-qualification plus pinned Trivy scan against the exact published digest. The
+MCP and hosted-worker qualification plus pinned Trivy scan against the exact published digest. The
 hosted-worker entrypoint is preview and initially hosts only
 `vyral.artifacts.record-ingest`; the API server and other capability maturity
 boundaries remain unchanged.
@@ -125,17 +128,14 @@ Before dispatching it, configure the exact publisher tuple in the cohort
 manifest at each trusted registry: `Univeracity/vyral`, workflow file
 `publish-first-cohort.yml`, and its named environment. NuGet and PyPI use
 GitHub Actions OIDC trusted publishing; NuGet additionally needs the
-`NUGET_USERNAME` environment variable for its short-lived-key exchange. npm is
-published locally under the approved direct-token exception and its isolated
-workflow job verifies the exact registered archive. The
-container job uses only the repository-scoped `GITHUB_TOKEN` with
-`packages: write`. This source authorization is not a claim that any package is
+`NUGET_USERNAME` environment variable for its short-lived-key exchange. The separate
+container workflow uses only the repository-scoped `GITHUB_TOKEN` with
+`packages: write`. npm remains outside the current patch. This source authorization is not a claim that any package is
 already available: absent registry trust or an environment approval, the manual
 job fails closed and publishes nothing.
 
 Prepare release notes before the dispatch and publish the GitHub release only
-after every authorized registry job has succeeded. The
-The separate Python HTTP client (`vyral-client`), provider-specific packages,
+after every authorized registry job has succeeded. The separate Python HTTP client (`vyral-client`), provider-specific packages,
 Temporal packages, and prototype integrations remain outside this cohort.
 
 Before the first public release, the repository owner must also configure the hosted controls that

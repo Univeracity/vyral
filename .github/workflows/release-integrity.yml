@@ -148,7 +148,7 @@ jobs:
           docker buildx build \
             --file Dockerfile \
             --tag "vyral-server-mcp-qualification:${{ github.sha }}" \
-            --build-arg VYRAL_IMAGE_VERSION=0.3.2 \
+            --build-arg VYRAL_IMAGE_VERSION=0.3.3 \
             --build-arg VYRAL_IMAGE_REVISION="${{ github.sha }}" \
             --sbom=true \
             --provenance=mode=max \

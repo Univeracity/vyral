@@ -512,7 +512,7 @@
           "AWSSDK.S3": "[4.0.102.4, )",
           "AWSSDK.Signin": "[4.0.101.8, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.azure": {
@@ -521,7 +521,7 @@
           "Azure.Storage.Blobs": "[12.29.2, )",
           "Microsoft.Azure.Cosmos": "[3.62.1, )",
           "Newtonsoft.Json": "[13.0.4, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution.AzureDurable": "[0.2.0, )"
         }
       },
@@ -529,7 +529,7 @@
         "type": "Project",
         "dependencies": {
           "AWSSDK.S3": "[4.0.102.4, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Aws": "[0.3.0, )"
         }
       },
@@ -538,7 +538,7 @@
         "dependencies": {
           "Microsoft.ML.OnnxRuntime": "[1.29.0, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.execution": {
@@ -552,7 +552,7 @@
         "dependencies": {
           "AWSSDK.DynamoDBv2": "[4.0.103.5, )",
           "AWSSDK.SQS": "[4.0.100.11, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution": "[0.2.0, )"
         }
       },
@@ -580,7 +580,7 @@
           "Google.Cloud.Storage.V1": "[4.15.0, )",
           "Google.Cloud.Tasks.V2": "[3.6.0, )",
           "Npgsql": "[10.0.3, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution": "[0.2.0, )",
           "Vyral.Pgvector": "[0.3.0, )"
         }
@@ -592,7 +592,7 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )",
           "SQLitePCLRaw.core": "[3.0.5, )",
           "System.Numerics.Tensors": "[10.0.11, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.mcp": {
@@ -600,7 +600,7 @@
         "dependencies": {
           "ModelContextProtocol.AspNetCore": "[2.2.0, )",
           "ModelContextProtocol.Extensions.Tasks": "[2.2.0, )",
-          "Vyral.Abstractions": "[0.3.0, )",
+          "Vyral.Abstractions": "[0.3.1, )",
           "Vyral.Execution": "[0.2.0, )",
           "Vyral.Primitives": "[0.2.0, )",
           "Vyral.Providers.Abstractions": "[0.3.0, )"
@@ -610,7 +610,7 @@
         "type": "Project",
         "dependencies": {
           "MySqlConnector": "[2.6.2, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.pgvector": {
@@ -618,7 +618,7 @@
         "dependencies": {
           "Npgsql": "[10.0.3, )",
           "Pgvector": "[0.3.2, )",
-          "Vyral.Abstractions": "[0.3.0, )"
+          "Vyral.Abstractions": "[0.3.1, )"
         }
       },
       "vyral.primitives": {

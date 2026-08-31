@@ -1,11 +1,11 @@
 {
-  "schemaVersion": "vyral.publication-cohort.v1",
+  "schemaVersion": "vyral.publication-cohort.v2",
   "publicationAuthorized": true,
   "artifacts": [
     {
       "ecosystem": "nuget",
       "name": "Vyral.Abstractions",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "source": "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
       "environment": "publish-nuget",
       "maturity": "public"
@@ -13,76 +13,43 @@
     {
       "ecosystem": "nuget",
       "name": "Vyral.Local",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "source": "src/Vyral.Local/Vyral.Local.csproj",
       "environment": "publish-nuget",
       "maturity": "public"
     },
     {
-      "ecosystem": "nuget",
-      "name": "Vyral.Primitives",
-      "version": "0.2.0",
-      "source": "src/Vyral.Primitives/Vyral.Primitives.csproj",
-      "environment": "publish-nuget",
-      "maturity": "public"
-    },
-    {
-      "ecosystem": "nuget",
-      "name": "Vyral.Execution",
-      "version": "0.2.0",
-      "source": "src/Vyral.Execution/Vyral.Execution.csproj",
-      "environment": "publish-nuget",
-      "maturity": "public"
-    },
-    {
-      "ecosystem": "nuget",
-      "name": "Vyral.Execution.Local",
-      "version": "0.2.0",
-      "source": "src/Vyral.Execution.Local/Vyral.Execution.Local.csproj",
-      "environment": "publish-nuget",
-      "maturity": "preview"
-    },
-    {
       "ecosystem": "pypi",
       "name": "vyral",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "source": "runtimes/python/pyproject.toml",
       "environment": "publish-pypi",
       "maturity": "prototype"
-    },
-    {
-      "ecosystem": "npm",
-      "name": "vyral-client",
-      "version": "0.3.0",
-      "source": "clients/javascript/package.json",
-      "environment": "publish-npm",
-      "maturity": "public"
-    },
-    {
-      "ecosystem": "container",
-      "name": "ghcr.io/univeracity/vyral-server",
-      "version": "0.3.0",
-      "source": "Dockerfile",
-      "environment": "publish-container",
-      "maturity": "mixed"
     }
   ],
-  "excludedFromFirstCohort": [
+  "unchangedArtifacts": [
+    "Vyral.Primitives 0.2.0",
+    "Vyral.Execution 0.2.0",
+    "Vyral.Execution.Local 0.2.0",
+    "vyral-client 0.3.0"
+  ],
+  "excludedFromRelease": [
     "cloud-provider packages",
     "provider-specific execution adapters",
     "Temporal packages",
     "Python HTTP client distribution (vyral-client)",
-    "prototype integrations"
+    "prototype integrations",
+    "server container"
   ],
   "authorization": {
     "mode": "manual-protected-environment",
-    "releaseTag": "v0.3.0",
+    "releaseTag": "v0.3.1",
     "workflow": ".github/workflows/publish-first-cohort.yml",
     "requirements": [
       "a GitHub-verified signed annotated release tag that resolves to current main",
       "a successful canonical Release Integrity push run for that exact commit",
-      "the exact NuGet and PyPI registry trust relationships, plus the explicitly authorized direct-token npm delivery exception",
-      "a manual dispatch from main through the named protected environment"
+      "the exact NuGet and PyPI registry trusted-publisher relationships",
+      "a manual dispatch from main through the named protected environments"
     ],
     "publishers": [
       {
@@ -98,22 +65,8 @@
         "workflowFile": "publish-first-cohort.yml",
         "environment": "publish-pypi",
         "authentication": "GitHub Actions OIDC trusted publishing"
-      },
-      {
-        "ecosystem": "npm",
-        "registry": "https://registry.npmjs.org/",
-        "workflowFile": "publish-first-cohort.yml",
-        "environment": "publish-npm",
-        "authentication": "Locally controlled direct-token publication, exact archive verified by the protected workflow"
-      },
-      {
-        "ecosystem": "container",
-        "registry": "https://ghcr.io",
-        "workflowFile": "publish-first-cohort.yml",
-        "environment": "publish-container",
-        "authentication": "repository-scoped GitHub Actions GITHUB_TOKEN"
       }
     ]
   },
-  "authorizationBoundary": "This reviewed authorization permits only the listed first cohort through the named manual workflow. It does not claim registry availability and never causes a push without the external trust relationships and protected-environment dispatch."
+  "authorizationBoundary": "This reviewed authorization permits only the listed package patch through the named manual workflow. It excludes unchanged packages, npm, provider packages, and container publication."
 }
