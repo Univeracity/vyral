@@ -117,7 +117,10 @@ for model in "${cpu_models[@]}"; do
 done
 
 if should_run_gpu; then
-  scripts/with-local-cuda-libs.sh dotnet restore Vyral.sln -p:VyralOnnxRuntime=Gpu
+  scripts/with-local-cuda-libs.sh dotnet restore Vyral.sln \
+    --force-evaluate \
+    -p:RestoreLockedMode=false \
+    -p:VyralOnnxRuntime=Gpu
   scripts/with-local-cuda-libs.sh dotnet build Vyral.sln --no-restore -p:VyralOnnxRuntime=Gpu
   for model in "${gpu_models[@]}"; do
     path="$models_root/$model"
@@ -148,7 +151,7 @@ else
   echo "skipping GPU ONNX benchmarks; set VYRAL_BENCHMARK_SKIP_GPU=0 to force or configure nvidia-smi for auto mode" >&2
 fi
 
-dotnet restore Vyral.sln
+scripts/update-dotnet-lockfiles.sh
 dotnet build Vyral.sln --no-restore
 
 if [[ "${VYRAL_BENCHMARK_PRINT_SUMMARY:-1}" != "0" && -x scripts/summarize-onnx-benchmark-results.sh && -n "$(command -v jq || true)" ]]; then

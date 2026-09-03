@@ -25,7 +25,10 @@
     <!-- Lock the resolved NuGet graph. CI must never silently refresh a transitive
          dependency; dependency updates deliberately regenerate the committed locks. -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+    <!-- Treat committed lockfiles as immutable during ordinary local work as well as CI. This
+         makes project-reference drift fail at the first restore/build instead of on a clean
+         hosted runner. scripts/update-dotnet-lockfiles.sh is the deliberate regeneration path. -->
+    <RestoreLockedMode Condition="'$(RestoreLockedMode)' == '' and Exists('$(MSBuildProjectDirectory)/packages.lock.json')">true</RestoreLockedMode>
   </PropertyGroup>
 
   <!-- Packages without a package-specific README receive a compact package landing page rather

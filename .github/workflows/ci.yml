@@ -70,7 +70,11 @@ jobs:
 
       - name: Restore
         if: ${{ needs.changes.outputs.dotnet == 'true' }}
-        run: dotnet restore Vyral.sln --locked-mode
+        run: scripts/verify-dotnet-lockfiles.sh
+
+      - name: Regress direct and transitive lockfile drift
+        if: ${{ needs.changes.outputs.dotnet == 'true' }}
+        run: scripts/test-verify-dotnet-lockfiles.sh
 
       - name: Verify Azure Durable package coherence
         if: ${{ needs.changes.outputs.dotnet == 'true' }}

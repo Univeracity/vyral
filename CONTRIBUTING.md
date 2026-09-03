@@ -25,6 +25,21 @@ Before submitting a change:
    published package, client, container, or release workflow.
 4. Update consumer-facing documentation and call out intentional capability limits.
 
+Install the repository's local pre-push guard once per clone:
+
+```bash
+scripts/install-git-hooks.sh
+```
+
+The guard performs a locked solution restore so direct or transitive .NET project-reference drift
+cannot be pushed with stale `packages.lock.json` files. After an intentional dependency or project
+graph change, regenerate and verify the locks explicitly:
+
+```bash
+scripts/update-dotnet-lockfiles.sh
+scripts/verify-dotnet-lockfiles.sh
+```
+
 Pull-request CI is change-scoped: documentation-only changes keep the contract/export and release
 policy checks but do not rebuild unaffected language surfaces, while an unknown or central contract,
 workflow, or tooling change fails open to the complete suite. The protected `main` branch, release

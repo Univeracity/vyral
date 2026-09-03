@@ -89,7 +89,7 @@ jobs:
           cache: false
 
       - name: Restore
-        run: dotnet restore Vyral.sln --locked-mode
+        run: scripts/verify-dotnet-lockfiles.sh
 
       - name: Validate local consumer contract
         run: scripts/validate-execution-runtime-consumer.sh

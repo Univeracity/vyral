@@ -21,7 +21,7 @@ trap cleanup EXIT
 
 mkdir -p "$PACKAGES_DIR"
 
-dotnet restore Vyral.sln --locked-mode
+scripts/verify-dotnet-lockfiles.sh
 dotnet pack src/Vyral.Primitives/Vyral.Primitives.csproj --no-restore -o "$PACKAGES_DIR"
 dotnet pack src/Vyral.Abstractions/Vyral.Abstractions.csproj --no-restore -o "$PACKAGES_DIR"
 dotnet pack src/Vyral.Execution/Vyral.Execution.csproj --no-restore -o "$PACKAGES_DIR"

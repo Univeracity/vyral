@@ -240,7 +240,7 @@ for path in sorted(Path('.github/workflows').glob('*.yml')):
 print('release-workflow-action-pins=ok')
 PY
 
-dotnet restore Vyral.sln --locked-mode
+scripts/verify-dotnet-lockfiles.sh
 python3 scripts/verify-azure-durable-package-graph.py
 dotnet list Vyral.sln package --vulnerable --include-transitive --format json \
   > "$ARTIFACT_ROOT/dotnet-vulnerability-audit.json"

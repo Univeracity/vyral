@@ -38,6 +38,7 @@ ROOT_FILES = {
 
 PUBLIC_PREFIXES = {
     ".config",
+    ".githooks",
     ".github",
     "benchmarks",
     "clients",
@@ -200,6 +201,7 @@ REQUIRED_FILES = {
     "scripts/mcp-wire-proxy.py",
     "scripts/render-adapter-qualification.py",
     "scripts/run-dotnet-tests.sh",
+    "scripts/install-git-hooks.sh",
     "scripts/test-built-sdk-python-runtime.sh",
     "scripts/test-audit-github-workflow-health.py",
     "scripts/test-classify-ci-changes.py",
@@ -208,6 +210,7 @@ REQUIRED_FILES = {
     "scripts/test-verify-oci-image-identity.py",
     "scripts/test-python-runtime-platform-matrix.py",
     "scripts/test-run-dotnet-tests.sh",
+    "scripts/test-verify-dotnet-lockfiles.sh",
     "scripts/test-validate-azure-durable-functions-live.sh",
     "scripts/test-validate-aws-live-qualification.sh",
     "scripts/verify-python-extropic-sdk-surface.py",
@@ -218,6 +221,7 @@ REQUIRED_FILES = {
     "scripts/verify-python-runtime-security.py",
     "scripts/verify-python-runtime.sh",
     "scripts/verify-python-runtime-upgrade.py",
+    "scripts/verify-dotnet-lockfiles.sh",
     "scripts/verify-azure-durable-package-graph.py",
     "scripts/verify-azure-durable-functions-host.sh",
     "scripts/verify-mcp-conformance.sh",
@@ -239,6 +243,8 @@ REQUIRED_FILES = {
     "scripts/validate-aws-live-qualification.sh",
     "scripts/validate-azure-live-qualification.sh",
     "scripts/write-python-runtime-platform-receipt.py",
+    "scripts/update-dotnet-lockfiles.sh",
+    ".githooks/pre-push",
 }
 
 
