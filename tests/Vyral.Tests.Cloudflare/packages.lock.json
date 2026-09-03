@@ -250,6 +250,12 @@
       "vyral.primitives": {
         "type": "Project"
       },
+      "vyral.providers.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Primitives": "[0.2.0, )"
+        }
+      },
       "vyral.tests.conformance": {
         "type": "Project",
         "dependencies": {
@@ -260,6 +266,7 @@
           "Vyral.Execution.WorkerClient": "[0.2.0, )",
           "Vyral.Local": "[0.3.1, )",
           "Vyral.Primitives": "[0.2.0, )",
+          "Vyral.Providers.Abstractions": "[0.3.0, )",
           "xunit": "[2.9.3, )"
         }
       }

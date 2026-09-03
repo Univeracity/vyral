@@ -196,6 +196,12 @@
       },
       "vyral.primitives": {
         "type": "Project"
+      },
+      "vyral.providers.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Primitives": "[0.2.0, )"
+        }
       }
     }
   }
