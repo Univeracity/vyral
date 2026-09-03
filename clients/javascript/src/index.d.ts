@@ -2515,6 +2515,7 @@ export interface ProviderRunRequest {
   timeoutSeconds?: number | null;
   maxOutputBytes?: number | null;
   artifactDirectory?: string | null;
+  meteringContext?: AiMeteringContext | null;
 }
 
 export interface ProviderRunResult {
@@ -2529,6 +2530,7 @@ export interface ProviderRunResult {
   error?: string | null;
   rejection?: ProviderRunRejectionDiagnostic | null;
   trace?: ProviderTraceEvent | null;
+  metering?: Array<AiMeteringReceipt>;
 }
 
 export interface ProviderRunRejectionDiagnostic {
@@ -2566,6 +2568,7 @@ export interface ProviderRunJob {
   failureClass?: string | null;
   providerStatus?: string | null;
   result?: ProviderRunResult | null;
+  metering?: Array<AiMeteringReceipt>;
 }
 
 export interface ProviderTraceEvent {
@@ -2584,6 +2587,145 @@ export interface ProviderTraceEvent {
   failureClass?: string | null;
   authorityBoundary?: string;
   artifactRefs?: Array<string>;
+  meteringReceiptHashes?: Array<string>;
+}
+
+export interface AiMeteringContext {
+  providerThreadId?: string | null;
+  runnerSessionId?: string | null;
+  turnId?: string | null;
+  sequence?: number | null;
+  previousReceiptHash?: string | null;
+}
+
+export interface AiMeteringSubject {
+  providerRunId?: string | null;
+  executionRunId?: string | null;
+  providerThreadId?: string | null;
+  runnerSessionId?: string | null;
+  turnId?: string | null;
+  correlationId?: string | null;
+}
+
+export interface AiMeteringPeriod {
+  observedStartedAt: string;
+  observedCompletedAt: string;
+  elapsedDurationMs: number;
+  queueDurationMs?: number | null;
+  activeDurationMs?: number | null;
+  idleDurationMs?: number | null;
+  providerDurationMs?: number | null;
+}
+
+export interface AiMeteringMeasurement {
+  name: string;
+  value: number;
+  unit: string;
+  source: "provider_response" | "provider_event_stream" | "runner_observer" | "gateway_observer" | "consumer_inference";
+  quality: "reported" | "observed" | "estimated" | "reconciled" | "unknown";
+  sourceId?: string | null;
+  method?: string | null;
+  tokenizerId?: string | null;
+}
+
+export interface AiMeteringEvidenceReference {
+  kind: string;
+  digest: string;
+  uri?: string | null;
+  mediaType?: string | null;
+  redacted: boolean;
+}
+
+export interface AiMeteringIntegrity {
+  algorithm: "ES256";
+  issuer: string;
+  keyId: string;
+  payloadHash: string;
+  signature: string;
+}
+
+export interface AiMeteringReceipt {
+  schema: "vyral.ai-metering.v1";
+  receiptId: string;
+  kind: "observation" | "summary";
+  subject: AiMeteringSubject;
+  provider: string;
+  capability: string;
+  operation: string;
+  outcome: "succeeded" | "failed" | "timed_out" | "rejected" | "unsupported" | "not_configured" | "cancelled";
+  modelId?: string | null;
+  adapterId?: string | null;
+  period: AiMeteringPeriod;
+  measurements: Array<AiMeteringMeasurement>;
+  evidence: Array<AiMeteringEvidenceReference>;
+  completeness: "complete" | "partial" | "sampled" | "unknown";
+  attestationLevel: "self_reported" | "observer_signed" | "provider_attested" | "reconciled" | "hardware_attested";
+  sequence?: number | null;
+  previousReceiptHash?: string | null;
+  issuedAt: string;
+  integrity?: AiMeteringIntegrity | null;
+}
+
+export interface AiMeteringReviewFinding {
+  code: string;
+  severity: "info" | "warning" | "error";
+  message: string;
+  receiptIds: Array<string>;
+  measurementNames: Array<string>;
+}
+
+export interface AiMeteringScope {
+  kind: "provider_thread" | "runner_session";
+  id: string;
+}
+
+export interface AiMeteringAggregatePeriod {
+  observedStartedAt: string;
+  observedCompletedAt: string;
+  wallSpanDurationMs: number;
+  summedElapsedDurationMs: number;
+  summedQueueDurationMs?: number | null;
+  summedActiveDurationMs?: number | null;
+  summedIdleDurationMs?: number | null;
+  summedProviderDurationMs?: number | null;
+  concurrentIntervalsDetected: boolean;
+}
+
+export interface AiMeteringAggregateMeasurement {
+  receiptKind: "observation" | "summary";
+  evidenceIssuer: string;
+  name: string;
+  value: number;
+  unit: string;
+  source: "provider_response" | "provider_event_stream" | "runner_observer" | "gateway_observer" | "consumer_inference";
+  quality: "reported" | "observed" | "estimated" | "reconciled" | "unknown";
+  provider: string;
+  modelId?: string | null;
+  method?: string | null;
+  tokenizerId?: string | null;
+  receiptCount: number;
+}
+
+export interface AiMeteringAggregate {
+  receiptCount: number;
+  summaryReceiptCount: number;
+  observationReceiptCount: number;
+  providerRunCount: number;
+  period: AiMeteringAggregatePeriod;
+  measurements: Array<AiMeteringAggregateMeasurement>;
+}
+
+export interface AiMeteringReview {
+  schema: "vyral.ai-metering-review.v1";
+  reviewId: string;
+  rulesetId: string;
+  scope: AiMeteringScope;
+  receiptHashes: Array<string>;
+  verdict: "verified" | "verified_with_gaps" | "rejected";
+  findings: Array<AiMeteringReviewFinding>;
+  aggregate: AiMeteringAggregate | null;
+  reviewedAt: string;
+  integrity?: AiMeteringIntegrity | null;
 }
 
 export interface AiChatPayload {

@@ -13,6 +13,9 @@ here so each document has a clear audience and owner.
 - [Generation-bound retrieval](concepts/generation-bound-retrieval.md) —
   immutable index generations, complete logical coverage, candidate hydration,
   and provider-specific evidence boundaries.
+- [AI metering receipts](concepts/ai-metering.md) — signed runner/session
+  observations, per-measurement provenance, receipt chains, and independent
+  review boundaries.
 - [Execution runtime limitations](reference/execution-runtime-limitations.md) —
   portable guarantees and adapter-specific boundaries.
 - [Extropic execution](guides/extropic-execution.md) — experimental,

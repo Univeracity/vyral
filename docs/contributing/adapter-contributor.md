@@ -168,6 +168,7 @@ See [the execution package README](../../src/Vyral.Execution/README.md) and the
 | `ProviderProfile` | Stable id, family, versions, auth shape, local/network flags |
 | `ProviderCapabilityDescriptor` | Capability ids and operation metadata |
 | `ProviderRunRequest` / `ProviderRunResult` | Portable run envelope |
+| `AiMeteringReceipt` / `AiMeteringReview` | Source-labelled work evidence and separately signed review |
 | Doctor / readiness / quota / qualification helpers | Operational honesty |
 
 ```csharp
@@ -181,6 +182,18 @@ public interface IProviderTarget
 
 Normalize failures into stable failure classes where possible; do not leak raw
 CLI stderr as the only consumer contract.
+
+Provider-reported usage belongs in the in-process
+`ProviderRunResult.MeteringMeasurements` handoff rather than inside raw output.
+The runner copies those measurements into its terminal summary before signing.
+Preserve measurement source and quality, use namespaced metric names for
+provider-only concepts, and never promote a signed observer assertion to
+provider- or hardware-attested evidence. A separately verifiable provider
+attestation can be retained as an `observation` receipt alongside that summary.
+The basic session reviewer aggregates one terminal `summary` per provider run;
+streaming observations should be reconciled into that summary without replaying
+cumulative counters as deltas.
+See [AI metering receipts](../concepts/ai-metering.md).
 
 ---
 

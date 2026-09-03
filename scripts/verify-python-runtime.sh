@@ -89,6 +89,9 @@ required_package_files = {
     "vyral_runtime/_conformance/runtime/v1/scenarios/external-workers/handler-lifecycle.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/canonical/strong-profile.json",
     "vyral_runtime/_conformance/runtime/v1/scenarios/execution/native-lifecycle.json",
+    "vyral_runtime/_conformance/ai-metering/v1/manifest.json",
+    "vyral_runtime/_conformance/ai-metering/v1/receipt.json",
+    "vyral_runtime/_conformance/ai-metering/v1/review.json",
     "vyral_runtime/py.typed",
 }
 with zipfile.ZipFile(wheel_path) as archive:
@@ -136,6 +139,9 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/external-workers/handler-lifecycle.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/canonical/strong-profile.json",
         "src/vyral_runtime/_conformance/runtime/v1/scenarios/execution/native-lifecycle.json",
+        "src/vyral_runtime/_conformance/ai-metering/v1/manifest.json",
+        "src/vyral_runtime/_conformance/ai-metering/v1/receipt.json",
+        "src/vyral_runtime/_conformance/ai-metering/v1/review.json",
     }
     missing = sorted(required_sdist_files - names)
     if missing:
@@ -166,7 +172,7 @@ assert readiness.full_local_ready is False
 assert readiness.contract is not None
 assert readiness.contract.operation_count == 129
 assert readiness.contract.rest_operation_count == 133
-assert readiness.contract.schema_count == 263
+assert readiness.contract.schema_count == 276
 assert len(run_bundled_goldens()) == 13
 assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17

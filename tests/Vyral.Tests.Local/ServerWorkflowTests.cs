@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -1846,6 +1847,10 @@ public class ServerWorkflowTests
         Assert.Equal("provider.run", providerTrace!.Operation);
         Assert.Equal(LocalTokenOverlapRerankerProviderTarget.ProviderId, providerTrace.Adapter);
         Assert.Equal(ProviderCapabilityIds.AiRerank, ((JsonElement)providerTrace.Request["capability"]!).GetString());
+        var rerankMetering = ((JsonElement)providerTrace.ResultSummary["metering"]!).Deserialize<List<AiMeteringReceipt>>(ProviderJson.Options);
+        var rerankReceipt = Assert.Single(rerankMetering!);
+        Assert.Equal(AiMeteringOutcomes.Succeeded, rerankReceipt.Outcome);
+        Assert.Equal(1, rerankReceipt.Measurements.Single(item => item.Name == AiMeteringMeasurementNames.ProviderCalls).Value);
 
         var readiness = await client.GetFromJsonAsync<ProviderReadinessEnvelope>($"/providers/{LocalTokenOverlapRerankerProviderTarget.ProviderId}/readiness");
         Assert.NotNull(readiness);
@@ -2857,6 +2862,7 @@ public class ServerWorkflowTests
         Assert.True(providerRunResultProperties.TryGetProperty("error", out _));
         Assert.True(providerRunResultProperties.TryGetProperty("rejection", out _));
         Assert.True(providerRunResultProperties.TryGetProperty("trace", out _));
+        Assert.True(providerRunResultProperties.TryGetProperty("metering", out _));
         Assert.DoesNotContain(
             providerRunResultProperties.GetProperty("status").GetProperty("enum").EnumerateArray().Select(item => item.GetString()),
             item => item is "Queued" or "Running");
@@ -2867,6 +2873,25 @@ public class ServerWorkflowTests
             providerRunResultSchema.GetProperty("required").EnumerateArray().Select(item => item.GetString()),
             item => item == "trace");
         Assert.True(schemas.TryGetProperty("ProviderRunJob", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringContext", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringSubject", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringPeriod", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringMeasurement", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringEvidenceReference", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringIntegrity", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringReceipt", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringReviewFinding", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringScope", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringAggregatePeriod", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringAggregateMeasurement", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringAggregate", out _));
+        Assert.True(schemas.TryGetProperty("AiMeteringReview", out _));
+        Assert.Contains(
+            "outcome",
+            schemas.GetProperty("AiMeteringReceipt").GetProperty("required").EnumerateArray().Select(item => item.GetString()));
+        Assert.Contains(
+            "aggregate",
+            schemas.GetProperty("AiMeteringReview").GetProperty("required").EnumerateArray().Select(item => item.GetString()));
         Assert.Contains(
             schemas.GetProperty("ProviderRunJob").GetProperty("properties").GetProperty("status").GetProperty("enum").EnumerateArray().Select(item => item.GetString()),
             item => item == "Queued");
@@ -3722,7 +3747,13 @@ public class ServerWorkflowTests
                 {
                     new() { Role = "user", Content = "Summarize the selected chunks with private token provider-trace-secret." }
                 }
-            })
+            }),
+            MeteringContext = new AiMeteringContext
+            {
+                RunnerSessionId = "runner-session-test",
+                ProviderThreadId = "provider-thread-test",
+                TurnId = "turn-test"
+            }
         });
         Assert.Equal(HttpStatusCode.Accepted, runResponse.StatusCode);
         var admittedProviderRun = await runResponse.Content.ReadFromJsonAsync<ProviderRunJob>();
@@ -3751,6 +3782,21 @@ public class ServerWorkflowTests
         Assert.NotNull(result.Trace);
         var resultTrace = result.Trace!;
         Assert.Equal(ProviderBoundary.AuthorityBoundary, resultTrace.AuthorityBoundary);
+        var metering = Assert.Single(result.Metering);
+        Assert.Single(completedProviderRun.Metering);
+        Assert.Equal(metering.ReceiptId, completedProviderRun.Metering[0].ReceiptId);
+        Assert.Equal(completedProviderRun.Id, metering.Subject.ProviderRunId);
+        Assert.Equal(completedProviderRun.Id, metering.Subject.ExecutionRunId);
+        Assert.Equal("runner-session-test", metering.Subject.RunnerSessionId);
+        Assert.Equal("provider-thread-test", metering.Subject.ProviderThreadId);
+        Assert.Equal("turn-test", metering.Subject.TurnId);
+        Assert.Equal(AiMeteringCompleteness.Partial, metering.Completeness);
+        Assert.Equal(AiMeteringAttestationLevels.SelfReported, metering.AttestationLevel);
+        Assert.Null(metering.Integrity);
+        Assert.Equal(1, metering.Measurements.Single(item => item.Name == AiMeteringMeasurementNames.ProviderCalls).Value);
+        Assert.True(metering.Measurements.Single(item => item.Name == AiMeteringMeasurementNames.PayloadBytesIn).Value > 0);
+        var meteringHash = AiMeteringCryptography.ComputeReceiptEnvelopeHash(metering);
+        Assert.Contains(meteringHash, resultTrace.MeteringReceiptHashes);
 
         var traceResponse = await client.GetAsync($"/traces/{resultTrace.TraceId}");
         var traceJson = await traceResponse.Content.ReadAsStringAsync();
@@ -3765,6 +3811,7 @@ public class ServerWorkflowTests
         Assert.Equal(resultTrace.InputHash, ((JsonElement)trace.Request["payloadHash"]!).GetString());
         Assert.Equal("Succeeded", ((JsonElement)trace.ResultSummary["status"]!).GetString());
         Assert.Equal(resultTrace.OutputHash, ((JsonElement)trace.ResultSummary["outputHash"]!).GetString());
+        Assert.Contains(meteringHash, ((JsonElement)trace.ResultSummary["meteringReceiptHashes"]!).EnumerateArray().Select(item => item.GetString()));
 
         var traces = await client.GetFromJsonAsync<List<TraceRecord>>("/traces?operation=provider.run&limit=10");
         Assert.NotNull(traces);
@@ -3832,6 +3879,69 @@ public class ServerWorkflowTests
         Assert.NotNull(cancelledCompletedJob);
         Assert.Equal(ProviderJobStatus.Succeeded, cancelledCompletedJob!.Status);
         Assert.True(cancelledCompletedJob.CancellationRequested);
+    }
+
+    [Fact]
+    public async Task Server_SignsProviderMeteringWhenConfigured()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-server-signed-metering-{Guid.NewGuid():N}.sqlite");
+        var objectsPath = Path.Combine(Path.GetTempPath(), $"vyral-server-objects-{Guid.NewGuid():N}");
+        var keyPath = Path.Combine(Path.GetTempPath(), $"vyral-server-metering-{Guid.NewGuid():N}.pem");
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        await File.WriteAllTextAsync(keyPath, key.ExportECPrivateKeyPem());
+        try
+        {
+            await using var factory = CreateFactory(dbPath, objectsPath, settings: new Dictionary<string, string?>
+            {
+                ["Providers:Metering:SigningKeyPath"] = keyPath,
+                ["Providers:Metering:Issuer"] = "spiffe://vyral.test/provider-runner",
+                ["Providers:Metering:KeyId"] = "provider-runner-key"
+            });
+            var client = factory.CreateClient();
+            var response = await client.PostAsJsonAsync($"/providers/{DeterministicAiProviderTarget.ProviderId}/run", new ProviderRunRequest
+            {
+                Capability = ProviderCapabilityIds.AiChat,
+                Payload = ProviderJson.ToJsonObject(new AiChatRequest
+                {
+                    Messages = { new AiMessage { Role = "user", Content = "signed metering test" } }
+                }),
+                MeteringContext = new AiMeteringContext { RunnerSessionId = "session-signed" }
+            });
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            var admitted = (await response.Content.ReadFromJsonAsync<ProviderRunJob>())!;
+
+            ProviderRunJob? completed = null;
+            for (var attempt = 0; attempt < 100; attempt++)
+            {
+                completed = await client.GetFromJsonAsync<ProviderRunJob>($"/provider-jobs/{admitted.Id}");
+                if (completed?.Status is not (ProviderJobStatus.Queued or ProviderJobStatus.Running))
+                {
+                    break;
+                }
+                await Task.Delay(20);
+            }
+
+            Assert.NotNull(completed);
+            Assert.Equal(ProviderJobStatus.Succeeded, completed!.Status);
+            var receipt = Assert.Single(completed.Metering);
+            Assert.Equal(AiMeteringAttestationLevels.ObserverSigned, receipt.AttestationLevel);
+            Assert.Equal(AiMeteringOutcomes.Succeeded, receipt.Outcome);
+            Assert.Equal("session-signed", receipt.Subject.RunnerSessionId);
+            Assert.Null(receipt.Sequence);
+            var verified = AiMeteringCryptography.VerifyReceipt(
+                receipt,
+                key,
+                "spiffe://vyral.test/provider-runner",
+                "provider-runner-key");
+            Assert.True(verified.Valid, string.Join("; ", verified.Errors));
+            Assert.Contains(
+                AiMeteringCryptography.ComputeReceiptEnvelopeHash(receipt),
+                completed.Result!.Trace!.MeteringReceiptHashes);
+        }
+        finally
+        {
+            File.Delete(keyPath);
+        }
     }
 
     [Fact]

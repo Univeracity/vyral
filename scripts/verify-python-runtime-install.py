@@ -36,7 +36,7 @@ assert readiness.full_local_ready is False
 assert readiness.contract is not None
 assert readiness.contract.operation_count == 129
 assert readiness.contract.rest_operation_count == 133
-assert readiness.contract.schema_count == 263
+assert readiness.contract.schema_count == 276
 assert len(run_bundled_goldens()) == 13
 assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17

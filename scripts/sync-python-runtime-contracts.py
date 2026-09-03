@@ -11,8 +11,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "runtimes/python/src/vyral_runtime"
 CONTRACT_TARGET = PACKAGE / "_contracts"
-CONFORMANCE_SOURCE = ROOT / "conformance/runtime/v1"
-CONFORMANCE_TARGET = PACKAGE / "_conformance/runtime/v1"
+CONFORMANCE_TARGET_ROOT = PACKAGE / "_conformance"
+CONFORMANCE_TREES = {
+    ROOT / "conformance/runtime/v1": CONFORMANCE_TARGET_ROOT / "runtime/v1",
+    ROOT / "conformance/ai-metering/v1": CONFORMANCE_TARGET_ROOT / "ai-metering/v1",
+}
 
 CONTRACT_FILES = {
     ROOT / "contracts/public-sdk-surface.json": CONTRACT_TARGET / "public-sdk-surface.json",
@@ -23,16 +26,17 @@ CONTRACT_FILES = {
 
 def expected_files() -> dict[Path, bytes]:
     files = {target: source.read_bytes() for source, target in CONTRACT_FILES.items()}
-    for source in sorted(CONFORMANCE_SOURCE.rglob("*.json")):
-        target = CONFORMANCE_TARGET / source.relative_to(CONFORMANCE_SOURCE)
-        files[target] = source.read_bytes()
+    for source_root, target_root in CONFORMANCE_TREES.items():
+        for source in sorted(source_root.rglob("*.json")):
+            target = target_root / source.relative_to(source_root)
+            files[target] = source.read_bytes()
     return files
 
 
 def stale_generated_files(expected: set[Path]) -> list[Path]:
     candidates = set(CONTRACT_TARGET.glob("*.json"))
-    if CONFORMANCE_TARGET.exists():
-        candidates.update(CONFORMANCE_TARGET.rglob("*.json"))
+    if CONFORMANCE_TARGET_ROOT.exists():
+        candidates.update(CONFORMANCE_TARGET_ROOT.rglob("*.json"))
     return sorted(candidates - expected)
 
 

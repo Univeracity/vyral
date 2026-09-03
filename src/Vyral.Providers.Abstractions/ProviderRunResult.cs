@@ -39,4 +39,18 @@ public sealed class ProviderRunResult
 
     [JsonPropertyName("trace")]
     public ProviderTraceEvent? Trace { get; set; }
+
+    /// <summary>
+    /// Independently verifiable observations about this run. Each receipt identifies its own
+    /// source and evidentiary strength; consumers must not infer trust from presence alone.
+    /// </summary>
+    [JsonPropertyName("metering")]
+    public List<AiMeteringReceipt> Metering { get; set; } = new();
+
+    /// <summary>
+    /// In-process adapter handoff for provider-reported usage that the Vyral runner copies into
+    /// its terminal summary before signing. It is intentionally not a second wire representation.
+    /// </summary>
+    [JsonIgnore]
+    public List<AiMeteringMeasurement> MeteringMeasurements { get; set; } = new();
 }

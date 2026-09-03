@@ -48,4 +48,8 @@ public sealed class ProviderTraceEvent
 
     [JsonPropertyName("artifactRefs")]
     public List<string> ArtifactRefs { get; set; } = new();
+
+    /// <summary>Full-envelope hashes of metering receipts associated with this trace.</summary>
+    [JsonPropertyName("meteringReceiptHashes")]
+    public List<string> MeteringReceiptHashes { get; set; } = new();
 }

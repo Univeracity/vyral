@@ -1,6 +1,7 @@
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text;
 using Microsoft.Extensions.Configuration;
 using Vyral.Abstractions.Interfaces;
 using Vyral.Abstractions.Models;
@@ -15,17 +16,20 @@ public sealed class ProviderBackedRerankingService : IRerankingService
     private readonly ProviderRunGuard _guard;
     private readonly ITraceStore _traces;
     private readonly IConfiguration _configuration;
+    private readonly IAiMeteringReceiptSigner? _meteringSigner;
 
     public ProviderBackedRerankingService(
         ProviderTargetRegistry registry,
         ProviderRunGuard guard,
         ITraceStore traces,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IAiMeteringReceiptSigner? meteringSigner = null)
     {
         _registry = registry;
         _guard = guard;
         _traces = traces;
         _configuration = configuration;
+        _meteringSigner = meteringSigner;
     }
 
     public async Task<RerankResult> RerankAsync(RerankRequest request, CancellationToken ct = default)
@@ -116,20 +120,63 @@ public sealed class ProviderBackedRerankingService : IRerankingService
 
     private async Task<ProviderRunResult> RunWithGuardAsync(IProviderTarget target, ProviderRunRequest request, string providerId, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(request.CorrelationId))
+        {
+            request.CorrelationId = Guid.NewGuid().ToString("N");
+        }
+        var observedStartedAt = DateTimeOffset.UtcNow;
+        var providerRunId = "prun_" + Guid.NewGuid().ToString("N");
+        var elapsed = Stopwatch.StartNew();
+        var queue = Stopwatch.StartNew();
         await using var admission = await _guard.TryEnterAsync(providerId, request, ct);
+        queue.Stop();
+        ProviderRunResult result;
+        var providerInvoked = false;
+        var activeDurationMs = 0L;
         if (!admission.Accepted)
         {
-            return admission.RejectionResult!;
+            result = admission.RejectionResult!;
+        }
+        else
+        {
+            var active = Stopwatch.StartNew();
+            providerInvoked = true;
+            try
+            {
+                result = await target.RunAsync(request, admission.CancellationToken);
+            }
+            catch (OperationCanceledException) when (admission.TimedOut)
+            {
+                result = _guard.CreateTimeoutResult(providerId, request);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                result = ProviderMetering.CreateUnhandledFailure(providerId, request, ex);
+            }
+            finally
+            {
+                active.Stop();
+                activeDurationMs = active.ElapsedMilliseconds;
+            }
         }
 
-        try
-        {
-            return await target.RunAsync(request, admission.CancellationToken);
-        }
-        catch (OperationCanceledException) when (admission.TimedOut)
-        {
-            return _guard.CreateTimeoutResult(providerId, request);
-        }
+        elapsed.Stop();
+        await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
+            request,
+            result,
+            providerRunId,
+            executionRunId: null,
+            observedStartedAt,
+            DateTimeOffset.UtcNow,
+            elapsed.ElapsedMilliseconds,
+            queue.ElapsedMilliseconds,
+            activeDurationMs,
+            providerInvoked), _meteringSigner, ct);
+        return result;
     }
 
     private async Task PersistProviderTraceAsync(
@@ -153,6 +200,10 @@ public sealed class ProviderBackedRerankingService : IRerankingService
         {
             traceEvent.TraceId = Guid.NewGuid().ToString("N");
         }
+
+        traceEvent.MeteringReceiptHashes = result.Metering
+            .Select(AiMeteringCryptography.ComputeReceiptEnvelopeHash)
+            .ToList();
 
         var trace = new TraceRecord
         {
@@ -186,7 +237,9 @@ public sealed class ProviderBackedRerankingService : IRerankingService
                 ["adapterId"] = traceEvent.AdapterId,
                 ["configHash"] = traceEvent.ConfigHash,
                 ["authorityBoundary"] = traceEvent.AuthorityBoundary,
-                ["artifactRefs"] = traceEvent.ArtifactRefs
+                ["artifactRefs"] = traceEvent.ArtifactRefs,
+                ["meteringReceiptHashes"] = traceEvent.MeteringReceiptHashes,
+                ["metering"] = result.Metering
             }
         };
 

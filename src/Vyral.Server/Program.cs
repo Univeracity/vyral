@@ -85,6 +85,8 @@ var canonicalAccess = canonicalAccessOptions is null ? null : new VyralCanonical
     CreateCanonicalIdentityAuthenticators(builder.Configuration));
 ValidateExecutionAccessRuntimePolicies(builder.Configuration, executionAccessOptions);
 var providerRunGuard = new ProviderRunGuard(ProviderRunGuardOptions.FromConfiguration(builder.Configuration));
+var providerMeteringOptions = ProviderMeteringOptions.FromConfiguration(builder.Configuration);
+using var providerMeteringSigner = providerMeteringOptions.CreateSigner();
 var providerRunJobOptions = ProviderRunJobStoreOptions.FromConfiguration(builder.Configuration);
 var retrievalEvaluationJobOptions = RetrievalEvaluationJobStoreOptions.FromConfiguration(builder.Configuration);
 var artifactRecordIngestionOptions = ArtifactRecordIngestionOptions.FromConfiguration(builder.Configuration);
@@ -174,7 +176,12 @@ builder.Services.AddSingleton<ArtifactRecordIngestionService>();
 builder.Services.AddSingleton(embeddingOptions);
 builder.Services.AddSingleton(embeddingRegistry);
 builder.Services.AddSingleton(embeddingProvider);
-builder.Services.AddSingleton<IRerankingService, ProviderBackedRerankingService>();
+builder.Services.AddSingleton<IRerankingService>(services => new ProviderBackedRerankingService(
+    services.GetRequiredService<ProviderTargetRegistry>(),
+    services.GetRequiredService<ProviderRunGuard>(),
+    services.GetRequiredService<ITraceStore>(),
+    services.GetRequiredService<IConfiguration>(),
+    providerMeteringSigner));
 builder.Services.AddSingleton<IRetrievalService, LocalRetrievalService>();
 builder.Services.AddSingleton<IRetrievalEvaluationService, LocalRetrievalEvaluationService>();
 builder.Services.AddSingleton<ICollectionInspectionService, LocalCollectionInspectionService>();
@@ -231,7 +238,8 @@ builder.Services.AddSingleton<ExecutionRuntimeProviderRunJobAdapter>(services =>
         services.GetRequiredService<ProviderTargetRegistry>(),
         services.GetRequiredService<ITraceStore>(),
         services.GetRequiredService<ProviderRunGuard>(),
-        providerRunJobOptions));
+        providerRunJobOptions,
+        providerMeteringSigner));
 builder.Services.AddSingleton(retrievalEvaluationJobOptions);
 builder.Services.AddSingleton<ExecutionRuntimeRetrievalEvaluationJobAdapter>(services =>
     new ExecutionRuntimeRetrievalEvaluationJobAdapter(
@@ -1054,7 +1062,7 @@ app.MapPost("/providers/{provider}/qualify", async (string provider, ProviderQua
         return Results.NotFound();
     }
 
-    var qualifications = await QualifyProviderAsync(target, request, configuration, traces, guard, ct);
+    var qualifications = await QualifyProviderAsync(target, request, configuration, traces, guard, providerMeteringSigner, ct);
     return Results.Ok(qualifications);
 });
 
@@ -2015,6 +2023,10 @@ static async Task PersistProviderTraceAsync(ProviderRunRequest request, Provider
         traceEvent.TraceId = Guid.NewGuid().ToString("N");
     }
 
+    traceEvent.MeteringReceiptHashes = result.Metering
+        .Select(AiMeteringCryptography.ComputeReceiptEnvelopeHash)
+        .ToList();
+
     var trace = new TraceRecord
     {
         Id = traceEvent.TraceId,
@@ -2047,14 +2059,16 @@ static async Task PersistProviderTraceAsync(ProviderRunRequest request, Provider
             ["adapterId"] = traceEvent.AdapterId,
             ["configHash"] = traceEvent.ConfigHash,
             ["authorityBoundary"] = traceEvent.AuthorityBoundary,
-            ["artifactRefs"] = traceEvent.ArtifactRefs
+            ["artifactRefs"] = traceEvent.ArtifactRefs,
+            ["meteringReceiptHashes"] = traceEvent.MeteringReceiptHashes,
+            ["metering"] = result.Metering
         }
     };
 
     await traces.WriteTraceAsync(trace, ct);
 }
 
-static async Task<IReadOnlyList<ProviderQualification>> QualifyProviderAsync(IProviderTarget target, ProviderQualificationRequest request, IConfiguration configuration, ITraceStore traces, ProviderRunGuard guard, CancellationToken ct)
+static async Task<IReadOnlyList<ProviderQualification>> QualifyProviderAsync(IProviderTarget target, ProviderQualificationRequest request, IConfiguration configuration, ITraceStore traces, ProviderRunGuard guard, IAiMeteringReceiptSigner? meteringSigner, CancellationToken ct)
 {
     if (target is not IProviderQualificationPlanner planner)
     {
@@ -2081,7 +2095,7 @@ static async Task<IReadOnlyList<ProviderQualification>> QualifyProviderAsync(IPr
     {
         qualificationRequest.Provider = target.Profile.Id;
         qualificationRequest.ArtifactDirectory = GetProviderArtifactDirectory(configuration);
-        var result = await RunProviderWithGuardAsync(target, qualificationRequest, guard, ct);
+        var result = await RunProviderWithGuardAsync(target, qualificationRequest, guard, meteringSigner, ct);
         await PersistProviderTraceAsync(qualificationRequest, result, traces, ct);
         results.Add(result);
     }
@@ -2133,22 +2147,65 @@ static async Task<IReadOnlyList<ProviderQualification>> QualifyProviderAsync(IPr
     return qualifications;
 }
 
-static async Task<ProviderRunResult> RunProviderWithGuardAsync(IProviderTarget target, ProviderRunRequest request, ProviderRunGuard guard, CancellationToken ct)
+static async Task<ProviderRunResult> RunProviderWithGuardAsync(IProviderTarget target, ProviderRunRequest request, ProviderRunGuard guard, IAiMeteringReceiptSigner? meteringSigner, CancellationToken ct)
 {
+    if (string.IsNullOrWhiteSpace(request.CorrelationId))
+    {
+        request.CorrelationId = Guid.NewGuid().ToString("N");
+    }
+    var observedStartedAt = DateTimeOffset.UtcNow;
+    var providerRunId = "prun_" + Guid.NewGuid().ToString("N");
+    var elapsed = System.Diagnostics.Stopwatch.StartNew();
+    var queue = System.Diagnostics.Stopwatch.StartNew();
     await using var admission = await guard.TryEnterAsync(target.Profile.Id, request, ct);
+    queue.Stop();
+    ProviderRunResult result;
+    var providerInvoked = false;
+    var activeDurationMs = 0L;
     if (!admission.Accepted)
     {
-        return admission.RejectionResult!;
+        result = admission.RejectionResult!;
+    }
+    else
+    {
+        var active = System.Diagnostics.Stopwatch.StartNew();
+        providerInvoked = true;
+        try
+        {
+            result = await target.RunAsync(request, admission.CancellationToken);
+        }
+        catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
+        {
+            result = guard.CreateTimeoutResult(target.Profile.Id, request);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result = ProviderMetering.CreateUnhandledFailure(target.Profile.Id, request, ex);
+        }
+        finally
+        {
+            active.Stop();
+            activeDurationMs = active.ElapsedMilliseconds;
+        }
     }
 
-    try
-    {
-        return await target.RunAsync(request, admission.CancellationToken);
-    }
-    catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
-    {
-        return guard.CreateTimeoutResult(target.Profile.Id, request);
-    }
+    elapsed.Stop();
+    await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
+        request,
+        result,
+        providerRunId,
+        executionRunId: null,
+        observedStartedAt,
+        DateTimeOffset.UtcNow,
+        elapsed.ElapsedMilliseconds,
+        queue.ElapsedMilliseconds,
+        activeDurationMs,
+        providerInvoked), meteringSigner, ct);
+    return result;
 }
 
 static IReadOnlyList<ProviderQualification> FilterQualifications(IReadOnlyList<ProviderQualification> qualifications, string? capability)

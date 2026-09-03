@@ -365,6 +365,12 @@ providers. Provider-specific behavior stays behind adapter boundaries and is
 surfaced through readiness and qualification evidence rather than silent
 fallback.
 
+Provider jobs also emit privacy-minimized [AI metering receipts](docs/concepts/ai-metering.md)
+that distinguish observer time from provider-reported work. Receipts can be
+signed at the runner boundary, correlated across provider threads or runner
+sessions, and aggregated by a separately identified reviewer without treating
+a signature as proof that every reported measurement is independently known.
+
 Live credentials and model assets are always opt-in. Local development should
 use deterministic fixtures or explicitly installed untracked model files.
 

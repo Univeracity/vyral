@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import io
 import pathlib
@@ -2727,6 +2728,65 @@ class VyralClientTests(unittest.TestCase):
 
         self.assertEqual("run-1", error.admission["resourceId"])
         self.assertEqual("queue_full", error.failure_class)
+
+    def test_ai_metering_fixture_has_portable_canonical_hashes(self) -> None:
+        root = pathlib.Path(__file__).resolve().parents[3]
+        fixture = json.loads(
+            (root / "conformance/ai-metering/v1/receipt.json").read_text(encoding="utf-8")
+        )
+        review = json.loads(
+            (root / "conformance/ai-metering/v1/review.json").read_text(encoding="utf-8")
+        )
+        manifest = json.loads(
+            (root / "conformance/ai-metering/v1/manifest.json").read_text(encoding="utf-8")
+        )
+
+        def canonical_hash(value: object) -> str:
+            encoded = json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+        payload = dict(fixture)
+        payload.pop("integrity", None)
+        self.assertEqual(manifest["expectedPayloadHash"], canonical_hash(payload))
+        self.assertEqual(manifest["expectedEnvelopeHash"], canonical_hash(fixture))
+        signature_fixture = manifest["signature"]["fixture"]
+        signing_statement = {
+            "schema": "vyral.ai-metering-integrity.v1",
+            "algorithm": "ES256",
+            "evidenceSchema": fixture["schema"],
+            "issuer": signature_fixture["issuer"],
+            "keyId": signature_fixture["keyId"],
+            "payloadHash": manifest["expectedPayloadHash"],
+        }
+        self.assertEqual(
+            signature_fixture["expectedInputHash"], canonical_hash(signing_statement)
+        )
+        review_payload = dict(review)
+        review_payload.pop("integrity", None)
+        self.assertEqual(
+            manifest["expectedReviewPayloadHash"], canonical_hash(review_payload)
+        )
+        review_signature_fixture = manifest["reviewSignatureFixture"]
+        review_signing_statement = {
+            "schema": "vyral.ai-metering-integrity.v1",
+            "algorithm": "ES256",
+            "evidenceSchema": review["schema"],
+            "issuer": review_signature_fixture["issuer"],
+            "keyId": review_signature_fixture["keyId"],
+            "payloadHash": manifest["expectedReviewPayloadHash"],
+        }
+        self.assertEqual(
+            review_signature_fixture["expectedInputHash"],
+            canonical_hash(review_signing_statement),
+        )
+        self.assertEqual(
+            manifest["expectedReviewEnvelopeHash"], canonical_hash(review)
+        )
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Vyral.Abstractions.Interfaces;
@@ -19,12 +20,13 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         ProviderTargetRegistry registry,
         ITraceStore traces,
         ProviderRunGuard guard,
-        ProviderRunJobStoreOptions? options = null)
+        ProviderRunJobStoreOptions? options = null,
+        IAiMeteringReceiptSigner? meteringSigner = null)
     {
         _runtime = runtime;
         Options = options ?? new ProviderRunJobStoreOptions();
         PersistenceKind = DescribePersistence(runtime);
-        _runtime.RegisterPlugin(new ProviderRunExecutionPlugin(registry, traces, guard));
+        _runtime.RegisterPlugin(new ProviderRunExecutionPlugin(registry, traces, guard, meteringSigner));
     }
 
     public ProviderRunJobStoreOptions Options { get; }
@@ -63,6 +65,12 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         if (string.IsNullOrWhiteSpace(provider))
         {
             throw new InvalidOperationException("Provider id is required.");
+        }
+
+        var meteringContextErrors = AiMeteringValidator.ValidateContext(request.MeteringContext);
+        if (meteringContextErrors.Count > 0)
+        {
+            throw new InvalidOperationException("Invalid provider metering context: " + string.Join("; ", meteringContextErrors));
         }
 
         request.Provider = provider;
@@ -191,7 +199,8 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             TraceId = result?.Trace?.TraceId ?? GetString(run.StatusDetails, "traceId"),
             FailureClass = result?.FailureClass ?? run.FailureClass,
             ProviderStatus = result?.ProviderStatus ?? GetString(run.StatusDetails, "providerStatus"),
-            Result = result
+            Result = result,
+            Metering = result?.Metering ?? new List<AiMeteringReceipt>()
         };
     }
 
@@ -265,6 +274,13 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             ["traceId"] = result?.Trace?.TraceId
         };
 
+        if (result?.Metering.Count > 0)
+        {
+            details["meteringReceiptHashes"] = new JsonArray(result.Metering
+                .Select(receipt => (JsonNode?)AiMeteringCryptography.ComputeReceiptEnvelopeHash(receipt))
+                .ToArray());
+        }
+
         return details;
     }
 
@@ -273,15 +289,18 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         private readonly ProviderTargetRegistry _registry;
         private readonly ITraceStore _traces;
         private readonly ProviderRunGuard _guard;
+        private readonly IAiMeteringReceiptSigner? _meteringSigner;
 
         public ProviderRunExecutionHandler(
             ProviderTargetRegistry registry,
             ITraceStore traces,
-            ProviderRunGuard guard)
+            ProviderRunGuard guard,
+            IAiMeteringReceiptSigner? meteringSigner)
         {
             _registry = registry;
             _traces = traces;
             _guard = guard;
+            _meteringSigner = meteringSigner;
         }
 
         public ExecutionHandlerDescriptor Descriptor { get; } = new()
@@ -320,6 +339,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             ProviderRunResult result;
             if (target is null)
             {
+                var observedAt = DateTimeOffset.UtcNow;
                 result = CreateTerminalResult(
                     context.Run,
                     request,
@@ -327,10 +347,21 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                     ProviderFailureClasses.Configuration,
                     "provider_not_found",
                     $"Provider '{payload.Provider}' is not registered.");
+                await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
+                    request,
+                    result,
+                    context.Run.Id,
+                    context.Run.Id,
+                    observedAt,
+                    observedAt,
+                    elapsedDurationMs: 0,
+                    queueDurationMs: 0,
+                    activeDurationMs: 0,
+                    providerInvoked: false), _meteringSigner, ct);
             }
             else
             {
-                result = await RunProviderWithGuardAsync(target, request, context.Run, _guard, ct);
+                result = await RunProviderWithGuardAsync(target, request, context.Run, _guard, _meteringSigner, ct);
             }
 
             result = await PersistCompletionAsync(context.Run, request, result, _traces, ct);
@@ -362,30 +393,66 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             ProviderRunRequest request,
             ExecutionRun run,
             ProviderRunGuard guard,
+            IAiMeteringReceiptSigner? meteringSigner,
             CancellationToken ct)
         {
+            if (string.IsNullOrWhiteSpace(request.CorrelationId))
+            {
+                request.CorrelationId = run.CorrelationId;
+            }
+            var observedStartedAt = DateTimeOffset.UtcNow;
+            var elapsed = Stopwatch.StartNew();
+            var queue = Stopwatch.StartNew();
             await using var admission = await guard.TryEnterAsync(target.Profile.Id, request, ct);
+            queue.Stop();
+            ProviderRunResult result;
+            var providerInvoked = false;
+            var activeDurationMs = 0L;
             if (!admission.Accepted)
             {
-                return admission.RejectionResult!;
+                result = admission.RejectionResult!;
+            }
+            else
+            {
+                var active = Stopwatch.StartNew();
+                providerInvoked = true;
+                try
+                {
+                    result = await target.RunAsync(request, admission.CancellationToken);
+                }
+                catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
+                {
+                    result = guard.CreateTimeoutResult(target.Profile.Id, request);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    result = CreateTerminalResult(run, request, ProviderRunStatus.Cancelled, ProviderFailureClasses.Cancelled, "cancelled");
+                }
+                catch (Exception)
+                {
+                    result = CreateTerminalResult(run, request, ProviderRunStatus.Failed, ProviderFailureClasses.Unknown, "job_unhandled_exception", "Provider execution failed unexpectedly.");
+                }
+                finally
+                {
+                    active.Stop();
+                    activeDurationMs = active.ElapsedMilliseconds;
+                }
             }
 
-            try
-            {
-                return await target.RunAsync(request, admission.CancellationToken);
-            }
-            catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
-            {
-                return guard.CreateTimeoutResult(target.Profile.Id, request);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                return CreateTerminalResult(run, request, ProviderRunStatus.Cancelled, ProviderFailureClasses.Cancelled, "cancelled");
-            }
-            catch (Exception ex)
-            {
-                return CreateTerminalResult(run, request, ProviderRunStatus.Failed, ProviderFailureClasses.Unknown, "job_unhandled_exception", ex.Message);
-            }
+            elapsed.Stop();
+            var observedCompletedAt = DateTimeOffset.UtcNow;
+            await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
+                request,
+                result,
+                run.Id,
+                run.Id,
+                observedStartedAt,
+                observedCompletedAt,
+                elapsed.ElapsedMilliseconds,
+                queue.ElapsedMilliseconds,
+                activeDurationMs,
+                providerInvoked), meteringSigner, ct);
+            return result;
         }
 
         private static async Task<ProviderRunResult> PersistCompletionAsync(
@@ -400,9 +467,14 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                 await PersistProviderTraceAsync(run, request, result, traces, ct);
                 return result;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return CreateTerminalResult(run, request, ProviderRunStatus.Failed, ProviderFailureClasses.Unknown, "job_trace_persist_failed", ex.Message);
+                var failure = CreateTerminalResult(run, request, ProviderRunStatus.Failed, ProviderFailureClasses.Unknown, "job_trace_persist_failed", "Provider trace persistence failed.");
+                failure.Metering = result.Metering;
+                failure.Trace!.MeteringReceiptHashes = result.Metering
+                    .Select(AiMeteringCryptography.ComputeReceiptEnvelopeHash)
+                    .ToList();
+                return failure;
             }
         }
 
@@ -428,6 +500,10 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             {
                 traceEvent.TraceId = Guid.NewGuid().ToString("N");
             }
+
+            traceEvent.MeteringReceiptHashes = result.Metering
+                .Select(AiMeteringCryptography.ComputeReceiptEnvelopeHash)
+                .ToList();
 
             var trace = new TraceRecord
             {
@@ -461,7 +537,9 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                     ["adapterId"] = traceEvent.AdapterId,
                     ["configHash"] = traceEvent.ConfigHash,
                     ["authorityBoundary"] = traceEvent.AuthorityBoundary,
-                    ["artifactRefs"] = traceEvent.ArtifactRefs
+                    ["artifactRefs"] = traceEvent.ArtifactRefs,
+                    ["meteringReceiptHashes"] = traceEvent.MeteringReceiptHashes,
+                    ["metering"] = result.Metering
                 }
             };
 
@@ -525,9 +603,10 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         public ProviderRunExecutionPlugin(
             ProviderTargetRegistry registry,
             ITraceStore traces,
-            ProviderRunGuard guard)
+            ProviderRunGuard guard,
+            IAiMeteringReceiptSigner? meteringSigner)
         {
-            Handlers = new[] { new ProviderRunExecutionHandler(registry, traces, guard) };
+            Handlers = new[] { new ProviderRunExecutionHandler(registry, traces, guard, meteringSigner) };
         }
 
         public ExecutionPluginDescriptor Descriptor { get; } = new()

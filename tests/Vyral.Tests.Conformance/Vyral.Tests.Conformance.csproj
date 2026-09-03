@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\src\Vyral.Execution.WorkerClient\Vyral.Execution.WorkerClient.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Primitives\Vyral.Primitives.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Local\Vyral.Local.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -58,6 +59,12 @@
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-canonical-strong-profile.json" />
     <EmbeddedResource Include="..\..\conformance\runtime\v1\scenarios\execution\native-lifecycle.json"
                       LogicalName="Vyral.Tests.Conformance.runtime-v1-native-execution-lifecycle.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-metering\v1\manifest.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-metering-v1-manifest.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-metering\v1\receipt.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-metering-v1-receipt.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-metering\v1\review.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-metering-v1-review.json" />
   </ItemGroup>
 
   <ItemGroup>

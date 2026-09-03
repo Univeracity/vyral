@@ -1,0 +1,38 @@
+{
+  "schema": "vyral.ai-metering-conformance.v1",
+  "receipt": "receipt.json",
+  "review": "review.json",
+  "canonicalization": "UTF-8 JSON with object keys sorted by ordinal UTF-16 code units, arrays preserved, minimally escaped strings, integer number values, and integrity omitted from the signed payload",
+  "signature": {
+    "algorithm": "ES256",
+    "format": "IEEE P1363",
+    "encoding": "base64url",
+    "signingInput": "canonical vyral.ai-metering-integrity.v1 statement binding evidence schema, algorithm, issuer, key ID, and canonical payload hash",
+    "fixture": {
+      "issuer": "spiffe://conformance.openvyral.com/runner",
+      "keyId": "conformance-key-001",
+      "expectedInputHash": "sha256:72c488099654a3a34d117d40c6700a97e4ba3b8e03cf41384f2c7ea85d8f7e7d",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "ACaVPHk7tE_SuJgP7SltOm7ckc4X5xQl6gux5ALknqg",
+        "y": "3IzJo_CC_V4JPCjESk8GHWd9GXPDSB0e2WiW1p1KXB8"
+      }
+    }
+  },
+  "expectedPayloadHash": "sha256:4920707ae6156719e8fc2774d85a012808a5b740a5d7f9a7dba2f81833258a1c",
+  "expectedEnvelopeHash": "sha256:6e685314321f390434a3367780fdf217555217f8b5e9b1853ebcdf3a02a24d01",
+  "reviewSignatureFixture": {
+    "issuer": "spiffe://conformance.openvyral.com/reviewer",
+    "keyId": "conformance-review-key-001",
+    "expectedInputHash": "sha256:2350974cd9b2505a9d5483628a2acb70ffa7e64c30b1c375628c140e21b25409",
+    "publicKeyJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "YRFbbJkOC9W96MLvE_r8Y7oBT0T3fxWLqAPyf8TKb6g",
+      "y": "eD6ap3fqT3T-uRcgTZp3AFp_qsxZXwKl1Uyv63KVre4"
+    }
+  },
+  "expectedReviewPayloadHash": "sha256:43db70776273142eb5c7799301709bf18c66f65efe140a97307fce39837e0132",
+  "expectedReviewEnvelopeHash": "sha256:007b8df330411ce8ca07344da474d82928762e5c5f2a99df1f914965e7973a4d"
+}

@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   TERMINAL_EXECUTION_RUN_STATUSES,
   VyralClient,
@@ -2346,4 +2348,43 @@ test("rejected admission is available on client errors", () => {
 
   assert.equal(error.admission.resourceId, "run-1");
   assert.equal(error.failureClass, "queue_full");
+});
+
+test("AI metering fixture has portable canonical hashes", () => {
+  const receipt = JSON.parse(readFileSync(new URL("../../../conformance/ai-metering/v1/receipt.json", import.meta.url), "utf8"));
+  const review = JSON.parse(readFileSync(new URL("../../../conformance/ai-metering/v1/review.json", import.meta.url), "utf8"));
+  const manifest = JSON.parse(readFileSync(new URL("../../../conformance/ai-metering/v1/manifest.json", import.meta.url), "utf8"));
+  const canonicalize = (value) => {
+    if (Array.isArray(value)) return value.map(canonicalize);
+    if (value !== null && typeof value === "object") {
+      return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+    }
+    return value;
+  };
+  const canonicalHash = (value) => `sha256:${createHash("sha256").update(JSON.stringify(canonicalize(value)), "utf8").digest("hex")}`;
+  const { integrity: _integrity, ...payload } = receipt;
+  const { integrity: _reviewIntegrity, ...reviewPayload } = review;
+
+  assert.equal(canonicalHash(payload), manifest.expectedPayloadHash);
+  assert.equal(canonicalHash(receipt), manifest.expectedEnvelopeHash);
+  const signatureFixture = manifest.signature.fixture;
+  assert.equal(canonicalHash({
+    schema: "vyral.ai-metering-integrity.v1",
+    algorithm: "ES256",
+    evidenceSchema: receipt.schema,
+    issuer: signatureFixture.issuer,
+    keyId: signatureFixture.keyId,
+    payloadHash: manifest.expectedPayloadHash,
+  }), signatureFixture.expectedInputHash);
+  assert.equal(canonicalHash(reviewPayload), manifest.expectedReviewPayloadHash);
+  const reviewSignatureFixture = manifest.reviewSignatureFixture;
+  assert.equal(canonicalHash({
+    schema: "vyral.ai-metering-integrity.v1",
+    algorithm: "ES256",
+    evidenceSchema: review.schema,
+    issuer: reviewSignatureFixture.issuer,
+    keyId: reviewSignatureFixture.keyId,
+    payloadHash: manifest.expectedReviewPayloadHash,
+  }), reviewSignatureFixture.expectedInputHash);
+  assert.equal(canonicalHash(review), manifest.expectedReviewEnvelopeHash);
 });

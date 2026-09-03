@@ -48,4 +48,11 @@ public sealed class ProviderRunRequest
 
     [JsonPropertyName("artifactDirectory")]
     public string? ArtifactDirectory { get; set; }
+
+    /// <summary>
+    /// Optional session/thread correlation for portable metering evidence. The server assigns
+    /// run identifiers; these values do not grant authority and should be opaque or pseudonymous.
+    /// </summary>
+    [JsonPropertyName("meteringContext")]
+    public AiMeteringContext? MeteringContext { get; set; }
 }

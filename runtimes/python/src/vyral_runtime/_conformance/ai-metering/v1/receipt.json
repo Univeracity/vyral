@@ -1,0 +1,71 @@
+{
+  "schema": "vyral.ai-metering.v1",
+  "receiptId": "amr_conformance_0001",
+  "kind": "summary",
+  "subject": {
+    "providerRunId": "provider-run-001",
+    "executionRunId": "execution-run-001",
+    "providerThreadId": "provider-thread-001",
+    "runnerSessionId": "runner-session-001",
+    "turnId": "turn-001",
+    "correlationId": "correlation-001"
+  },
+  "provider": "provider-conformance-π",
+  "capability": "ai.chat",
+  "operation": "run",
+  "outcome": "succeeded",
+  "modelId": "model-conformance-v1",
+  "adapterId": "adapter-conformance-v1",
+  "period": {
+    "observedStartedAt": "2026-09-03T12:00:00.000Z",
+    "observedCompletedAt": "2026-09-03T12:00:01.250Z",
+    "elapsedDurationMs": 1250,
+    "queueDurationMs": 25,
+    "activeDurationMs": 1000,
+    "idleDurationMs": 250,
+    "providerDurationMs": 950
+  },
+  "measurements": [
+    {
+      "name": "tokens.input",
+      "value": 42,
+      "unit": "tokens",
+      "source": "provider_response",
+      "quality": "reported",
+      "sourceId": "response-001",
+      "method": null,
+      "tokenizerId": null
+    },
+    {
+      "name": "tool.calls",
+      "value": 3,
+      "unit": "count",
+      "source": "runner_observer",
+      "quality": "observed",
+      "sourceId": "runner-001",
+      "method": "bounded event stream count",
+      "tokenizerId": null
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "request",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+      "uri": null,
+      "mediaType": "application/json",
+      "redacted": true
+    }
+  ],
+  "completeness": "partial",
+  "attestationLevel": "self_reported",
+  "sequence": 0,
+  "previousReceiptHash": null,
+  "issuedAt": "2026-09-03T12:00:01.250Z",
+  "integrity": {
+    "algorithm": "ES256",
+    "issuer": "spiffe://conformance.openvyral.com/runner",
+    "keyId": "conformance-key-001",
+    "payloadHash": "sha256:4920707ae6156719e8fc2774d85a012808a5b740a5d7f9a7dba2f81833258a1c",
+    "signature": "EDdG9sMaQI1hAo-3k870XMgRJ4JczptljH__yco3LQwA3nEufIqTuxFM-ZQl0_8ndqa4fnWLYMqXnTKJg9e-uw"
+  }
+}

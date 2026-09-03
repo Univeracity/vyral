@@ -58,4 +58,7 @@ public sealed class ProviderRunJob
 
     [JsonPropertyName("result")]
     public ProviderRunResult? Result { get; set; }
+
+    [JsonPropertyName("metering")]
+    public List<AiMeteringReceipt> Metering { get; set; } = new();
 }

@@ -2652,6 +2652,7 @@ class ProviderRunRequest(_ProviderRunRequestRequired, total=False):
     timeoutSeconds: int | None
     maxOutputBytes: int | None
     artifactDirectory: str | None
+    meteringContext: AiMeteringContext | None
 
 class _ProviderRunResultRequired(TypedDict):
     status: Literal['Succeeded', 'Failed', 'TimedOut', 'Rejected', 'Unsupported', 'NotConfigured', 'Cancelled']
@@ -2667,6 +2668,7 @@ class ProviderRunResult(_ProviderRunResultRequired, total=False):
     error: str | None
     rejection: ProviderRunRejectionDiagnostic | None
     trace: ProviderTraceEvent | None
+    metering: list[AiMeteringReceipt]
 
 class _ProviderRunRejectionDiagnosticRequired(TypedDict):
     source: Literal['vyral_policy', 'vyral_guardrail', 'vyral_classification', 'provider_policy', 'provider_runtime', 'configuration', 'unsupported', 'unknown']
@@ -2706,6 +2708,7 @@ class ProviderRunJob(_ProviderRunJobRequired, total=False):
     failureClass: str | None
     providerStatus: str | None
     result: ProviderRunResult | None
+    metering: list[AiMeteringReceipt]
 
 class ProviderTraceEvent(TypedDict, total=False):
     traceId: str
@@ -2723,6 +2726,161 @@ class ProviderTraceEvent(TypedDict, total=False):
     failureClass: str | None
     authorityBoundary: str
     artifactRefs: list[str]
+    meteringReceiptHashes: list[str]
+
+class AiMeteringContext(TypedDict, total=False):
+    """Optional caller correlation for a provider thread, runner session, or turn. Vyral-owned run identifiers are assigned at admission."""
+    providerThreadId: str | None
+    runnerSessionId: str | None
+    turnId: str | None
+    sequence: int | None
+    previousReceiptHash: str | None
+
+class AiMeteringSubject(TypedDict, total=False):
+    """Correlated Vyral run, provider thread, runner session, and turn scopes. Their relationship is intentionally not assumed to be one-to-one."""
+    providerRunId: str | None
+    executionRunId: str | None
+    providerThreadId: str | None
+    runnerSessionId: str | None
+    turnId: str | None
+    correlationId: str | None
+
+class _AiMeteringPeriodRequired(TypedDict):
+    observedStartedAt: str
+    observedCompletedAt: str
+    elapsedDurationMs: int
+
+class AiMeteringPeriod(_AiMeteringPeriodRequired, total=False):
+    queueDurationMs: int | None
+    activeDurationMs: int | None
+    idleDurationMs: int | None
+    providerDurationMs: int | None
+
+class _AiMeteringMeasurementRequired(TypedDict):
+    name: str
+    value: int
+    unit: str
+    source: Literal['provider_response', 'provider_event_stream', 'runner_observer', 'gateway_observer', 'consumer_inference']
+    quality: Literal['reported', 'observed', 'estimated', 'reconciled', 'unknown']
+
+class AiMeteringMeasurement(_AiMeteringMeasurementRequired, total=False):
+    sourceId: str | None
+    method: str | None
+    tokenizerId: str | None
+
+class _AiMeteringEvidenceReferenceRequired(TypedDict):
+    kind: str
+    digest: str
+    redacted: bool
+
+class AiMeteringEvidenceReference(_AiMeteringEvidenceReferenceRequired, total=False):
+    uri: str | None
+    mediaType: str | None
+
+class _AiMeteringIntegrityRequired(TypedDict):
+    algorithm: Literal['ES256']
+    issuer: str
+    keyId: str
+    payloadHash: str
+    signature: str
+
+class AiMeteringIntegrity(_AiMeteringIntegrityRequired, total=False):
+    pass
+
+class _AiMeteringReceiptRequired(TypedDict):
+    schema: Literal['vyral.ai-metering.v1']
+    receiptId: str
+    kind: Literal['observation', 'summary']
+    subject: AiMeteringSubject
+    provider: str
+    capability: str
+    operation: str
+    outcome: Literal['succeeded', 'failed', 'timed_out', 'rejected', 'unsupported', 'not_configured', 'cancelled']
+    period: AiMeteringPeriod
+    measurements: list[AiMeteringMeasurement]
+    evidence: list[AiMeteringEvidenceReference]
+    completeness: Literal['complete', 'partial', 'sampled', 'unknown']
+    attestationLevel: Literal['self_reported', 'observer_signed', 'provider_attested', 'reconciled', 'hardware_attested']
+    issuedAt: str
+
+class AiMeteringReceipt(_AiMeteringReceiptRequired, total=False):
+    modelId: str | None
+    adapterId: str | None
+    sequence: int | None
+    previousReceiptHash: str | None
+    integrity: AiMeteringIntegrity | None
+
+class _AiMeteringReviewFindingRequired(TypedDict):
+    code: str
+    severity: Literal['info', 'warning', 'error']
+    message: str
+    receiptIds: list[str]
+    measurementNames: list[str]
+
+class AiMeteringReviewFinding(_AiMeteringReviewFindingRequired, total=False):
+    pass
+
+class _AiMeteringScopeRequired(TypedDict):
+    kind: Literal['provider_thread', 'runner_session']
+    id: str
+
+class AiMeteringScope(_AiMeteringScopeRequired, total=False):
+    pass
+
+class _AiMeteringAggregatePeriodRequired(TypedDict):
+    observedStartedAt: str
+    observedCompletedAt: str
+    wallSpanDurationMs: int
+    summedElapsedDurationMs: int
+    concurrentIntervalsDetected: bool
+
+class AiMeteringAggregatePeriod(_AiMeteringAggregatePeriodRequired, total=False):
+    summedQueueDurationMs: int | None
+    summedActiveDurationMs: int | None
+    summedIdleDurationMs: int | None
+    summedProviderDurationMs: int | None
+
+class _AiMeteringAggregateMeasurementRequired(TypedDict):
+    receiptKind: Literal['observation', 'summary']
+    evidenceIssuer: str
+    name: str
+    value: int
+    unit: str
+    source: Literal['provider_response', 'provider_event_stream', 'runner_observer', 'gateway_observer', 'consumer_inference']
+    quality: Literal['reported', 'observed', 'estimated', 'reconciled', 'unknown']
+    provider: str
+    receiptCount: int
+
+class AiMeteringAggregateMeasurement(_AiMeteringAggregateMeasurementRequired, total=False):
+    modelId: str | None
+    method: str | None
+    tokenizerId: str | None
+
+class _AiMeteringAggregateRequired(TypedDict):
+    receiptCount: int
+    summaryReceiptCount: int
+    observationReceiptCount: int
+    providerRunCount: int
+    period: AiMeteringAggregatePeriod
+    measurements: list[AiMeteringAggregateMeasurement]
+
+class AiMeteringAggregate(_AiMeteringAggregateRequired, total=False):
+    pass
+
+class _AiMeteringReviewRequired(TypedDict):
+    schema: Literal['vyral.ai-metering-review.v1']
+    reviewId: str
+    rulesetId: str
+    scope: AiMeteringScope
+    receiptHashes: list[str]
+    verdict: Literal['verified', 'verified_with_gaps', 'rejected']
+    findings: list[AiMeteringReviewFinding]
+    aggregate: AiMeteringAggregate | None
+    reviewedAt: str
+
+class AiMeteringReview(_AiMeteringReviewRequired, total=False):
+    """A separately reviewable assessment over the exact ordered receipt set identified by receiptHashes. The basic-v1 ruleset does not by itself claim that this set exhausts every run in the named scope."""
+    integrity: AiMeteringIntegrity | None
 
 class AiChatPayload(TypedDict, total=False):
     messages: list[AiMessage]

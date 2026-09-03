@@ -16441,6 +16441,17 @@
               "null"
             ],
             "description": "Optional for library-hosted provider runs. The local HTTP server ignores request-provided artifact paths and uses Providers:ArtifactDirectory when configured."
+          },
+          "meteringContext": {
+            "description": "Optional opaque provider-thread and runner-session correlation for metering. Vyral assigns run identifiers at admission; these values grant no authority.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiMeteringContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/ProviderRunRequest"
@@ -16557,6 +16568,14 @@
                 "type": "null"
               }
             ]
+          },
+          "metering": {
+            "type": "array",
+            "maxItems": 64,
+            "description": "Source-labelled metering receipts. Presence does not imply that a receipt is signed or independently reviewed.",
+            "items": {
+              "$ref": "#/components/schemas/AiMeteringReceipt"
+            }
           }
         },
         "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/ProviderRunResult"
@@ -16788,6 +16807,14 @@
                 "type": "null"
               }
             ]
+          },
+          "metering": {
+            "type": "array",
+            "maxItems": 64,
+            "description": "Convenience projection of terminal result metering receipts.",
+            "items": {
+              "$ref": "#/components/schemas/AiMeteringReceipt"
+            }
           }
         },
         "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/ProviderRunJob"
@@ -16862,9 +16889,850 @@
             "items": {
               "type": "string"
             }
+          },
+          "meteringReceiptHashes": {
+            "type": "array",
+            "maxItems": 64,
+            "description": "Full-envelope hashes of metering receipts associated with this trace.",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
           }
         },
         "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/ProviderTraceEvent"
+      },
+      "AiMeteringContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Optional caller correlation for a provider thread, runner session, or turn. Vyral-owned run identifiers are assigned at admission.",
+        "properties": {
+          "providerThreadId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "runnerSessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "turnId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "sequence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "previousReceiptHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringContext"
+      },
+      "AiMeteringSubject": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Correlated Vyral run, provider thread, runner session, and turn scopes. Their relationship is intentionally not assumed to be one-to-one.",
+        "properties": {
+          "providerRunId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "executionRunId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "providerThreadId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "runnerSessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "turnId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "correlationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringSubject"
+      },
+      "AiMeteringPeriod": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "observedStartedAt",
+          "observedCompletedAt",
+          "elapsedDurationMs"
+        ],
+        "properties": {
+          "observedStartedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC RFC 3339 timestamp with millisecond precision."
+          },
+          "observedCompletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC RFC 3339 timestamp with millisecond precision."
+          },
+          "elapsedDurationMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Observer wall duration, measured with a monotonic clock where available."
+          },
+          "queueDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "activeDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "idleDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "providerDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Provider-reported or provider-adapter duration; its source must not be confused with observer elapsed time."
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringPeriod"
+      },
+      "AiMeteringMeasurement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "value",
+          "unit",
+          "source",
+          "quality"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,128}$"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "provider_response",
+              "provider_event_stream",
+              "runner_observer",
+              "gateway_observer",
+              "consumer_inference"
+            ]
+          },
+          "quality": {
+            "type": "string",
+            "enum": [
+              "reported",
+              "observed",
+              "estimated",
+              "reconciled",
+              "unknown"
+            ]
+          },
+          "sourceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512,
+            "description": "Required by the contract validator when quality is estimated."
+          },
+          "tokenizerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringMeasurement"
+      },
+      "AiMeteringEvidenceReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "digest",
+          "redacted"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "uri": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2048
+          },
+          "mediaType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "redacted": {
+            "type": "boolean",
+            "description": "Whether sensitive content was omitted or represented only by a digest."
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringEvidenceReference"
+      },
+      "AiMeteringIntegrity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm",
+          "issuer",
+          "keyId",
+          "payloadHash",
+          "signature"
+        ],
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "ES256"
+            ]
+          },
+          "issuer": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "keyId": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "payloadHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "description": "Base64url-encoded 64-byte IEEE P1363 ES256 signature over the protected integrity statement that binds the evidence schema, algorithm, issuer, key ID, and canonical payload hash."
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringIntegrity"
+      },
+      "AiMeteringReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "receiptId",
+          "kind",
+          "subject",
+          "provider",
+          "capability",
+          "operation",
+          "outcome",
+          "period",
+          "measurements",
+          "evidence",
+          "completeness",
+          "attestationLevel",
+          "issuedAt"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "vyral.ai-metering.v1"
+            ]
+          },
+          "receiptId": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "observation",
+              "summary"
+            ]
+          },
+          "subject": {
+            "$ref": "#/components/schemas/AiMeteringSubject"
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "capability": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "operation": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "timed_out",
+              "rejected",
+              "unsupported",
+              "not_configured",
+              "cancelled"
+            ]
+          },
+          "modelId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "adapterId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "period": {
+            "$ref": "#/components/schemas/AiMeteringPeriod"
+          },
+          "measurements": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "$ref": "#/components/schemas/AiMeteringMeasurement"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/AiMeteringEvidenceReference"
+            }
+          },
+          "completeness": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "sampled",
+              "unknown"
+            ]
+          },
+          "attestationLevel": {
+            "type": "string",
+            "enum": [
+              "self_reported",
+              "observer_signed",
+              "provider_attested",
+              "reconciled",
+              "hardware_attested"
+            ],
+            "description": "Strongest evidence supporting the receipt. A signature authenticates an assertion but does not automatically promote this level."
+          },
+          "sequence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0,
+            "description": "Optional position in a producer-managed chain. Null denotes a standalone receipt."
+          },
+          "previousReceiptHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "Full-envelope hash of the immediately preceding receipt in this chain."
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC RFC 3339 timestamp with millisecond precision."
+          },
+          "integrity": {
+            "description": "Optional cryptographic integrity assertion. Trust remains dependent on the caller's issuer/key policy.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiMeteringIntegrity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringReceipt"
+      },
+      "AiMeteringReviewFinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "receiptIds",
+          "measurementNames"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "receiptIds": {
+            "type": "array",
+            "maxItems": 4096,
+            "items": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          "measurementNames": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,128}$"
+            }
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringReviewFinding"
+      },
+      "AiMeteringScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "provider_thread",
+              "runner_session"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringScope"
+      },
+      "AiMeteringAggregatePeriod": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "observedStartedAt",
+          "observedCompletedAt",
+          "wallSpanDurationMs",
+          "summedElapsedDurationMs",
+          "concurrentIntervalsDetected"
+        ],
+        "properties": {
+          "observedStartedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "observedCompletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "wallSpanDurationMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Span from the earliest start to latest completion; includes gaps."
+          },
+          "summedElapsedDurationMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Sum of per-run monotonic elapsed durations; can include concurrent work."
+          },
+          "summedQueueDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "summedActiveDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "summedIdleDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "summedProviderDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "concurrentIntervalsDetected": {
+            "type": "boolean"
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringAggregatePeriod"
+      },
+      "AiMeteringAggregateMeasurement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "receiptKind",
+          "evidenceIssuer",
+          "name",
+          "value",
+          "unit",
+          "source",
+          "quality",
+          "provider",
+          "receiptCount"
+        ],
+        "properties": {
+          "receiptKind": {
+            "type": "string",
+            "enum": [
+              "observation",
+              "summary"
+            ],
+            "description": "Evidence stream retained during aggregation so independent observations are never added silently to runner summaries."
+          },
+          "evidenceIssuer": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "Protected issuer identity of the receipt whose measurements contributed to this total."
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,128}$"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "provider_response",
+              "provider_event_stream",
+              "runner_observer",
+              "gateway_observer",
+              "consumer_inference"
+            ]
+          },
+          "quality": {
+            "type": "string",
+            "enum": [
+              "reported",
+              "observed",
+              "estimated",
+              "reconciled",
+              "unknown"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "modelId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "tokenizerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          },
+          "receiptCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringAggregateMeasurement"
+      },
+      "AiMeteringAggregate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "receiptCount",
+          "summaryReceiptCount",
+          "observationReceiptCount",
+          "providerRunCount",
+          "period",
+          "measurements"
+        ],
+        "properties": {
+          "receiptCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "summaryReceiptCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "observationReceiptCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 4096
+          },
+          "providerRunCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "period": {
+            "$ref": "#/components/schemas/AiMeteringAggregatePeriod"
+          },
+          "measurements": {
+            "type": "array",
+            "maxItems": 1024,
+            "items": {
+              "$ref": "#/components/schemas/AiMeteringAggregateMeasurement"
+            }
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringAggregate"
+      },
+      "AiMeteringReview": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A separately reviewable assessment over the exact ordered receipt set identified by receiptHashes. The basic-v1 ruleset does not by itself claim that this set exhausts every run in the named scope.",
+        "required": [
+          "schema",
+          "reviewId",
+          "rulesetId",
+          "scope",
+          "receiptHashes",
+          "verdict",
+          "findings",
+          "aggregate",
+          "reviewedAt"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "vyral.ai-metering-review.v1"
+            ]
+          },
+          "reviewId": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "rulesetId": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AiMeteringScope"
+          },
+          "receiptHashes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4096,
+            "uniqueItems": true,
+            "description": "Ordered full-envelope hashes of the receipts assessed by this review.",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "verified_with_gaps",
+              "rejected"
+            ]
+          },
+          "findings": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "$ref": "#/components/schemas/AiMeteringReviewFinding"
+            }
+          },
+          "aggregate": {
+            "description": "Verified totals. Null when review errors make aggregation unsafe.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiMeteringAggregate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "integrity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiMeteringIntegrity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiMeteringReview"
       },
       "AiChatPayload": {
         "type": "object",

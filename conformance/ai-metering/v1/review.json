@@ -1,0 +1,88 @@
+{
+  "schema": "vyral.ai-metering-review.v1",
+  "reviewId": "amv_conformance_0001",
+  "rulesetId": "vyral.metering.basic.v1",
+  "scope": {
+    "kind": "runner_session",
+    "id": "runner-session-001"
+  },
+  "receiptHashes": [
+    "sha256:6e685314321f390434a3367780fdf217555217f8b5e9b1853ebcdf3a02a24d01"
+  ],
+  "verdict": "verified_with_gaps",
+  "findings": [
+    {
+      "code": "receipt_coverage_incomplete",
+      "severity": "warning",
+      "message": "One or more receipts do not claim complete coverage.",
+      "receiptIds": [
+        "amr_conformance_0001"
+      ],
+      "measurementNames": []
+    },
+    {
+      "code": "receipt_self_reported",
+      "severity": "warning",
+      "message": "One or more receipts do not claim independently observed, provider-attested, reconciled, or hardware-attested evidence.",
+      "receiptIds": [
+        "amr_conformance_0001"
+      ],
+      "measurementNames": []
+    }
+  ],
+  "aggregate": {
+    "receiptCount": 1,
+    "summaryReceiptCount": 1,
+    "observationReceiptCount": 0,
+    "providerRunCount": 1,
+    "period": {
+      "observedStartedAt": "2026-09-03T12:00:00.000Z",
+      "observedCompletedAt": "2026-09-03T12:00:01.250Z",
+      "wallSpanDurationMs": 1250,
+      "summedElapsedDurationMs": 1250,
+      "summedQueueDurationMs": 25,
+      "summedActiveDurationMs": 1000,
+      "summedIdleDurationMs": 250,
+      "summedProviderDurationMs": 950,
+      "concurrentIntervalsDetected": false
+    },
+    "measurements": [
+      {
+        "receiptKind": "summary",
+        "evidenceIssuer": "spiffe://conformance.openvyral.com/runner",
+        "name": "tokens.input",
+        "value": 42,
+        "unit": "tokens",
+        "source": "provider_response",
+        "quality": "reported",
+        "provider": "provider-conformance-π",
+        "modelId": "model-conformance-v1",
+        "method": null,
+        "tokenizerId": null,
+        "receiptCount": 1
+      },
+      {
+        "receiptKind": "summary",
+        "evidenceIssuer": "spiffe://conformance.openvyral.com/runner",
+        "name": "tool.calls",
+        "value": 3,
+        "unit": "count",
+        "source": "runner_observer",
+        "quality": "observed",
+        "provider": "provider-conformance-π",
+        "modelId": "model-conformance-v1",
+        "method": "bounded event stream count",
+        "tokenizerId": null,
+        "receiptCount": 1
+      }
+    ]
+  },
+  "reviewedAt": "2026-09-03T13:00:00.000Z",
+  "integrity": {
+    "algorithm": "ES256",
+    "issuer": "spiffe://conformance.openvyral.com/reviewer",
+    "keyId": "conformance-review-key-001",
+    "payloadHash": "sha256:43db70776273142eb5c7799301709bf18c66f65efe140a97307fce39837e0132",
+    "signature": "cGOyfUrnpr74B_MT6Sclzr1GiGMp5DF3-MACygE4pJSN5Myw0I85P2fMww07KZVCSEU716AfiTR8Zp5hGMaiBw"
+  }
+}

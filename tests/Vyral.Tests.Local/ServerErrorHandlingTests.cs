@@ -395,6 +395,33 @@ public class ServerErrorHandlingTests
     }
 
     [Fact]
+    public async Task ProviderRun_RejectsInvalidMeteringChainContextBeforeAdmission()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-server-{Guid.NewGuid():N}.sqlite");
+        var objectsPath = Path.Combine(Path.GetTempPath(), $"vyral-server-objects-{Guid.NewGuid():N}");
+
+        await using var factory = CreateFactory(dbPath, objectsPath);
+        var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync($"/providers/{DeterministicAiProviderTarget.ProviderId}/run", new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiChat,
+            Payload = ProviderJson.ToJsonObject(new AiChatRequest
+            {
+                Messages = new List<AiMessage> { new() { Role = "user", Content = "hello" } }
+            }),
+            MeteringContext = new AiMeteringContext
+            {
+                RunnerSessionId = "runner-session-1",
+                Sequence = 2
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("previousReceiptHash", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ProviderRunJobStore_CancelsRunningJobs()
     {
         var jobs = new ProviderRunJobStore();
