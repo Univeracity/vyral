@@ -59,7 +59,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/aws-live-qualification.yml",
-      "sha256": "4f6ce30537ce142d0140a24a435e75f66e9c07e3cc4665ea0a35640102418c98"
+      "sha256": "49c93c44e03691985bbcf73f228dd0f174f58d5d760b546390b1cbc7c9ad36b7"
     },
     {
       "mode": "644",
@@ -74,12 +74,12 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "85078f9b9e98d31708bbb473ce8fbe3cf1b1aadff7aed5bc6e2ee26a62dcd014"
+      "sha256": "c699d6679d82f2587205bb9a1243990914937d038d29f7329403b112079a582d"
     },
     {
       "mode": "644",
       "path": ".github/workflows/codeql.yml",
-      "sha256": "d238e8e2228b6f62d4b4a422646cf51bd78c6751cdb5bb1e6ba914187637b583"
+      "sha256": "8ecccddd8c7424ad1f64a3933714e52a1333d8d3d5355f2b43f0840edcdcb78b"
     },
     {
       "mode": "644",
@@ -94,7 +94,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/execution-runtime-consumer.yml",
-      "sha256": "53bf6cbd7eb4e288b7b3c89560509463eac67dc67d2ec2d68a8284fd7da9815d"
+      "sha256": "ec0892a7934d7c77890b91f07ecf0b3585c60023221f9b21c0ba655805472170"
     },
     {
       "mode": "644",
@@ -129,7 +129,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/release-integrity.yml",
-      "sha256": "8c075ff1a4e9966d43d3ae5a25c0d717fa07fe5434b26898e6b40260920c306b"
+      "sha256": "b2114e7724389f6593dc16e5844447c85e23b19f4191983a05bfe3d6bae50964"
     },
     {
       "mode": "644",
@@ -864,7 +864,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/pyproject.toml",
-      "sha256": "883f9eee8a1a63ca9c910bf17a258f7ccb8964f58646d815a2a76fc5c5501427"
+      "sha256": "ddcb17a8b2af17ed227a8f414e846a63a8923742bca426b45a0ea03a5f8901ad"
     },
     {
       "mode": "644",
@@ -2204,7 +2204,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-version-policy.py",
-      "sha256": "1626ad749fb25fa11e4a7c4f66d66435b4e09750822c3b41920fa9435cedcf5c"
+      "sha256": "76479d399d22c7e9f4872f6ab86f271fcf6e205d9cecd105aa590323d68d8056"
     },
     {
       "mode": "755",
@@ -4964,7 +4964,7 @@
     {
       "mode": "644",
       "path": "workers/execution-smoke-go/Dockerfile",
-      "sha256": "af04d2ed0695485ca8c7dfb463a149937b930bf1c2f8b23e94d61a8cbcb81b54"
+      "sha256": "dfbfd8bd246612abea85b5176c313f3657ec90df4527d03601c3564b44f36495"
     },
     {
       "mode": "644",
@@ -4984,5 +4984,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "b6362c5ab94ee5e3c17395c11feb747c199cb48592bc8b9b9bb5ee1515b4b12b"
+  "treeSha256": "451e9cd0b0194f16e646a38328eb9a2bf7b4617796a29f56da3ebfee256ffe3d"
 }
