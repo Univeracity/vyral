@@ -11,7 +11,7 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "miniflare": "4.20260730.0"
+    "miniflare": "5.20260910.0-alpha"
   },
   "overrides": {
     "undici": "7.29.0"
