@@ -5,7 +5,7 @@
     {
       "ecosystem": "nuget",
       "name": "Vyral.Abstractions",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "source": "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
       "environment": "publish-nuget",
       "maturity": "public"
@@ -13,7 +13,7 @@
     {
       "ecosystem": "nuget",
       "name": "Vyral.Local",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "source": "src/Vyral.Local/Vyral.Local.csproj",
       "environment": "publish-nuget",
       "maturity": "public"
@@ -21,7 +21,7 @@
     {
       "ecosystem": "pypi",
       "name": "vyral",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "source": "runtimes/python/pyproject.toml",
       "environment": "publish-pypi",
       "maturity": "prototype"
@@ -43,7 +43,7 @@
   ],
   "authorization": {
     "mode": "manual-protected-environment",
-    "releaseTag": "v0.3.1",
+    "releaseTag": "v0.3.2",
     "workflow": ".github/workflows/publish-first-cohort.yml",
     "requirements": [
       "a GitHub-verified signed annotated release tag that resolves to current main",

@@ -64,7 +64,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/azure-live-qualification.yml",
-      "sha256": "6c195fc42c2f372711153ad69bd0d71a2b2037aaca511f1b50bc86c2d3ac017b"
+      "sha256": "ca07b60c22bcaa3b5abc9174564da689d593198b8878078feb15d84a30757596"
     },
     {
       "mode": "644",
@@ -74,17 +74,17 @@
     {
       "mode": "644",
       "path": ".github/workflows/ci.yml",
-      "sha256": "c699d6679d82f2587205bb9a1243990914937d038d29f7329403b112079a582d"
+      "sha256": "948685bf3333467b8e76364c2829b80d02edd96153f17cb39a99cef9101c0506"
     },
     {
       "mode": "644",
       "path": ".github/workflows/codeql.yml",
-      "sha256": "8ecccddd8c7424ad1f64a3933714e52a1333d8d3d5355f2b43f0840edcdcb78b"
+      "sha256": "bca3829f587e5ff25bb3efb7dde5d4ecf83eb7353fe60457425ebd29fc35f4ed"
     },
     {
       "mode": "644",
       "path": ".github/workflows/container-security.yml",
-      "sha256": "9a9a499f91d8e81d7d3516c2d657879d7a9f727203b8555b6a93da38bfefb0cb"
+      "sha256": "1cb8ba1de71ca7d60e0475b5fe6d9c23265eed8f89aa2eb95541917a5a18edf2"
     },
     {
       "mode": "644",
@@ -114,12 +114,12 @@
     {
       "mode": "644",
       "path": ".github/workflows/publish-first-cohort.yml",
-      "sha256": "c5a61cfb9816c7eeb71b807e08b93ab8497d34c058b1b105feeb50d15e767b40"
+      "sha256": "9c927ba4e12d3907f60302d1ec0057f2d0a1fef06c4949e25dcb2d5ee2ef67fa"
     },
     {
       "mode": "644",
       "path": ".github/workflows/publish-worker-container.yml",
-      "sha256": "281f8b835feb4923e46cecd47a02a6891366ddac5d838d5c3a7fd985fd35dcac"
+      "sha256": "960c527e4bcaee96239e4e25b74ea85bfeadb8f87b11aa2caa2011bbee94fb34"
     },
     {
       "mode": "644",
@@ -129,7 +129,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/release-integrity.yml",
-      "sha256": "b2114e7724389f6593dc16e5844447c85e23b19f4191983a05bfe3d6bae50964"
+      "sha256": "5df7954c86d3c289ec1f32ed9007377832bd66d9d3f6dc70b534e725cb40a11f"
     },
     {
       "mode": "644",
@@ -164,7 +164,7 @@
     {
       "mode": "644",
       "path": "Dockerfile",
-      "sha256": "3867f33a3679dc66884607f353c294a2684fcdad239406a0b6004f4346df8a6d"
+      "sha256": "d9566573bc14029c67c7bc0703607eeee393b0f58a901a5d78fb62552e4c2fb0"
     },
     {
       "mode": "644",
@@ -174,7 +174,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "1643f251d9c141631f85698475a14c57b6ee48482914449b446792b60979b536"
+      "sha256": "e7a932dab1be53bc59f407f0bae6ea37db170f64d17d2e2514feac652431059e"
     },
     {
       "mode": "644",
@@ -714,7 +714,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "7beb84a183f16ba8863e01abf859a00e32f8c452fd731b09e48c60d756e76698"
+      "sha256": "fc3003a641ac8126d18999e6fb7ffe114273b2dd7f27f7b6ce6f4ff517bc3775"
     },
     {
       "mode": "644",
@@ -804,12 +804,12 @@
     {
       "mode": "644",
       "path": "packaging/publication-cohort.json",
-      "sha256": "7cec489e1cceace8d88a643456e1df22df527d9ca138baaa3ed70119c29dc908"
+      "sha256": "4984daafbf0eadf51a321b4bce027ec89cc920f27b5fcb492b398eb45820a040"
     },
     {
       "mode": "644",
       "path": "packaging/worker-container-release.json",
-      "sha256": "686a4e17a593cbea0618bc47d6644dea4ee5a5e17b37094ab925d258b022f37a"
+      "sha256": "d6e0211cf943eec6ba8b220e0f2da7ae0334ea9d203577f7dcee06ec3315b128"
     },
     {
       "mode": "644",
@@ -844,7 +844,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/README.md",
-      "sha256": "27b8c5b49e891c22078d1e463cbdd22eb2df116c416125ccd1b4d9cbdc14f85d"
+      "sha256": "157178ea762faaf7cd0652a3f0d1e63d65315c4caf01f2c131ede80be26e159d"
     },
     {
       "mode": "644",
@@ -864,17 +864,17 @@
     {
       "mode": "644",
       "path": "runtimes/python/pyproject.toml",
-      "sha256": "ddcb17a8b2af17ed227a8f414e846a63a8923742bca426b45a0ea03a5f8901ad"
+      "sha256": "ac7c65b145f64856a3d58724af01f6fa42c77e2c23e1c0f316a3c9010d562fb1"
     },
     {
       "mode": "644",
       "path": "runtimes/python/requirements-server.in",
-      "sha256": "51c2696ac9e9187a79a61873f99118c46f3f4015eb1171327ebecc746454afa2"
+      "sha256": "b882bbb1bbc27240516e1d99db7d8502061e630eed539650c2ca9fb910b4dffd"
     },
     {
       "mode": "644",
       "path": "runtimes/python/requirements-server.lock",
-      "sha256": "8be06ccb8250e735e73079dd1039f88b9540fba6239f44a678c54f4e9a4e6c57"
+      "sha256": "8aa04e9fb0425fd5a308100cdba0851a2e93ef453d86ef43b3d51acbfbf2d01f"
     },
     {
       "mode": "644",
@@ -1024,7 +1024,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/_version.py",
-      "sha256": "5e27ee39e404e4f4bbe2433bcb2288046a26e95fe7715ac1595945bdb3ec797f"
+      "sha256": "00679d642391886eddb5569e2524e89736b578aba20f2fcda8d0f5c4c98b9a15"
     },
     {
       "mode": "644",
@@ -1439,7 +1439,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/tests/test_host_cli.py",
-      "sha256": "1345a4c9c08a15d69744edc8784ef4301bcaa776c201b83bc5fb33743217978e"
+      "sha256": "ae7f4f7980383e0e9d4044c6fb4f5089bb15d8c2ebc73150e0d1b462df9d2875"
     },
     {
       "mode": "644",
@@ -1554,7 +1554,7 @@
     {
       "mode": "644",
       "path": "samples/Vyral.CanonicalProjectionStarter/packages.lock.json",
-      "sha256": "7717b890bd537ad066cbf32465a2281be9c4926ef3bffe7838e850f686c669fa"
+      "sha256": "9d32c65c06fe0bd3c3ac966b9b65cc47e4440544fc35abe3c33f9ffc26f9fdce"
     },
     {
       "mode": "644",
@@ -1589,7 +1589,7 @@
     {
       "mode": "644",
       "path": "samples/Vyral.Execution.AzureDurableFunctionsSmoke/packages.lock.json",
-      "sha256": "62b09ebbf326d5d8850845843d51e59c9d6f29641eae68e4542e792cc816d176"
+      "sha256": "938d3773692240ec88d32879a0849e01c2501422e34d18128b1f0cc79b5f2f86"
     },
     {
       "mode": "644",
@@ -1659,7 +1659,7 @@
     {
       "mode": "644",
       "path": "samples/Vyral.Execution.TemporalSample/packages.lock.json",
-      "sha256": "f36749c126d8bce278a70a0cc9d3c7970f7cf03c2fcec0b8b37825fdc31340fd"
+      "sha256": "adf0ee10060f75dda5fec586b488fe47db6ac0f2fe5c31ae290c35f792be0418"
     },
     {
       "mode": "644",
@@ -1684,7 +1684,7 @@
     {
       "mode": "755",
       "path": "scripts/classify-ci-changes.py",
-      "sha256": "a6a78371d047e30aa05e24bad1fe75a9899a4f7b663693a27772a5d88f3575a5"
+      "sha256": "fac3f7d2937d1653f6f05212d48498891c91e7755c4a40b3b01a608f5fe8d075"
     },
     {
       "mode": "644",
@@ -1834,7 +1834,7 @@
     {
       "mode": "755",
       "path": "scripts/test-classify-ci-changes.py",
-      "sha256": "36897f07a9e39b058d6bb4b75b0c26d9d92af1cbca9d85726c1271063823aaa2"
+      "sha256": "fd4eee995b31a767277098084d13011080955f8b0db42b121cbba87a06d5a328"
     },
     {
       "mode": "644",
@@ -1854,7 +1854,7 @@
     {
       "mode": "644",
       "path": "scripts/test-python-runtime-platform-matrix.py",
-      "sha256": "16a2df09df205bab99a1a47bb538c334093ee8a09cde8f497a245699f73ff96e"
+      "sha256": "0c8f845e7cb888fd157f4e125ea52eeeeb6ffe44ca3fe8ffadbd811771181e1c"
     },
     {
       "mode": "755",
@@ -2104,12 +2104,12 @@
     {
       "mode": "755",
       "path": "scripts/verify-publication-cohort.py",
-      "sha256": "ca8798ee81d9fa139dfd04546343fee43db68d42e0aa0e50d6ca0d289c5387ac"
+      "sha256": "634a2172b1544beac9dff3058c1535f3a9fd17c2af12d685c458464b261433f6"
     },
     {
       "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "fd5c8afd68d89d9e0d4ea2cb90473d193137f517042823976939808b2df6a9d4"
+      "sha256": "bf1eaec2842698794b4714aa9f866fd6b29ea465380fcd223389b6701d19be6a"
     },
     {
       "mode": "755",
@@ -2169,7 +2169,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-python-runtime.sh",
-      "sha256": "8172cc572e62b8545ac378ab3bbe67d4ea213df632593fc34586a6fed828af82"
+      "sha256": "61f8a2e9fb166a6ea2c8c5bb1c88ce9b574f7c6086fd9fbd4cbeaa70ced79910"
     },
     {
       "mode": "644",
@@ -2179,7 +2179,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-release-artifacts.sh",
-      "sha256": "3354755f9cfb5944bc7deca8861ccea4a71a8b5895688e7c9a558f4753d49773"
+      "sha256": "baa374facc6c1d7d217831dda84467efe167fba78ceb837f1227c8a74a87b3e7"
     },
     {
       "mode": "644",
@@ -2204,12 +2204,12 @@
     {
       "mode": "755",
       "path": "scripts/verify-version-policy.py",
-      "sha256": "76479d399d22c7e9f4872f6ab86f271fcf6e205d9cecd105aa590323d68d8056"
+      "sha256": "e93549ca53d5cba79ffbbfd0e7ab0f4c4962433e617e165ef62e7db8d2e9adda"
     },
     {
       "mode": "755",
       "path": "scripts/verify-worker-container-release.py",
-      "sha256": "a34349c9427f7a234074bd4128a803094b0aabbbe35375218e6eb6bf2c1fbe72"
+      "sha256": "770482d9d662fe22277f615b3ed334d06ae29bbafd14c6e71ad24574b3a7ba4f"
     },
     {
       "mode": "755",
@@ -2494,7 +2494,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
-      "sha256": "66935e20305c5cf73204430aab10c988c6075d461d8fdb4e9fd49807cc2946ff"
+      "sha256": "af45d09c426443afb608129aaf725e2c4ba94c7c1895cac53e1717ac9826b240"
     },
     {
       "mode": "644",
@@ -2654,7 +2654,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Cli/packages.lock.json",
-      "sha256": "3991178db439c4b9ba403b70bcf00347325187f158f70fc817d674b37884cc21"
+      "sha256": "f3155e4899e67f2cf5c4ac3e7f863963995e4dc5d66f4851a854f77d7fbf7cdb"
     },
     {
       "mode": "644",
@@ -2674,17 +2674,17 @@
     {
       "mode": "644",
       "path": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/README.md",
-      "sha256": "1894e7eaefeeed28059e772d023b83e865e74022b7b8cc3ec5e1b498a2702b68"
+      "sha256": "91cbf12d58b7a0978dd489f89084f27797f42e59059c57e55f461af752bfa87d"
     },
     {
       "mode": "644",
       "path": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/package-lock.json",
-      "sha256": "38b91fb49ea718924200b6ffb9752d88cb25a3ab6c19b194011c1b4908afe1a0"
+      "sha256": "ee0f7405b91d512a093ae5ee26674b6ca0aa7f3e5ed0ff62eb537c3574df1d21"
     },
     {
       "mode": "644",
       "path": "src/Vyral.Cloudflare/WorkerR2GenerationProjection/package.json",
-      "sha256": "d6756d50f171874e26043473fae1dfc64d24b4f07a18a0aacd8c9e19c4abd1cc"
+      "sha256": "76367a6d69c996e003b76a24cb4b50744b2f16b170bea5bb7f32b60f08d94d86"
     },
     {
       "mode": "644",
@@ -2704,7 +2704,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Cloudflare/packages.lock.json",
-      "sha256": "b0a91fd0cc0673e221c89460bdcf711681dd61a4f4f43736cf4fc2ea35467eef"
+      "sha256": "2e80274de652461e08e49aaef17e46c10638d493c5708ebe52d9c5ea2454fd35"
     },
     {
       "mode": "644",
@@ -3259,7 +3259,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Google/packages.lock.json",
-      "sha256": "dc10be09119126aacf813ce7a38fd429128160d11ed01c2bd2e6ccaa90b4e39d"
+      "sha256": "9c6213b499979f6d6844ebdcdfc67185f3140665ce0fa519309d80cb22a8899b"
     },
     {
       "mode": "644",
@@ -3279,7 +3279,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.HostedWorker/packages.lock.json",
-      "sha256": "4edc8250d6bdc090820d6d2321904ecf24bc550ecb46d0c61de5f3a60e0f2575"
+      "sha256": "f206e5763922380edf8fa46f759ee139dd5fe8d9103e276067d421add1c5bb6a"
     },
     {
       "mode": "644",
@@ -3394,7 +3394,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Local/Vyral.Local.csproj",
-      "sha256": "24481df5fc3c139e89fa140ba4d263c07fbeba3bd9c80bd57bf0b70a0c5ca96e"
+      "sha256": "f0d8b8bed6bb68b4a869c629c464cd74772d792a249a41ba164834383a50c6b7"
     },
     {
       "mode": "644",
@@ -3899,7 +3899,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Onnx/packages.lock.json",
-      "sha256": "0f1e47e341ac8c27f14f4cf83d57a5ef7141625986f90e52e45d9d8515d926a9"
+      "sha256": "ede86ab921fa3b7bbd5f7488a2dbcdd9af2b1de833e2b6027296be30b1f57646"
     },
     {
       "mode": "644",
@@ -4104,7 +4104,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Server/packages.lock.json",
-      "sha256": "e603ed4c821a2ac546fb9b6830865c6ba5371a63c5052ff9284adc4a3e9148db"
+      "sha256": "706a4c3ea5aa2694d733087e4b8d5d5104f9c4b0cfd2b59d0405d314fe9fc0c3"
     },
     {
       "mode": "644",
@@ -4169,7 +4169,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Aws/packages.lock.json",
-      "sha256": "e3c5dd61f01fe3486e99fc356f692dc86dabdd35b707bed4c87c73062ad4b5d1"
+      "sha256": "fe83326917c501ef2043a4e273d2485a6460fd008217006bda35e08a891bf62e"
     },
     {
       "mode": "644",
@@ -4249,7 +4249,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Azure/packages.lock.json",
-      "sha256": "cbd7f2d4336d02f15f6fa84b3e3a2d70f1712d8aba25e543704bcd269f31d36b"
+      "sha256": "e03cf2aa36812f400a73265378d38f289a0fd29607ead5e21fe3c80a448d18ac"
     },
     {
       "mode": "644",
@@ -4274,7 +4274,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Cloudflare/packages.lock.json",
-      "sha256": "9b01f4990cf64675c813d1cb6cb646f6d3dcd7a42a390ca455fd2f22d181266f"
+      "sha256": "0655ca59fd37e0d1ecec7fb233be426896bb8a7d646079fa51e7d50b4b21b6f2"
     },
     {
       "mode": "644",
@@ -4429,7 +4429,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Conformance/packages.lock.json",
-      "sha256": "f1a88bd014758fa0dd08fbde29239e74d940fafe5225ab3d57d945b22bfb36e7"
+      "sha256": "beafca7649263e1be663fc05b5eb07e4e36b26760bed6d2a2f1e1d50e7ac703b"
     },
     {
       "mode": "644",
@@ -4509,7 +4509,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Google/packages.lock.json",
-      "sha256": "a02d5dffa4dbfb724f601cca4e665a026635807119af79795c002bab3e61c0d8"
+      "sha256": "2abdbca0f8ca1ad47ffab5f7af10c1beed4536fb2f01bf5e344f53570c75ef66"
     },
     {
       "mode": "644",
@@ -4704,7 +4704,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Local/packages.lock.json",
-      "sha256": "b07990383d5da8538c277e8cde7313c370a1b83f47df22c840be153a4437b5e5"
+      "sha256": "aaeb04e78f0574e92f023effaa623a7a2e2cf8bd6e955f9693e1a674e2c066c1"
     },
     {
       "mode": "644",
@@ -4734,7 +4734,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.MySql/packages.lock.json",
-      "sha256": "9f65d812d8045957e050fa8e295eb412864db04d0992fa8093680e399096c4de"
+      "sha256": "11397783d606a05ba57834bebeeb89e8371cc1c59e4286ab3f6fcfaf2fd0d0d2"
     },
     {
       "mode": "644",
@@ -4769,7 +4769,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Pgvector/packages.lock.json",
-      "sha256": "168a5ba67d62054d394fbab2dfbda157d215c3716c07f28034d7f44ed4240a22"
+      "sha256": "345026d8cb7cad07998d08ba7423aa3f30759ac6468202faf74df6955758318c"
     },
     {
       "mode": "644",
@@ -4829,7 +4829,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Providers/packages.lock.json",
-      "sha256": "9f5c0dd27aca7e0c49f9288cc5272dc5e11986a117452649327cafedad6ab560"
+      "sha256": "fd309e2d8ec595b2ac25cb767cb92b9cb4155f7b6183be2e62454035adf6b302"
     },
     {
       "mode": "644",
@@ -4844,7 +4844,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Temporal.WorkerHost/packages.lock.json",
-      "sha256": "f36749c126d8bce278a70a0cc9d3c7970f7cf03c2fcec0b8b37825fdc31340fd"
+      "sha256": "adf0ee10060f75dda5fec586b488fe47db6ac0f2fe5c31ae290c35f792be0418"
     },
     {
       "mode": "644",
@@ -4919,7 +4919,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Temporal/packages.lock.json",
-      "sha256": "0ddb328e6298c76f2527adea620fbeb6862d8196438eabf7db7bb58ed3a6edfe"
+      "sha256": "095253b0b0c0d9c23eca4cb1dba503b22fdd93a3e217520c2efb263b737aa27c"
     },
     {
       "mode": "644",
@@ -4934,7 +4934,7 @@
     {
       "mode": "644",
       "path": "tools/Vyral.Benchmarks/packages.lock.json",
-      "sha256": "e98864fd38f8639b5ca7a6b95de804e9fa25ef7d575ebf00e60057e28fbe7315"
+      "sha256": "dd66b4074152023f567bc80f05569b19bcee8f62e1efa9d4001e380cb9855568"
     },
     {
       "mode": "644",
@@ -4959,7 +4959,7 @@
     {
       "mode": "644",
       "path": "tools/Vyral.CanonicalStore.Benchmarks/packages.lock.json",
-      "sha256": "1afa9084f355e4f77eab0216d02ab468d1f02b013d63bd2617ef148c54da945d"
+      "sha256": "8562d2fa56b26401804b0c3fb79c710778928f107636edfe367f191ea0b1be84"
     },
     {
       "mode": "644",
@@ -4984,5 +4984,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "451e9cd0b0194f16e646a38328eb9a2bf7b4617796a29f56da3ebfee256ffe3d"
+  "treeSha256": "c1c6d7ca5645fb7595819461f7b54ec3a644e98c0e0f0d80cd310dd27cc63901"
 }
