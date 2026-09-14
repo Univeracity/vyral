@@ -15,7 +15,7 @@ EXPECTED = (
     (
         "nuget",
         "Vyral.Abstractions",
-        "0.3.1",
+        "0.3.2",
         "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
         "publish-nuget",
         "public",
@@ -23,7 +23,7 @@ EXPECTED = (
     (
         "nuget",
         "Vyral.Local",
-        "0.3.1",
+        "0.3.2",
         "src/Vyral.Local/Vyral.Local.csproj",
         "publish-nuget",
         "public",
@@ -31,7 +31,7 @@ EXPECTED = (
     (
         "pypi",
         "vyral",
-        "0.1.2",
+        "0.1.3",
         "runtimes/python/pyproject.toml",
         "publish-pypi",
         "prototype",
@@ -53,7 +53,7 @@ EXCLUDED = {
 }
 AUTHORIZATION = {
     "mode": "manual-protected-environment",
-    "releaseTag": "v0.3.1",
+    "releaseTag": "v0.3.2",
     "workflow": ".github/workflows/publish-first-cohort.yml",
     "requirements": (
         "a GitHub-verified signed annotated release tag that resolves to current main",

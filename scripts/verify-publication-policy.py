@@ -126,7 +126,7 @@ def main() -> int:
     for requirement in (
         "workflow_dispatch:",
         "release_tag:",
-        "v0.3.1",
+        "v0.3.2",
         "confirm:",
         "type: boolean",
         "GITHUB_TOKEN: ${{ github.token }}",
@@ -136,7 +136,7 @@ def main() -> int:
         "release-integrity.yml/runs?head_sha=",
         "name: publish-nuget",
         "name: publish-pypi",
-        "name: package-release-v0.3.1",
+        "name: package-release-v0.3.2",
         'SOURCE_DATE_EPOCH: "315532800"',
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
@@ -207,19 +207,19 @@ def main() -> int:
 
     for requirement in (
         "workflow_dispatch:",
-        "server-v0.3.3",
+        "server-v0.3.4",
         'test "$GITHUB_REF" = "refs/heads/main"',
         'git cat-file -t "refs/tags/${RELEASE_TAG}"',
         ".verification.verified == true",
         "release-integrity.yml/runs?head_sha=",
         "name: publish-container",
         "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
-        "VYRAL_IMAGE_VERSION=0.3.3",
-        "ghcr.io/univeracity/vyral-server:0.3.3",
+        "VYRAL_IMAGE_VERSION=0.3.4",
+        "ghcr.io/univeracity/vyral-server:0.3.4",
         "scripts/verify-hosted-worker-container.sh",
         "scripts/verify-mcp-container.sh",
         "aquasec/trivy:0.73.0@sha256:",
-        "server-container-server-v0.3.3",
+        "server-container-server-v0.3.4",
     ):
         if requirement not in worker_container_publisher:
             errors.append(

@@ -98,11 +98,11 @@ The exact currently authorized package cohort is recorded in
 The manual [`Publish package release`](../../.github/workflows/publish-first-cohort.yml)
 workflow is the only source path allowed to publish that cohort. Its filename is retained because
 NuGet and PyPI trusted-publisher identities include the workflow filename. It accepts only the
-reviewed `v0.3.1` package patch, and before packaging requires a GitHub-verified signed
+reviewed `v0.3.2` package patch, and before packaging requires a GitHub-verified signed
 annotated tag at current `main` plus a successful canonical Release Integrity
 push run for that commit. Each registry job uses its own protected environment
 and least-privilege identity. It has no automatic trigger. The patch publishes
-`Vyral.Abstractions` and `Vyral.Local` `0.3.1` plus the Python runtime `0.1.2`;
+`Vyral.Abstractions` and `Vyral.Local` `0.3.2` plus the Python runtime `0.1.3`;
 unchanged execution and JavaScript packages are not rebuilt or republished.
 
 The server's `0.3.1` security correction is a deliberately separate,
@@ -113,11 +113,11 @@ GitHub-verified signed `server-v0.3.1` tag at current `main` and a successful
 Release Integrity run for that commit. It does not republish the unaffected
 NuGet, PyPI, or npm artifacts.
 
-The server's current `0.3.3` delivery is likewise container-only:
+The server's current `0.3.4` delivery is likewise container-only:
 [`packaging/worker-container-release.json`](../../packaging/worker-container-release.json)
 and the manual [`Publish server container`](../../.github/workflows/publish-worker-container.yml)
-workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.3`. It requires a
-GitHub-verified signed `server-v0.3.3` tag at current `main`, successful canonical
+workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.4`. It requires a
+GitHub-verified signed `server-v0.3.4` tag at current `main`, successful canonical
 Release Integrity evidence containing the hosted-worker receipt, and a second
 MCP and hosted-worker qualification plus pinned Trivy scan against the exact published digest. The
 hosted-worker entrypoint is preview and initially hosts only
