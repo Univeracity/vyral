@@ -29,6 +29,7 @@ class ClassifyCiChangesTests(unittest.TestCase):
             "clients/javascript/src/index.ts": {"javascript"},
             "runtimes/python/src/vyral_runtime/runtime.py": {"python"},
             "clients/go/client.go": {"go"},
+            "src/Vyral.Cloudflare/WorkerR2GenerationProjection/package-lock.json": {"javascript", "python"},
         }
         for path, expected in cases.items():
             with self.subTest(path=path):

@@ -58,6 +58,11 @@ python3 scripts/verify-worker-r2-generation-projection.py \
   --output /tmp/vyral-worker-r2-proof.json
 ```
 
+The local harness pins Miniflare 4 and overrides its `sharp` dependency to `0.35.4`
+to address GHSA-rgj7-g3m4-5g8c. Miniflare 5 is an alpha with an incompatible
+constructor API; remove the override when a compatible upstream release includes
+the patched dependency. CI and the full release gate exercise both topologies.
+
 The harness proves exact candidate/revision/score parity, generation lifecycle and continuation
 behavior, content verification, authentication and body bounds, reader non-mutation guards, and
 fail-closed handling for missing, ambiguous, corrupt, or incomplete configuration and artifacts.

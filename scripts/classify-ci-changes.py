@@ -115,6 +115,10 @@ def classify(paths: Iterable[str], *, full: bool = False) -> dict[str, bool]:
             continue
         if path in CENTRAL_ROOTS or path.startswith(CENTRAL_PREFIXES):
             return _all_scopes()
+        if path.startswith("src/Vyral.Cloudflare/WorkerR2GenerationProjection/"):
+            result["javascript"] = True
+            result["python"] = True
+            continue
         if path in DOTNET_ROOTS or path.startswith(DOTNET_PREFIXES):
             result["dotnet"] = True
             result["csharp"] = True
