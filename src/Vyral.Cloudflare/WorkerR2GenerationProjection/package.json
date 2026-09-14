@@ -11,10 +11,13 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "miniflare": "5.20260910.0-alpha"
+    "miniflare": "4.20260730.0"
   },
   "overrides": {
-    "undici": "7.29.0"
+    "undici": "7.29.0",
+    "miniflare": {
+      "sharp": "0.35.4"
+    }
   },
   "allowScripts": {
     "workerd": false

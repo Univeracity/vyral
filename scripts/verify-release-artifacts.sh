@@ -452,6 +452,10 @@ jq -e -f scripts/validate-npm-pack-layout.jq \
   npm test
 )
 
+npm ci --ignore-scripts --prefix src/Vyral.Cloudflare/WorkerR2GenerationProjection
+python3 scripts/verify-worker-r2-generation-projection.py \
+  --output "$QUALIFICATION_DIR/worker-r2-projection.json"
+
 python3 -m build --outdir "$ARTIFACT_ROOT/python" clients/python
 scripts/verify-python-runtime.sh
 (

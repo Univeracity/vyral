@@ -154,6 +154,13 @@ jobs:
           npm run typecheck
           npm test
 
+      - name: Verify Worker/R2 generation projection
+        if: ${{ needs.changes.outputs.javascript == 'true' }}
+        run: |
+          python3 -m pip install --disable-pip-version-check jsonschema==4.23.0
+          npm ci --ignore-scripts --prefix src/Vyral.Cloudflare/WorkerR2GenerationProjection
+          python3 scripts/verify-worker-r2-generation-projection.py --output artifacts/qualification/worker-r2-projection.json
+
       - name: Test and type-check Python client
         if: ${{ needs.changes.outputs.python == 'true' }}
         run: |
