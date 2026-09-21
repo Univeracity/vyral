@@ -181,7 +181,7 @@ def main() -> int:
         ".verification.verified == true",
         "release-integrity.yml/runs?head_sha=",
         "name: publish-container",
-        "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc",
         "VYRAL_IMAGE_VERSION=0.3.1",
         "ghcr.io/univeracity/vyral-server:0.3.1",
     ):
@@ -213,7 +213,7 @@ def main() -> int:
         ".verification.verified == true",
         "release-integrity.yml/runs?head_sha=",
         "name: publish-container",
-        "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+        "docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc",
         "VYRAL_IMAGE_VERSION=0.3.4",
         "ghcr.io/univeracity/vyral-server:0.3.4",
         "scripts/verify-hosted-worker-container.sh",
