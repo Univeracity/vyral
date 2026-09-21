@@ -42,7 +42,7 @@ extropic-torx = [
 ]
 dev = [
   "build>=1.2,<2",
-  "coverage==7.16.0",
+  "coverage==7.16.1",
   "jsonschema>=4.23,<5",
   "mypy>=1.18,<3"
 ]
