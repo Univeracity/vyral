@@ -2,8 +2,12 @@ using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Vyral.Abstractions.Interfaces;
+using Vyral.Abstractions.Models;
 using Vyral.Server;
 
 namespace Vyral.Tests.Local;
@@ -109,6 +113,51 @@ public sealed class ObjectAccessServerTests
             [new DevelopmentHeaderObjectIdentityAuthenticator()]));
     }
 
+    [Fact]
+    public void ObjectAccess_RejectsBackendListItemsOutsideTheAuthorizedScope()
+    {
+        var options = VyralObjectAccessOptions.FromConfiguration(
+            new ConfigurationBuilder().AddInMemoryCollection(Policies()).Build());
+        var access = new VyralObjectAccess(options,
+            new TestHostEnvironment { EnvironmentName = Environments.Development },
+            [new DevelopmentHeaderObjectIdentityAuthenticator()]);
+        var container = "publisure-masters";
+        var prefix = "tenant-a/song/";
+        access.ValidateListResult(container, prefix, new ObjectListResult
+        {
+            Items = [new ObjectInfo { Container = container, Key = "tenant-a/song/one.wav" }]
+        });
+        Assert.Throws<ObjectAccessDeniedException>(() => access.ValidateListResult(container, prefix,
+            new ObjectListResult { Items = [new ObjectInfo { Container = container, Key = "tenant-a/other.wav" }] }));
+        Assert.Throws<ObjectAccessDeniedException>(() => access.ValidateListResult(container, prefix,
+            new ObjectListResult { Items = [new ObjectInfo { Container = container, Key = "tenant-b/song/one.wav" }] }));
+        Assert.Throws<ObjectAccessDeniedException>(() => access.ValidateListResult(container, prefix,
+            new ObjectListResult { Items = [new ObjectInfo { Container = "other-container", Key = "tenant-a/song/one.wav" }] }));
+    }
+
+    [Fact]
+    public async Task ObjectRoutes_DoNotReturnOutOfScopeBackendResults()
+    {
+        var store = new OutOfScopeObjectStore();
+        await using var factory = CreateFactory(Policies(), store);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
+
+        var listResponse = await client.GetAsync("/objects/publisure-masters?prefix=tenant-a%2F&continuationToken=foreign-page");
+        Assert.Equal(HttpStatusCode.Forbidden, listResponse.StatusCode);
+        Assert.DoesNotContain("tenant-b", await listResponse.Content.ReadAsStringAsync());
+        Assert.Equal("tenant-a/", store.LastRequest?.Prefix);
+        Assert.Equal("foreign-page", store.LastRequest?.ContinuationToken);
+        var readResponse = await client.GetAsync("/objects/publisure-masters/tenant-a/song/one.wav");
+        Assert.Equal(HttpStatusCode.Forbidden, readResponse.StatusCode);
+        Assert.DoesNotContain("foreign", await readResponse.Content.ReadAsStringAsync());
+        Assert.Equal("tenant-a/song/one.wav", store.LastReadRequest?.Key);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PutAsync("/objects/publisure-masters/tenant-a/song/one.wav",
+                new StringContent("data"))).StatusCode);
+        Assert.Equal("tenant-a/song/one.wav", store.LastWriteRequest?.Key);
+    }
+
     [Theory]
     [InlineData("tenant-a", "segment boundary")]
     [InlineData("tenant-a/../tenant-b/", "traversal")]
@@ -133,7 +182,7 @@ public sealed class ObjectAccessServerTests
         ["Server:ObjectAccess:IdentityPolicies:0:AllowedOperations:3"] = ObjectAccessOperations.Delete
     };
 
-    private static WebApplicationFactory<Program> CreateFactory(Dictionary<string, string?> configuration)
+    private static WebApplicationFactory<Program> CreateFactory(Dictionary<string, string?> configuration, IObjectStore? objectStore = null)
     {
         var root = Path.Combine(Path.GetTempPath(), $"vyral-object-access-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
@@ -144,7 +193,45 @@ public sealed class ObjectAccessServerTests
             builder.UseSetting("ObjectsPath", Path.Combine(root, "objects"));
             foreach (var (key, value) in configuration) builder.UseSetting(key, value);
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(configuration));
+            if (objectStore is not null)
+                builder.ConfigureTestServices(services => services.AddSingleton(objectStore));
         });
+    }
+
+    private sealed class OutOfScopeObjectStore : IObjectStore
+    {
+        public ObjectListRequest? LastRequest { get; private set; }
+        public ObjectReadRequest? LastReadRequest { get; private set; }
+        public ObjectWriteRequest? LastWriteRequest { get; private set; }
+
+        public Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
+        {
+            LastRequest = request;
+            return Task.FromResult(new ObjectListResult
+            {
+                Items = [new ObjectInfo { Container = request.Container, Key = "tenant-b/secret.wav" }],
+                ContinuationToken = "another-page"
+            });
+        }
+
+        public Task<ObjectInfo> PutObjectAsync(ObjectWriteRequest request, CancellationToken ct = default)
+        {
+            LastWriteRequest = request;
+            return Task.FromResult(new ObjectInfo { Container = request.Container, Key = "tenant-b/secret.wav" });
+        }
+
+        public Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
+        {
+            LastReadRequest = request;
+            return Task.FromResult<ObjectResult?>(new ObjectResult
+            {
+                Container = request.Container,
+                Key = "tenant-b/secret.wav",
+                Content = new MemoryStream(Encoding.UTF8.GetBytes("foreign"))
+            });
+        }
+        public Task DeleteObjectAsync(ObjectDeleteRequest request, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class TestHostEnvironment : IHostEnvironment

@@ -14,6 +14,9 @@ boundary: `tenant-a/` permits `tenant-a/song.wav` but never `tenant-aa/song.wav`
 Listing requires a supplied prefix inside a permitted prefix; a container-root
 list is denied. The explicit `*` prefix grants the whole container and is
 intended only for trusted administrative workloads. It must appear alone.
+Returned list entries are checked against the requested container and prefix
+before any metadata is sent to the caller, including continuation pages.
+Read and write responses are also checked against the requested object key.
 
 For example, one service account can access one tenant's masters:
 

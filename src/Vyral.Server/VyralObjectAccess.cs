@@ -45,6 +45,13 @@ public sealed class VyralObjectAccess
         return normalized;
     }
 
+    public void ValidateObjectResult(string container, string key, ObjectInfo? result)
+    {
+        if (Enabled && result is not null &&
+            (result.Container != container || result.Key != key))
+            throw new ObjectAccessDeniedException("The object store returned an object outside the authorized key.");
+    }
+
     public async Task<string?> AuthorizeListAsync(HttpContext context, string container, string? prefix,
         CancellationToken ct = default)
     {
@@ -53,6 +60,18 @@ public sealed class VyralObjectAccess
         if (Enabled && !await IsAllowedAsync(context, container, normalized, ObjectAccessOperations.List, ct))
             throw new ObjectAccessDeniedException("The verified workload identity is not allowed to list this object prefix.");
         return normalized;
+    }
+
+    /// <summary>
+    /// A provider continuation token may not be scoped to the requested prefix.
+    /// Never return unexpected object metadata to the caller.
+    /// </summary>
+    public void ValidateListResult(string container, string? prefix, ObjectListResult result)
+    {
+        if (!Enabled) return;
+        if (result.Items.Any(item => item.Container != container ||
+            (prefix is not null && !item.Key.StartsWith(prefix, StringComparison.Ordinal))))
+            throw new ObjectAccessDeniedException("The object store returned keys outside the authorized list scope.");
     }
 
     private async Task<bool> IsAllowedAsync(HttpContext context, string container, string? keyOrPrefix,

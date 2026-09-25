@@ -1542,6 +1542,7 @@ app.MapPut("/objects/{container}/{**key}", async (string container, string key, 
         IfMatch = EmptyToNull(request.Headers["If-Match"].ToString()),
         IfNoneMatch = EmptyToNull(request.Headers["If-None-Match"].ToString())
     });
+    objectAccess.ValidateObjectResult(container, key, result);
     return Results.Ok(result);
 });
 
@@ -1555,6 +1556,7 @@ app.MapGet("/objects/{container}", async (string container, string? prefix, int?
         Limit = limit,
         ContinuationToken = continuationToken
     });
+    objectAccess.ValidateListResult(container, prefix, result);
     return Results.Ok(result);
 });
 
@@ -1563,6 +1565,15 @@ app.MapGet("/objects/{container}/{**key}", async (string container, string key, 
     key = await objectAccess.AuthorizeKeyAsync(response.HttpContext, container, key, ObjectAccessOperations.Read, ct);
     var result = await objects.GetObjectAsync(new ObjectReadRequest { Container = container, Key = key });
     if (result == null) return Results.NotFound();
+    try
+    {
+        objectAccess.ValidateObjectResult(container, key, result);
+    }
+    catch
+    {
+        await result.Content.DisposeAsync();
+        throw;
+    }
 
     response.Headers["ETag"] = result.Etag;
     response.Headers["X-Vyral-Content-Hash"] = result.ContentHash;
