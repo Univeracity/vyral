@@ -74,6 +74,7 @@ var providerTargetRegistry = CreateProviderTargetRegistry(builder.Configuration)
 var accessOptions = ServerAccessOptions.FromConfiguration(builder.Configuration);
 var executionAccessOptions = VyralExecutionAccessOptions.FromConfiguration(builder.Configuration);
 var canonicalAccessOptions = canonicalStoreOptions.Enabled ? VyralCanonicalAccessOptions.FromConfiguration(builder.Configuration) : null;
+var objectAccessOptions = VyralObjectAccessOptions.FromConfiguration(builder.Configuration);
 var canonicalRateLimitOptions = canonicalStoreOptions.Enabled ? CanonicalRateLimitOptions.FromConfiguration(builder.Configuration) : null;
 var executionAccess = new VyralExecutionAccess(
     executionAccessOptions,
@@ -83,6 +84,10 @@ var canonicalAccess = canonicalAccessOptions is null ? null : new VyralCanonical
     canonicalAccessOptions,
     builder.Environment,
     CreateCanonicalIdentityAuthenticators(builder.Configuration));
+var objectAccess = new VyralObjectAccess(
+    objectAccessOptions,
+    builder.Environment,
+    CreateObjectIdentityAuthenticators(builder.Configuration));
 ValidateExecutionAccessRuntimePolicies(builder.Configuration, executionAccessOptions);
 var providerRunGuard = new ProviderRunGuard(ProviderRunGuardOptions.FromConfiguration(builder.Configuration));
 var providerMeteringOptions = ProviderMeteringOptions.FromConfiguration(builder.Configuration);
@@ -192,6 +197,8 @@ builder.Services.AddSingleton(providerTargetRegistry);
 builder.Services.AddSingleton(accessOptions);
 builder.Services.AddSingleton(executionAccessOptions);
 builder.Services.AddSingleton(executionAccess);
+builder.Services.AddSingleton(objectAccessOptions);
+builder.Services.AddSingleton(objectAccess);
 builder.Services.AddSingleton<IVyralMcpExecutionAuthorizer>(executionAccess);
 builder.Services.AddSingleton(mcpRequestContextAccessor);
 if (canonicalAccessOptions is not null && canonicalAccess is not null)
@@ -1522,8 +1529,9 @@ app.MapPost("/collections/{collection}/search", async (string collection, QueryE
     }
 });
 
-app.MapPut("/objects/{container}/{**key}", async (string container, string key, HttpRequest request, IObjectStore objects) =>
+app.MapPut("/objects/{container}/{**key}", async (string container, string key, HttpRequest request, IObjectStore objects, VyralObjectAccess objectAccess, CancellationToken ct) =>
 {
+    key = await objectAccess.AuthorizeKeyAsync(request.HttpContext, container, key, ObjectAccessOperations.Write, ct);
     var result = await objects.PutObjectAsync(new ObjectWriteRequest
     {
         Container = container,
@@ -1537,8 +1545,9 @@ app.MapPut("/objects/{container}/{**key}", async (string container, string key, 
     return Results.Ok(result);
 });
 
-app.MapGet("/objects/{container}", async (string container, string? prefix, int? limit, string? continuationToken, IObjectStore objects) =>
+app.MapGet("/objects/{container}", async (string container, string? prefix, int? limit, string? continuationToken, HttpContext context, IObjectStore objects, VyralObjectAccess objectAccess, CancellationToken ct) =>
 {
+    prefix = await objectAccess.AuthorizeListAsync(context, container, prefix, ct);
     var result = await objects.ListObjectsAsync(new ObjectListRequest
     {
         Container = container,
@@ -1549,8 +1558,9 @@ app.MapGet("/objects/{container}", async (string container, string? prefix, int?
     return Results.Ok(result);
 });
 
-app.MapGet("/objects/{container}/{**key}", async (string container, string key, HttpResponse response, IObjectStore objects) =>
+app.MapGet("/objects/{container}/{**key}", async (string container, string key, HttpResponse response, IObjectStore objects, VyralObjectAccess objectAccess, CancellationToken ct) =>
 {
+    key = await objectAccess.AuthorizeKeyAsync(response.HttpContext, container, key, ObjectAccessOperations.Read, ct);
     var result = await objects.GetObjectAsync(new ObjectReadRequest { Container = container, Key = key });
     if (result == null) return Results.NotFound();
 
@@ -1564,8 +1574,9 @@ app.MapGet("/objects/{container}/{**key}", async (string container, string key, 
     return Results.Stream(result.Content, result.ContentType ?? "application/octet-stream");
 });
 
-app.MapDelete("/objects/{container}/{**key}", async (string container, string key, HttpRequest request, IObjectStore objects) =>
+app.MapDelete("/objects/{container}/{**key}", async (string container, string key, HttpRequest request, IObjectStore objects, VyralObjectAccess objectAccess, CancellationToken ct) =>
 {
+    key = await objectAccess.AuthorizeKeyAsync(request.HttpContext, container, key, ObjectAccessOperations.Delete, ct);
     await objects.DeleteObjectAsync(new ObjectDeleteRequest
     {
         Container = container,
@@ -3695,6 +3706,30 @@ static IReadOnlyList<ICanonicalIdentityAuthenticator> CreateCanonicalIdentityAut
     return authenticators;
 }
 
+static IReadOnlyList<IObjectIdentityAuthenticator> CreateObjectIdentityAuthenticators(IConfiguration configuration)
+{
+    var authenticators = new List<IObjectIdentityAuthenticator>
+    {
+        new DevelopmentHeaderObjectIdentityAuthenticator(),
+        new GoogleOidcObjectIdentityAuthenticator()
+    };
+    var configuredType = configuration["Server:ObjectAccess:AuthenticatorType"]?.Trim();
+    if (string.IsNullOrWhiteSpace(configuredType)) return authenticators;
+
+    var authenticatorType = Type.GetType(configuredType, throwOnError: false) ??
+        AppDomain.CurrentDomain.GetAssemblies()
+            .Select(assembly => assembly.GetType(configuredType, throwOnError: false, ignoreCase: false))
+            .FirstOrDefault(type => type is not null);
+    if (authenticatorType is null || !typeof(IObjectIdentityAuthenticator).IsAssignableFrom(authenticatorType) || authenticatorType.IsAbstract)
+        throw new InvalidOperationException($"Object identity authenticator type '{configuredType}' must resolve to a concrete {nameof(IObjectIdentityAuthenticator)}.");
+    if (Activator.CreateInstance(authenticatorType) is not IObjectIdentityAuthenticator authenticator)
+        throw new InvalidOperationException($"Object identity authenticator type '{configuredType}' could not be constructed. Authenticators require a public parameterless constructor.");
+
+    authenticators.RemoveAll(existing => string.Equals(existing.AuthenticationMode, authenticator.AuthenticationMode, StringComparison.Ordinal));
+    authenticators.Add(authenticator);
+    return authenticators;
+}
+
 static void ValidateExecutionAccessRuntimePolicies(IConfiguration configuration, VyralExecutionAccessOptions accessOptions)
 {
     if (accessOptions.IdentityPolicies.Count == 0) return;
@@ -3984,6 +4019,7 @@ static int GetStatusCode(Exception? exception)
     {
         ExecutionAccessDeniedException => StatusCodes.Status403Forbidden,
         CanonicalAccessDeniedException => StatusCodes.Status403Forbidden,
+        ObjectAccessDeniedException => StatusCodes.Status403Forbidden,
         InvalidOperationException ex when IsMissingCollectionError(ex) => StatusCodes.Status404NotFound,
         InvalidOperationException ex when ex.Message.Contains("precondition failed", StringComparison.OrdinalIgnoreCase) => StatusCodes.Status412PreconditionFailed,
         JsonException => StatusCodes.Status400BadRequest,

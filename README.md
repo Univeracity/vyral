@@ -140,6 +140,9 @@ paths; other capabilities carry their own boundary below. See the
 | Local SQLite, AWS, Azure, and Google execution | Local reference path; AWS, Azure, and Google execution are live qualified |
 | Temporal, pgvector, and Cloudflare adapters | Preview or prototype; live qualification is opt-in |
 
+Shared services can scope object HTTP access by workload identity, container,
+key prefix, and operation. See [object access policies](docs/concepts/object-access.md).
+
 Package availability does not itself establish a service-level commitment. The
 [qualification report](qualification/adapter-qualification.json) is the source
 of truth for recorded evidence.
