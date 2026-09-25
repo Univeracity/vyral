@@ -40,6 +40,7 @@ docs/assets/*
 docs/concepts/*
 !docs/concepts/canonical-store.md
 !docs/concepts/generation-bound-retrieval.md
+!docs/concepts/object-access.md
 !docs/concepts/ai-metering.md
 !docs/contributing/
 docs/contributing/*
