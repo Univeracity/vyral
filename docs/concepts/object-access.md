@@ -24,7 +24,7 @@ For example, one service account can access one tenant's masters:
 Server:ObjectAccess:AuthenticationMode=google-oidc
 Server:ObjectAccess:AllowedAudiences:0=https://vyral.example.com
 Server:ObjectAccess:IdentityPolicies:0:Principal=app@your-gcp-project.iam.gserviceaccount.com
-Server:ObjectAccess:IdentityPolicies:0:Container=publisure-masters
+Server:ObjectAccess:IdentityPolicies:0:Container=media-masters
 Server:ObjectAccess:IdentityPolicies:0:AllowedKeyPrefixes:0=tenant-a/
 Server:ObjectAccess:IdentityPolicies:0:AllowedOperations:0=read
 Server:ObjectAccess:IdentityPolicies:0:AllowedOperations:1=list

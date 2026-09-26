@@ -21,22 +21,22 @@ public sealed class ObjectAccessServerTests
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
 
-        Assert.Equal(HttpStatusCode.OK, (await client.PutAsync("/objects/publisure-masters/tenant-a/song/one.wav",
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsync("/objects/media-masters/tenant-a/song/one.wav",
             new StringContent("owner audio", Encoding.UTF8, "audio/wav"))).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/objects/publisure-masters/tenant-a/song/one.wav")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/objects/publisure-masters?prefix=tenant-a%2Fsong%2F")).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("/objects/publisure-masters/tenant-a/song/one.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/objects/media-masters/tenant-a/song/one.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/objects/media-masters?prefix=tenant-a%2Fsong%2F")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync("/objects/media-masters/tenant-a/song/one.wav")).StatusCode);
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsync("/objects/publisure-masters/tenant-b/song/one.wav",
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsync("/objects/media-masters/tenant-b/song/one.wav",
             new StringContent("foreign"))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters/tenant-b/song/one.wav")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync("/objects/publisure-masters/tenant-b/song/one.wav")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters?prefix=tenant-b%2F")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters?prefix=tenant-a")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters/tenant-aa/song/one.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters/tenant-b/song/one.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync("/objects/media-masters/tenant-b/song/one.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters?prefix=tenant-b%2F")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters?prefix=tenant-a")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters/tenant-aa/song/one.wav")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/other-container/tenant-a/song/one.wav")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await factory.CreateClient().GetAsync("/objects/publisure-masters/tenant-a/song/one.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await factory.CreateClient().GetAsync("/objects/media-masters/tenant-a/song/one.wav")).StatusCode);
     }
 
     [Fact]
@@ -50,10 +50,10 @@ public sealed class ObjectAccessServerTests
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/objects/publisure-masters/tenant-a/missing.wav")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters?prefix=tenant-a%2F")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsync("/objects/publisure-masters/tenant-a/new.wav", new StringContent("data"))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync("/objects/publisure-masters/tenant-a/new.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/objects/media-masters/tenant-a/missing.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters?prefix=tenant-a%2F")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsync("/objects/media-masters/tenant-a/new.wav", new StringContent("data"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync("/objects/media-masters/tenant-a/new.wav")).StatusCode);
     }
 
     [Fact]
@@ -66,11 +66,11 @@ public sealed class ObjectAccessServerTests
         client.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
 
         Assert.Equal(HttpStatusCode.NotFound,
-            (await client.GetAsync("/objects/publisure-masters/email%3Aowner%40example.test/missing.wav")).StatusCode);
+            (await client.GetAsync("/objects/media-masters/email%3Aowner%40example.test/missing.wav")).StatusCode);
         Assert.Equal(HttpStatusCode.OK,
-            (await client.GetAsync("/objects/publisure-masters?prefix=email%3Aowner%40example.test%2F")).StatusCode);
+            (await client.GetAsync("/objects/media-masters?prefix=email%3Aowner%40example.test%2F")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
-            (await client.GetAsync("/objects/publisure-masters/email%3Aother%40example.test/missing.wav")).StatusCode);
+            (await client.GetAsync("/objects/media-masters/email%3Aother%40example.test/missing.wav")).StatusCode);
     }
 
     [Fact]
@@ -81,14 +81,14 @@ public sealed class ObjectAccessServerTests
         await using var factory = CreateFactory(policies);
         var identityOnly = factory.CreateClient();
         identityOnly.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
-        Assert.Equal(HttpStatusCode.Unauthorized, (await identityOnly.GetAsync("/objects/publisure-masters/tenant-a/missing.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await identityOnly.GetAsync("/objects/media-masters/tenant-a/missing.wav")).StatusCode);
 
         var apiKeyOnly = factory.CreateClient();
         apiKeyOnly.DefaultRequestHeaders.Add("X-Vyral-Api-Key", "host-secret");
-        Assert.Equal(HttpStatusCode.Forbidden, (await apiKeyOnly.GetAsync("/objects/publisure-masters/tenant-a/missing.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await apiKeyOnly.GetAsync("/objects/media-masters/tenant-a/missing.wav")).StatusCode);
 
         identityOnly.DefaultRequestHeaders.Add("X-Vyral-Api-Key", "host-secret");
-        Assert.Equal(HttpStatusCode.NotFound, (await identityOnly.GetAsync("/objects/publisure-masters/tenant-a/missing.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await identityOnly.GetAsync("/objects/media-masters/tenant-a/missing.wav")).StatusCode);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class ObjectAccessServerTests
         await using var factory = CreateFactory(policies);
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Serverless-Authorization", "Bearer not-a-jwt");
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/publisure-masters/tenant-a/missing.wav")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/objects/media-masters/tenant-a/missing.wav")).StatusCode);
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public sealed class ObjectAccessServerTests
         var access = new VyralObjectAccess(options,
             new TestHostEnvironment { EnvironmentName = Environments.Development },
             [new DevelopmentHeaderObjectIdentityAuthenticator()]);
-        var container = "publisure-masters";
+        var container = "media-masters";
         var prefix = "tenant-a/song/";
         access.ValidateListResult(container, prefix, new ObjectListResult
         {
@@ -143,17 +143,17 @@ public sealed class ObjectAccessServerTests
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
 
-        var listResponse = await client.GetAsync("/objects/publisure-masters?prefix=tenant-a%2F&continuationToken=foreign-page");
+        var listResponse = await client.GetAsync("/objects/media-masters?prefix=tenant-a%2F&continuationToken=foreign-page");
         Assert.Equal(HttpStatusCode.Forbidden, listResponse.StatusCode);
         Assert.DoesNotContain("tenant-b", await listResponse.Content.ReadAsStringAsync());
         Assert.Equal("tenant-a/", store.LastRequest?.Prefix);
         Assert.Equal("foreign-page", store.LastRequest?.ContinuationToken);
-        var readResponse = await client.GetAsync("/objects/publisure-masters/tenant-a/song/one.wav");
+        var readResponse = await client.GetAsync("/objects/media-masters/tenant-a/song/one.wav");
         Assert.Equal(HttpStatusCode.Forbidden, readResponse.StatusCode);
         Assert.DoesNotContain("foreign", await readResponse.Content.ReadAsStringAsync());
         Assert.Equal("tenant-a/song/one.wav", store.LastReadRequest?.Key);
         Assert.Equal(HttpStatusCode.Forbidden,
-            (await client.PutAsync("/objects/publisure-masters/tenant-a/song/one.wav",
+            (await client.PutAsync("/objects/media-masters/tenant-a/song/one.wav",
                 new StringContent("data"))).StatusCode);
         Assert.Equal("tenant-a/song/one.wav", store.LastWriteRequest?.Key);
     }
@@ -174,7 +174,7 @@ public sealed class ObjectAccessServerTests
     {
         ["Server:ObjectAccess:AuthenticationMode"] = ObjectAuthenticationModes.DevelopmentHeader,
         ["Server:ObjectAccess:IdentityPolicies:0:Principal"] = "owner@tests.example",
-        ["Server:ObjectAccess:IdentityPolicies:0:Container"] = "publisure-masters",
+        ["Server:ObjectAccess:IdentityPolicies:0:Container"] = "media-masters",
         ["Server:ObjectAccess:IdentityPolicies:0:AllowedKeyPrefixes:0"] = "tenant-a/",
         ["Server:ObjectAccess:IdentityPolicies:0:AllowedOperations:0"] = ObjectAccessOperations.Read,
         ["Server:ObjectAccess:IdentityPolicies:0:AllowedOperations:1"] = ObjectAccessOperations.List,
