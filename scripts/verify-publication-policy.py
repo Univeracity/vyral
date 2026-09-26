@@ -207,19 +207,19 @@ def main() -> int:
 
     for requirement in (
         "workflow_dispatch:",
-        "server-v0.3.4",
+        "server-v0.3.5",
         'test "$GITHUB_REF" = "refs/heads/main"',
         'git cat-file -t "refs/tags/${RELEASE_TAG}"',
         ".verification.verified == true",
         "release-integrity.yml/runs?head_sha=",
         "name: publish-container",
         "docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc",
-        "VYRAL_IMAGE_VERSION=0.3.4",
-        "ghcr.io/univeracity/vyral-server:0.3.4",
+        "VYRAL_IMAGE_VERSION=0.3.5",
+        "ghcr.io/univeracity/vyral-server:0.3.5",
         "scripts/verify-hosted-worker-container.sh",
         "scripts/verify-mcp-container.sh",
         "aquasec/trivy:0.73.0@sha256:",
-        "server-container-server-v0.3.4",
+        "server-container-server-v0.3.5",
     ):
         if requirement not in worker_container_publisher:
             errors.append(
