@@ -40,6 +40,25 @@ public sealed class ObjectAccessServerTests
     }
 
     [Fact]
+    public async Task ObjectUpload_AuthorizesBeforeApplyingConfiguredSizeLimit()
+    {
+        var policies = Policies();
+        policies["Server:ObjectUploadMaxBytes"] = "4";
+        await using var factory = CreateFactory(policies);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Vyral-Development-Identity", "owner@tests.example");
+
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PutAsync("/objects/media-masters/tenant-b/large.wav", new ByteArrayContent(new byte[5]))).StatusCode);
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge,
+            (await client.PutAsync("/objects/media-masters/tenant-a/large.wav", new ByteArrayContent(new byte[5]))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK,
+            (await client.PutAsync("/objects/media-masters/tenant-a/small.wav", new ByteArrayContent(new byte[4]))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync("/objects/media-masters/tenant-a/large.wav")).StatusCode);
+    }
+
+    [Fact]
     public async Task ObjectRoutes_DistinguishReadListWriteAndDelete()
     {
         var policies = Policies();

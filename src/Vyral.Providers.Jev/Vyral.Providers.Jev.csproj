@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Vyral.Embeddings.Onnx\Vyral.Embeddings.Onnx.csproj" />
     <ProjectReference Include="..\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
   </ItemGroup>
 

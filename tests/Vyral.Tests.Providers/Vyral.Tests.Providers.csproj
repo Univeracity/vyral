@@ -23,9 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Vyral.Tests.Conformance\Vyral.Tests.Conformance.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Cli\Vyral.Providers.Cli.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Jules\Vyral.Providers.Jules.csproj" />
+    <ProjectReference Include="..\..\src\Vyral.Providers.Jev\Vyral.Providers.Jev.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Local\Vyral.Providers.Local.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Onnx\Vyral.Providers.Onnx.csproj" />
   </ItemGroup>

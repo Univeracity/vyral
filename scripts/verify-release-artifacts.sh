@@ -46,6 +46,7 @@ readonly RELEASE_PROJECTS=(
   src/Vyral.Primitives/Vyral.Primitives.csproj
   src/Vyral.Providers.Abstractions/Vyral.Providers.Abstractions.csproj
   src/Vyral.Providers.Cli/Vyral.Providers.Cli.csproj
+  src/Vyral.Providers.Jev/Vyral.Providers.Jev.csproj
   src/Vyral.Providers.Jules/Vyral.Providers.Jules.csproj
   src/Vyral.Providers.Local/Vyral.Providers.Local.csproj
   src/Vyral.Providers.Onnx/Vyral.Providers.Onnx.csproj

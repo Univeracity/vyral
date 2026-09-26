@@ -636,6 +636,12 @@
           "Vyral.Providers.Abstractions": "[0.3.0, )"
         }
       },
+      "vyral.providers.jev": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Providers.Abstractions": "[0.3.0, )"
+        }
+      },
       "vyral.providers.jules": {
         "type": "Project",
         "dependencies": {

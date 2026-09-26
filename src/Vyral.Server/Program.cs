@@ -28,12 +28,16 @@ using Vyral.Mcp;
 using Vyral.Providers.Abstractions;
 using Vyral.Providers.Cli;
 using Vyral.Providers.Jules;
+using Vyral.Providers.Jev;
 using Vyral.Providers.Local;
 using Vyral.Providers.Onnx;
 using Vyral.Server;
 using CloudTasksClient = Google.Cloud.Tasks.V2.CloudTasksClient;
 
 var builder = WebApplication.CreateBuilder(args);
+var objectUploadMaxBytes = builder.Configuration.GetValue<long?>("Server:ObjectUploadMaxBytes") ?? 30_000_000;
+if (objectUploadMaxBytes is < 1 or > 1_073_741_824)
+    throw new InvalidOperationException("Server:ObjectUploadMaxBytes must be between 1 and 1073741824 bytes.");
 
 // Register services
 var startupOverall = LogStartupPhaseStarting("server.startup", $"environment={builder.Environment.EnvironmentName}");
@@ -1532,6 +1536,12 @@ app.MapPost("/collections/{collection}/search", async (string collection, QueryE
 app.MapPut("/objects/{container}/{**key}", async (string container, string key, HttpRequest request, IObjectStore objects, VyralObjectAccess objectAccess, CancellationToken ct) =>
 {
     key = await objectAccess.AuthorizeKeyAsync(request.HttpContext, container, key, ObjectAccessOperations.Write, ct);
+    // Audio and other large artifacts can opt into a higher streaming limit without
+    // widening JSON, CanonicalStore, or provider-request limits.
+    if (request.ContentLength > objectUploadMaxBytes)
+        return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge, detail: "Object exceeds the configured upload limit.");
+    var bodyLimit = request.HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
+    if (bodyLimit is { IsReadOnly: false }) bodyLimit.MaxRequestBodySize = objectUploadMaxBytes;
     var result = await objects.PutObjectAsync(new ObjectWriteRequest
     {
         Container = container,
@@ -4033,6 +4043,7 @@ static int GetStatusCode(Exception? exception)
         ObjectAccessDeniedException => StatusCodes.Status403Forbidden,
         InvalidOperationException ex when IsMissingCollectionError(ex) => StatusCodes.Status404NotFound,
         InvalidOperationException ex when ex.Message.Contains("precondition failed", StringComparison.OrdinalIgnoreCase) => StatusCodes.Status412PreconditionFailed,
+        BadHttpRequestException ex => ex.StatusCode,
         JsonException => StatusCodes.Status400BadRequest,
         ArgumentException => StatusCodes.Status400BadRequest,
         InvalidOperationException => StatusCodes.Status400BadRequest,
@@ -4392,7 +4403,9 @@ static ProviderTargetRegistry CreateProviderTargetRegistry(IConfiguration config
         new DeterministicAiProviderTarget(),
         new LocalTokenOverlapRerankerProviderTarget(),
         OnnxCrossEncoderRerankerProviderTargets.CreateCpu(GetOnnxRerankerProviderOptions(configuration, "Providers:OnnxReranker:Cpu")),
-        OnnxCrossEncoderRerankerProviderTargets.CreateGpu(GetOnnxRerankerProviderOptions(configuration, "Providers:OnnxReranker:Gpu"))
+        OnnxCrossEncoderRerankerProviderTargets.CreateGpu(GetOnnxRerankerProviderOptions(configuration, "Providers:OnnxReranker:Gpu")),
+        OnnxNliJudgeProviderTargets.CreateCpu(GetOnnxJudgeProviderOptions(configuration, "Providers:OnnxJudge:Cpu")),
+        OnnxNliJudgeProviderTargets.CreateGpu(GetOnnxJudgeProviderOptions(configuration, "Providers:OnnxJudge:Gpu"))
     };
 
     var enableLiveTargets = ParseOptionalBool(configuration["Providers:EnableLiveTargets"], "Providers:EnableLiveTargets") ?? false;
@@ -4430,7 +4443,40 @@ static ProviderTargetRegistry CreateProviderTargetRegistry(IConfiguration config
         RequirePlanApproval = ParseOptionalBool(configuration["Providers:Jules:RequirePlanApproval"], "Providers:Jules:RequirePlanApproval") ?? true
     }));
 
+    targets.Add(new JevProviderTarget(new JevProviderOptions
+    {
+        ApiKey = configuration["Providers:Jev:ApiKey"] ?? Environment.GetEnvironmentVariable("JEV_API_KEY"),
+        BaseUri = Uri.TryCreate(configuration["Providers:Jev:BaseUri"], UriKind.Absolute, out var jevBaseUri)
+            ? jevBaseUri
+            : new Uri("https://api.typesafe.ai/"),
+        ModelId = configuration["Providers:Jev:ModelId"] ?? "jev-1.13.0"
+    }));
+
     return new ProviderTargetRegistry(targets);
+}
+
+static OnnxNliJudgeProviderOptions GetOnnxJudgeProviderOptions(IConfiguration configuration, string section)
+{
+    return new OnnxNliJudgeProviderOptions
+    {
+        ProviderId = configuration[$"{section}:ProviderId"] ?? string.Empty,
+        DisplayName = configuration[$"{section}:DisplayName"] ?? string.Empty,
+        ModelId = configuration[$"{section}:ModelId"],
+        ModelPath = configuration[$"{section}:ModelPath"],
+        VocabPath = configuration[$"{section}:VocabPath"],
+        ExecutionProvider = configuration[$"{section}:ExecutionProvider"] ?? string.Empty,
+        MaxTokens = ParseOptionalInt(configuration[$"{section}:MaxTokens"], $"{section}:MaxTokens") ?? 0,
+        BatchSize = ParseOptionalInt(configuration[$"{section}:BatchSize"], $"{section}:BatchSize") ?? 0,
+        Lowercase = ParseOptionalBool(configuration[$"{section}:Lowercase"], $"{section}:Lowercase"),
+        OutputName = configuration[$"{section}:OutputName"],
+        EntailmentIndex = ParseOptionalZeroBasedInt(configuration[$"{section}:EntailmentIndex"], $"{section}:EntailmentIndex") ?? OnnxNliJudgeProviderTargets.DefaultEntailmentIndex,
+        IntraOpNumThreads = ParseOptionalInt(configuration[$"{section}:IntraOpNumThreads"], $"{section}:IntraOpNumThreads"),
+        InterOpNumThreads = ParseOptionalInt(configuration[$"{section}:InterOpNumThreads"], $"{section}:InterOpNumThreads"),
+        ExecutionMode = configuration[$"{section}:ExecutionMode"],
+        CudaDeviceId = ParseOptionalZeroBasedInt(configuration[$"{section}:CudaDeviceId"], $"{section}:CudaDeviceId"),
+        CudaMemoryLimitMb = ParseOptionalLong(configuration[$"{section}:CudaMemoryLimitMb"], $"{section}:CudaMemoryLimitMb"),
+        CalibrationPath = configuration[$"{section}:CalibrationPath"]
+    };
 }
 
 static OnnxCrossEncoderRerankerProviderOptions GetOnnxRerankerProviderOptions(IConfiguration configuration, string section)
