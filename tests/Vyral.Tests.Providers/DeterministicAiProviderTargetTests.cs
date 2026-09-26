@@ -20,6 +20,7 @@ public class DeterministicAiProviderTargetTests
         Assert.Contains(ProviderCapabilityIds.AiReview, provider.Capabilities.Select(c => c.Id));
         Assert.Contains(ProviderCapabilityIds.AiScaffold, provider.Capabilities.Select(c => c.Id));
         Assert.Contains(ProviderCapabilityIds.AiToolPlan, provider.Capabilities.Select(c => c.Id));
+        Assert.Contains(ProviderCapabilityIds.AiJudge, provider.Capabilities.Select(c => c.Id));
 
         var chatCapability = provider.Capabilities.Single(capability => capability.Id == ProviderCapabilityIds.AiChat);
         Assert.Contains(chatCapability.ModePolicies, policy => policy.Id == "advisory" && !policy.AllowNetwork);
@@ -206,6 +207,171 @@ public class DeterministicAiProviderTargetTests
         {
             Capability = ProviderCapabilityIds.AiExtract,
             Payload = new JsonObject()
+        });
+
+        Assert.Equal(ProviderRunStatus.Rejected, result.Status);
+        Assert.Equal(ProviderFailureClasses.Schema, result.FailureClass);
+    }
+
+    [Fact]
+    public async Task DeterministicProvider_JudgeChoiceReturnsNormalizedProbabilitiesAndStableChoice()
+    {
+        var provider = new DeterministicAiProviderTarget();
+        var request = new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Context = "records subject to a retention hold may be deleted after an authorized release",
+                Questions = new List<AiJudgeQuestion>
+                {
+                    new()
+                    {
+                        Id = "q1",
+                        Type = AiJudgeQuestionTypes.Choice,
+                        Prompt = "what topic does this describe",
+                        Options = new List<AiJudgeOption>
+                        {
+                            new() { Id = "retention", Label = "records retention" },
+                            new() { Id = "travel", Label = "travel reimbursement" }
+                        }
+                    }
+                }
+            })
+        };
+
+        var first = await provider.RunAsync(request);
+        var second = await provider.RunAsync(request);
+
+        Assert.Equal(ProviderRunStatus.Succeeded, first.Status);
+        Assert.Equal("deterministic", first.Output["validationStatus"]?.GetValue<string>());
+        var answer = first.Output["answers"]!.AsArray()[0]!;
+        Assert.Equal("q1", answer["questionId"]?.GetValue<string>());
+        Assert.False(answer["calibrated"]?.GetValue<bool>());
+        var probabilities = answer["probabilities"]!.AsObject();
+        var sum = probabilities["retention"]!.GetValue<double>() + probabilities["travel"]!.GetValue<double>();
+        Assert.InRange(sum, 0.999, 1.001);
+        Assert.Equal(answer["choice"]?.GetValue<string>(), second.Output["answers"]!.AsArray()[0]!["choice"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task DeterministicProvider_JudgeNoulReturnsProbabilityInUnitRange()
+    {
+        var provider = new DeterministicAiProviderTarget();
+
+        var result = await provider.RunAsync(new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Context = "the invoice total is $412.50",
+                Questions = new List<AiJudgeQuestion>
+                {
+                    new() { Id = "q1", Type = AiJudgeQuestionTypes.Noul, Prompt = "is this invoice over $400" }
+                }
+            })
+        });
+
+        Assert.Equal(ProviderRunStatus.Succeeded, result.Status);
+        var answer = result.Output["answers"]!.AsArray()[0]!;
+        var probability = answer["probability"]!.GetValue<double>();
+        Assert.InRange(probability, 0.0, 1.0);
+        Assert.Null(answer["choice"]);
+        Assert.False(answer["calibrated"]?.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task DeterministicProvider_JudgeScoreReturnsWeightedPositionAndLegend()
+    {
+        var provider = new DeterministicAiProviderTarget();
+        var request = new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Context = "the incident caused a two-hour outage affecting all customers",
+                Questions = new List<AiJudgeQuestion>
+                {
+                    new()
+                    {
+                        Id = "q1",
+                        Type = AiJudgeQuestionTypes.Score,
+                        Prompt = "rate the severity of this incident",
+                        Options = new List<AiJudgeOption>
+                        {
+                            new() { Id = "low", Label = "cosmetic, no functional impact" },
+                            new() { Id = "medium", Label = "degraded but workaround exists" },
+                            new() { Id = "high", Label = "blocking, no workaround" }
+                        }
+                    }
+                }
+            })
+        };
+
+        var first = await provider.RunAsync(request);
+        var second = await provider.RunAsync(request);
+
+        Assert.Equal(ProviderRunStatus.Succeeded, first.Status);
+        var answer = first.Output["answers"]!.AsArray()[0]!;
+        Assert.Equal("q1", answer["questionId"]?.GetValue<string>());
+        Assert.Null(answer["choice"]);
+        var score = answer["score"]!.GetValue<double>();
+        Assert.InRange(score, 0.0, 2.0);
+        Assert.Equal(score, second.Output["answers"]!.AsArray()[0]!["score"]!.GetValue<double>());
+
+        var probabilities = answer["probabilities"]!.AsObject();
+        var sum = probabilities["low"]!.GetValue<double>() + probabilities["medium"]!.GetValue<double>() + probabilities["high"]!.GetValue<double>();
+        Assert.InRange(sum, 0.999, 1.001);
+
+        var legend = answer["legend"]!.AsObject();
+        Assert.Equal("cosmetic, no functional impact", legend["low"]!.GetValue<string>());
+        Assert.Equal("blocking, no workaround", legend["high"]!.GetValue<string>());
+        Assert.False(answer["calibrated"]?.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task DeterministicProvider_JudgeRejectsScoreQuestionWithFewerThanTwoLevels()
+    {
+        var provider = new DeterministicAiProviderTarget();
+
+        var result = await provider.RunAsync(new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Context = "context",
+                Questions = new List<AiJudgeQuestion>
+                {
+                    new()
+                    {
+                        Id = "q1",
+                        Type = AiJudgeQuestionTypes.Score,
+                        Prompt = "rate it",
+                        Options = new List<AiJudgeOption> { new() { Id = "only", Label = "only level" } }
+                    }
+                }
+            })
+        });
+
+        Assert.Equal(ProviderRunStatus.Rejected, result.Status);
+        Assert.Equal(ProviderFailureClasses.Schema, result.FailureClass);
+    }
+
+    [Fact]
+    public async Task DeterministicProvider_JudgeRejectsChoiceQuestionWithNoOptions()
+    {
+        var provider = new DeterministicAiProviderTarget();
+
+        var result = await provider.RunAsync(new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Questions = new List<AiJudgeQuestion>
+                {
+                    new() { Id = "q1", Type = AiJudgeQuestionTypes.Choice, Prompt = "no options given" }
+                }
+            })
         });
 
         Assert.Equal(ProviderRunStatus.Rejected, result.Status);

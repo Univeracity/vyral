@@ -42,7 +42,7 @@ application code, or equates “package exists” with “live-qualified.”
 | **Object store** | `IObjectStore` | `Vyral.Local`, Azure Blob, GCS, S3, Cloudflare R2 | `ObjectStoreConformanceTests` |
 | **Trace store** | `ITraceStore` | Local SQLite, Firestore traces | Local + provider tests |
 | **Execution runtime** | `IExecutionRuntimeAdapter` (+ optional `IExternalExecutionWorkerRuntime`, `IExecutionRuntimeMaintenance`) | `Vyral.Execution.Local`, `.AzureDurable`, `.Aws`, Temporal, Google | `ExecutionRuntimeConformanceTests` / `ExternalExecutionWorkerRuntimeConformanceTests` |
-| **AI / coding provider target** | `IProviderTarget` | `Vyral.Providers.Local`, `.Cli`, `.Onnx`, `.Jules` | Provider unit/doctor tests |
+| **AI / coding provider target** | `IProviderTarget` | `Vyral.Providers.Local`, `.Cli`, `.Onnx`, `.Jules`, `.Jev` | Provider unit/doctor tests; `ai.judge` implementers additionally share `AiJudgeProviderConformanceTests` |
 | **Canonical store** | `ICanonicalStore` | `Vyral.MySql`, Postgres canonical path | `CanonicalStoreConformanceTests` |
 | **Search projection** (optional) | `IRecordSearchProjection` | AWS OpenSearch projection (preview) | Projection-specific tests |
 
@@ -267,6 +267,23 @@ Reference: `tests/Vyral.Tests.Pgvector/PgvectorConformanceTests.cs`,
 Subclass `ObjectStoreConformanceTests`, implement `CreateObjectStore()`, and
 expose each `RunObjectStore_*` case. Reference:
 `tests/Vyral.Tests.Cloudflare/CloudflareR2ConformanceTests.cs`.
+
+### ai.judge provider pattern
+
+Subclass `AiJudgeProviderConformanceTests`, implement `CreateProvider()`
+returning an `IProviderTarget`, and expose each `RunAiJudge_*` case. Every
+assertion in the shared base is structural (probability ranges, keys, id
+consistency) — never a specific expected answer — because a deterministic
+stub, a local classifier, and a remote judgment API will not agree on what
+the *right* choice is, only on what a valid answer looks like. This is the
+only AI-provider capability with a shared conformance base today; the others
+still rely on per-provider unit/doctor tests (see above). Reference:
+`tests/Vyral.Tests.Providers/DeterministicAiJudgeConformanceTests.cs` (always
+runs), `OnnxNliJudgeConformanceTests.cs` (gated on
+`VYRAL_ONNX_JUDGE_MODEL_DIR`), and `JevJudgeConformanceTests.cs` (gated on
+`JEV_API_KEY`/`TYPESAFE_API_TOKEN_KEY`) for the three ways to wire a live
+gate depending on whether the provider is local, model-file-backed, or
+network-backed.
 
 ### Execution runtime pattern
 

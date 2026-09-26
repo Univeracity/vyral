@@ -68,7 +68,22 @@ internal sealed class WordPieceTokenizer
         return tokenIds.ToArray();
     }
 
-    public WordPiecePairEncoding EncodePair(string first, string second, int maxTokens)
+    /// <summary>
+    /// Encodes a (first, second) pair, truncating to fit <paramref name="maxTokens"/>. By default
+    /// (<paramref name="truncateFirstBeforeSecond"/> = false) <c>second</c> is removed before
+    /// <c>first</c> — correct for a reranker's (query, document) pairing, where the short query
+    /// should survive intact and the document is what gets cut. Pass <c>true</c> for an NLI
+    /// (premise, hypothesis) pairing, where it's the opposite: the hypothesis is the short part that
+    /// varies across the judgment being made and must survive, while the premise is the shared,
+    /// often-long context that should absorb the cut. Using the wrong priority doesn't error — it
+    /// silently truncates the varying segment to nothing, so every candidate ends up encoding the
+    /// same content and the model returns identical (or near-identical) output for genuinely
+    /// different inputs. That exact failure shipped once; see
+    /// BUG-20260918-061159-20F269 in this repo's issue history for the full trail. If truncation
+    /// would still leave either segment empty after exhausting the other, this throws rather than
+    /// returning a pair that can't carry the intended judgment.
+    /// </summary>
+    public WordPiecePairEncoding EncodePair(string first, string second, int maxTokens, bool truncateFirstBeforeSecond = false)
     {
         if (maxTokens < 3)
         {
@@ -78,21 +93,30 @@ internal sealed class WordPieceTokenizer
         var firstIds = TokenizeToIds(first ?? string.Empty).ToList();
         var secondIds = TokenizeToIds(second ?? string.Empty).ToList();
         var maxContentTokens = maxTokens - 3;
+        var truncateFirst = truncateFirstBeforeSecond ? firstIds : secondIds;
+        var truncateSecond = truncateFirstBeforeSecond ? secondIds : firstIds;
+
         while (firstIds.Count + secondIds.Count > maxContentTokens)
         {
-            if (secondIds.Count > 0)
+            if (truncateFirst.Count > 0)
             {
-                secondIds.RemoveAt(secondIds.Count - 1);
+                truncateFirst.RemoveAt(truncateFirst.Count - 1);
                 continue;
             }
 
-            if (firstIds.Count > 0)
+            if (truncateSecond.Count > 0)
             {
-                firstIds.RemoveAt(firstIds.Count - 1);
+                truncateSecond.RemoveAt(truncateSecond.Count - 1);
                 continue;
             }
 
             break;
+        }
+
+        if (firstIds.Count == 0 || secondIds.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"ONNX tokenizer pair encoding truncated to an empty segment (first={firstIds.Count} tokens, second={secondIds.Count} tokens, budget={maxContentTokens} content tokens). Both inputs cannot fit and truncation cannot produce a meaningful pair. Increase maxTokens, shorten the input, or reconsider which segment this call prioritizes keeping — do not silently proceed with a degenerate pair.");
         }
 
         var inputIds = new List<long>(firstIds.Count + secondIds.Count + 3) { _clsId };

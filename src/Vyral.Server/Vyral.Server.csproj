@@ -16,6 +16,7 @@
     <ProjectReference Include="..\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
     <ProjectReference Include="..\Vyral.Providers.Cli\Vyral.Providers.Cli.csproj" />
     <ProjectReference Include="..\Vyral.Providers.Jules\Vyral.Providers.Jules.csproj" />
+    <ProjectReference Include="..\Vyral.Providers.Jev\Vyral.Providers.Jev.csproj" />
     <ProjectReference Include="..\Vyral.Providers.Local\Vyral.Providers.Local.csproj" />
     <ProjectReference Include="..\Vyral.Providers.Onnx\Vyral.Providers.Onnx.csproj" />
   </ItemGroup>

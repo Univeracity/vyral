@@ -157,6 +157,13 @@ scripts/start-local-server.sh
 ```
 
 It listens on `http://127.0.0.1:5220` and writes local state beneath `.vyral/`.
+For original audio masters or other large objects, set
+`Server__ObjectUploadMaxBytes` to a byte limit (for example, `100663296` for
+96 MiB). The default remains 30,000,000 bytes; valid values are 1 through
+1,073,741,824. This setting applies only to streaming `PUT /objects/...`
+requests. Other API request limits are unchanged. A reverse proxy may enforce
+its own lower limit; align that separately. Oversized uploads return HTTP 413.
+
 Run either HTTP client example to create a collection, store three documents,
 retrieve lexical context without embeddings, and print citations:
 
@@ -376,6 +383,45 @@ a signature as proof that every reported measurement is independently known.
 
 Live credentials and model assets are always opt-in. Local development should
 use deterministic fixtures or explicitly installed untracked model files.
+
+Typed judgment (`ai.judge`) is a separate output shape from the other AI
+capabilities: a provider answers a batch of questions against shared context
+with a choice/probability distribution rather than generated text
+or a proposed action — pick one of a fixed option set (Choice), a single
+yes/no probability (Noul), or a probability-weighted position on an ordered
+scale (Score). Three implementers share the same contract today: a
+deterministic mechanics-only stub (no semantics, for conformance and CI), a
+local ONNX zero-shot NLI classifier, and a remote HTTP adapter for TypeSafe
+AI's Jev — all three support all three question types.
+
+The local path uses `Xenova/mobilebert-uncased-mnli` — chosen, among several
+NLI checkpoints evaluated, for its WordPiece tokenizer (matching this
+package's existing tokenizer and the reranker's default model, unlike
+DeBERTa-v3/RoBERTa NLI checkpoints which need SentencePiece/BPE) and its
+small quantized footprint (~27MB). Its `id2label` order was read from its own
+`config.json`, not assumed from a generic MNLI convention. `tools/Vyral.OnnxJudgeCalibration`
+is a small harness that runs the real model over a labeled example set and
+fits one temperature-scaling parameter by minimizing negative log-likelihood;
+run against `tools/Vyral.OnnxJudgeCalibration/examples/generic-topic-entailment.jsonl`
+(30 hand-labeled, domain-neutral topic-classification examples) it measured
+86.7% raw accuracy and a fitted temperature of 0.89 — a real but modest
+correction, consistent with a reasonably calibrated classification head, not
+a dramatic fix. Thirty examples is a smoke test of the calibration mechanism,
+not a qualification result; do not read it as an accuracy claim about the
+model.
+
+None of these three are `live_qualified`; the ONNX path is a heuristic proxy
+even when calibrated, and the remote Jev adapter — despite a confirmed live
+exchange covering all three question types (2026-09-18) — has one verified
+point-in-time exchange, not a repeatable isolated live-qualification gate.
+Every answer carries a `calibrated` flag so callers cannot mistake an
+uncalibrated or vendor-claimed-but-unverified score for a validated
+likelihood.
+
+The [local log-probability judge proposal](design/local-logprob-judge.md)
+describes a possible Choice-only extension with verified label coverage and
+an optional runtime-session adapter. It is a design proposal, not a fourth
+implemented or qualified provider.
 
 ## Execution runtime
 

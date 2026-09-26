@@ -32,7 +32,8 @@ public sealed class DeterministicAiProviderTarget : IProviderTarget, IProviderQu
             ProviderCapabilityIds.AiRerank,
             ProviderCapabilityIds.AiReview,
             ProviderCapabilityIds.AiScaffold,
-            ProviderCapabilityIds.AiToolPlan
+            ProviderCapabilityIds.AiToolPlan,
+            ProviderCapabilityIds.AiJudge
         };
 
         Capabilities = capabilityIds.Select(id => new ProviderCapabilityDescriptor
@@ -173,6 +174,7 @@ public sealed class DeterministicAiProviderTarget : IProviderTarget, IProviderQu
                 ProviderCapabilityIds.AiReview => ProviderJson.ToJsonObject(RunReview(ProviderJson.DeserializePayload<AiReviewRequest>(request))),
                 ProviderCapabilityIds.AiScaffold => ProviderJson.ToJsonObject(RunScaffold(ProviderJson.DeserializePayload<AiScaffoldRequest>(request))),
                 ProviderCapabilityIds.AiToolPlan => ProviderJson.ToJsonObject(RunToolPlan(ProviderJson.DeserializePayload<AiToolPlanRequest>(request))),
+                ProviderCapabilityIds.AiJudge => ProviderJson.ToJsonObject(RunJudge(ProviderJson.DeserializePayload<AiJudgeRequest>(request))),
                 _ => new JsonObject()
             };
             var text = output.ToJsonString(ProviderJson.Options);
@@ -358,6 +360,114 @@ public sealed class DeterministicAiProviderTarget : IProviderTarget, IProviderQu
         return new AiToolPlanResult { Calls = calls, ValidationStatus = "deterministic" };
     }
 
+    /// <summary>
+    /// Deterministic mechanics stub for <see cref="ProviderCapabilityIds.AiJudge"/>: hash-derived,
+    /// stable, and NOT semantically meaningful. It exists so the ai.judge contract (and any consumer
+    /// or conformance test built against it) has a network-free, model-free implementer to run
+    /// against, the same role <see cref="RunRerank"/> plays for ai.rerank. Never treat its output as
+    /// a real judgment; <see cref="AiJudgeAnswer.Calibrated"/> is always false here.
+    /// </summary>
+    private static AiJudgeResult RunJudge(AiJudgeRequest request)
+    {
+        if (request.Questions.Count == 0)
+        {
+            throw new ArgumentException("ai.judge requires at least one question.");
+        }
+
+        var answers = new List<AiJudgeAnswer>(request.Questions.Count);
+        foreach (var question in request.Questions)
+        {
+            if (string.IsNullOrWhiteSpace(question.Id))
+            {
+                throw new ArgumentException("ai.judge questions require an id.");
+            }
+
+            var basis = $"{request.Context}␟{question.Prompt}";
+            if (string.Equals(question.Type, AiJudgeQuestionTypes.Noul, StringComparison.OrdinalIgnoreCase))
+            {
+                var yes = HashWeight(basis, "yes");
+                var no = HashWeight(basis, "no");
+                var probability = yes / (yes + no);
+                answers.Add(new AiJudgeAnswer
+                {
+                    QuestionId = question.Id,
+                    Probability = Math.Round(probability, 6),
+                    Confidence = Math.Round(Math.Max(probability, 1 - probability), 6),
+                    Calibrated = false
+                });
+                continue;
+            }
+
+            if (string.Equals(question.Type, AiJudgeQuestionTypes.Choice, StringComparison.OrdinalIgnoreCase))
+            {
+                if (question.Options.Count == 0)
+                {
+                    throw new ArgumentException($"ai.judge question '{question.Id}' is type 'choice' and requires at least one option.");
+                }
+
+                var weights = question.Options.ToDictionary(option => option.Id, option => HashWeight(basis, option.Id));
+                var total = weights.Values.Sum();
+                var probabilities = weights.ToDictionary(pair => pair.Key, pair => Math.Round(pair.Value / total, 6));
+                var winner = probabilities.OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key, StringComparer.Ordinal).First();
+                answers.Add(new AiJudgeAnswer
+                {
+                    QuestionId = question.Id,
+                    Choice = winner.Key,
+                    Probabilities = probabilities,
+                    Confidence = winner.Value,
+                    Calibrated = false
+                });
+                continue;
+            }
+
+            if (string.Equals(question.Type, AiJudgeQuestionTypes.Score, StringComparison.OrdinalIgnoreCase))
+            {
+                if (question.Options.Count < 2)
+                {
+                    throw new ArgumentException($"ai.judge question '{question.Id}' is type 'score' and requires at least two ordered levels.");
+                }
+
+                var levelWeights = question.Options.Select(option => HashWeight(basis, option.Id)).ToArray();
+                var levelTotal = levelWeights.Sum();
+                var levelProbabilities = levelWeights.Select(weight => weight / levelTotal).ToArray();
+
+                var probabilities = new Dictionary<string, double>();
+                var legend = new Dictionary<string, string>();
+                var expectedIndex = 0.0;
+                for (var i = 0; i < question.Options.Count; i++)
+                {
+                    probabilities[question.Options[i].Id] = Math.Round(levelProbabilities[i], 6);
+                    legend[question.Options[i].Id] = question.Options[i].Label;
+                    expectedIndex += i * levelProbabilities[i];
+                }
+
+                answers.Add(new AiJudgeAnswer
+                {
+                    QuestionId = question.Id,
+                    Score = Math.Round(expectedIndex, 6),
+                    Probabilities = probabilities,
+                    Legend = legend,
+                    Confidence = Math.Round(levelProbabilities.Max(), 6),
+                    Calibrated = false
+                });
+                continue;
+            }
+
+            throw new ArgumentException($"ai.judge question '{question.Id}' has unsupported type '{question.Type}'.");
+        }
+
+        return new AiJudgeResult { Answers = answers, ValidationStatus = "deterministic" };
+    }
+
+    /// <summary>Stable pseudo-weight in (0, 1] derived from a SHA-256 hash; not a probability model.</summary>
+    private static double HashWeight(string basis, string discriminator)
+    {
+        var hash = ProviderHash.Sha256($"{basis}␟{discriminator}");
+        var hex = hash["sha256:".Length..].Substring(0, 15);
+        var sample = Convert.ToUInt64(hex, 16);
+        return (sample % 1_000_000UL) / 1_000_000.0 + 1e-9;
+    }
+
     private static ProviderRunResult CreateResult(
         ProviderRunRequest request,
         ProviderTraceEvent trace,
@@ -465,6 +575,30 @@ public sealed class DeterministicAiProviderTarget : IProviderTarget, IProviderQu
                     Tools = new List<AiToolDefinition>
                     {
                         new() { Name = "lookup", Description = "Qualification smoke tool." }
+                    }
+                })
+            },
+            ProviderCapabilityIds.AiJudge => new ProviderRunRequest
+            {
+                Capability = ProviderCapabilityIds.AiJudge,
+                Operation = "run",
+                Mode = mode,
+                Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+                {
+                    Context = "vyral provider qualification smoke",
+                    Questions = new List<AiJudgeQuestion>
+                    {
+                        new()
+                        {
+                            Id = "smoke-1",
+                            Type = AiJudgeQuestionTypes.Choice,
+                            Prompt = "qualification smoke choice",
+                            Options = new List<AiJudgeOption>
+                            {
+                                new() { Id = "a", Label = "option a" },
+                                new() { Id = "b", Label = "option b" }
+                            }
+                        }
                     }
                 })
             },
