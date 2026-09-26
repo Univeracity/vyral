@@ -16,7 +16,7 @@ EXPECTED = {
     "publicationAuthorized": True,
     "image": {
         "name": "ghcr.io/univeracity/vyral-server",
-        "version": "0.3.4",
+        "version": "0.3.5",
         "source": "Dockerfile",
         "environment": "publish-container",
         "maturity": "mixed",
@@ -28,7 +28,7 @@ EXPECTED = {
     },
     "authorization": {
         "mode": "manual-protected-environment",
-        "releaseTag": "server-v0.3.4",
+        "releaseTag": "server-v0.3.5",
         "workflow": ".github/workflows/publish-worker-container.yml",
         "requirements": [
             "a GitHub-verified signed annotated server tag that resolves to current main",
@@ -55,7 +55,7 @@ def main() -> int:
     workflow = WORKFLOW.read_text(encoding="utf-8")
     for requirement in (
         "workflow_dispatch:",
-        "server-v0.3.4",
+        "server-v0.3.5",
         'test "$GITHUB_REF" = "refs/heads/main"',
         'git cat-file -t "refs/tags/${RELEASE_TAG}"',
         ".verification.verified == true",
@@ -71,12 +71,12 @@ def main() -> int:
         "docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc",
         "sbom: true",
         "provenance: mode=max",
-        "VYRAL_IMAGE_VERSION=0.3.4",
-        "ghcr.io/univeracity/vyral-server:0.3.4",
+        "VYRAL_IMAGE_VERSION=0.3.5",
+        "ghcr.io/univeracity/vyral-server:0.3.5",
         "scripts/verify-hosted-worker-container.sh",
         "scripts/verify-mcp-container.sh",
         "aquasec/trivy:0.73.0@sha256:",
-        "server-container-server-v0.3.4",
+        "server-container-server-v0.3.5",
     ):
         if requirement not in workflow:
             raise SystemExit(f"Worker container publisher is missing {requirement!r}.")
@@ -86,7 +86,7 @@ def main() -> int:
     if "\n  push:" in workflow:
         raise SystemExit("Worker container publisher must not have an automatic push trigger.")
 
-    print("worker-container-release=ok tag=server-v0.3.4 image=0.3.4")
+    print("worker-container-release=ok tag=server-v0.3.5 image=0.3.5")
     return 0
 
 
