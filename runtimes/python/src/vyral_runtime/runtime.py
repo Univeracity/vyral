@@ -583,8 +583,12 @@ class VyralRuntime:
         if self._closed:
             return
         self._closed = True
-        if self._executor is not None:
-            self._executor.close()
+        try:
+            if self._executor is not None:
+                self._executor.close()
+        finally:
+            if self._records is not None:
+                self._records.clear_lexical_cache()
 
     def __enter__(self) -> VyralRuntime:
         self._ensure_open()

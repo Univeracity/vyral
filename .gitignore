@@ -59,6 +59,7 @@ docs/maintainers/*
 !docs/reference/
 docs/reference/*
 !docs/reference/execution-runtime-limitations.md
+!docs/reference/python-retrieval-qualification.md
 !docs/reference/stability.md
 .agent-state/
 .agent-artifacts/

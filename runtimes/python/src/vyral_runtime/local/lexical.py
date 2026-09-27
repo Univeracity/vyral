@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from dataclasses import dataclass
+from hashlib import sha256
+import json
 import math
 import re
 import struct
+import sys
+from threading import Lock
 from typing import Any, Iterable, Mapping, Sequence, cast
 
 from .models import JSONObject, VyralRecord
@@ -38,6 +42,8 @@ _STOP_WORDS = frozenset(
     }
 )
 _WHITESPACE = re.compile(r"\s+")
+LEXICAL_ANALYZER_ID = "vyral.python.lexical.lower-alnum.v1"
+FTS_CANDIDATE_ANALYZER_ID = "sqlite.fts5.unicode61.remove-diacritics-1"
 
 
 @dataclass(frozen=True)
@@ -77,6 +83,74 @@ class _Document:
     record: VyralRecord
     fields: tuple[_Field, ...]
     length: int
+
+
+class PreparedLexicalCache:
+    """Bounded, store-owned LRU of query-independent fields, never records/scores."""
+
+    def __init__(self, max_entries: int = 1024, max_bytes: int = 8 * 1024 * 1024) -> None:
+        for name, value in (("max_entries", max_entries), ("max_bytes", max_bytes)):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
+        self.max_entries = max_entries
+        self.max_bytes = max_bytes
+        self._entries: OrderedDict[
+            tuple[str, tuple[str, ...], bytes], tuple[tuple[_Field, ...], int, int]
+        ] = OrderedDict()
+        self._bytes = 0
+        self._generation = 0
+        self._lock = Lock()
+
+    def clear(self) -> None:
+        with self._lock:
+            self._entries.clear()
+            self._bytes = 0
+            self._generation += 1
+
+    def prepare(self, record: VyralRecord, fields: Sequence[str]) -> _Document:
+        if not self.max_entries or not self.max_bytes:
+            return _document(record, fields)
+        root = record.to_dict()
+        key = (
+            LEXICAL_ANALYZER_ID,
+            tuple(fields),
+            sha256(json.dumps(root, sort_keys=True, separators=(",", ":"),
+                              ensure_ascii=True).encode("utf-8")).digest(),
+        )
+        with self._lock:
+            generation = self._generation
+            cached = self._entries.get(key)
+            if cached is not None:
+                self._entries.move_to_end(key)
+                return _Document(record, cached[0], cached[1])
+        document = _prepare_document(record, fields, root)
+        # Account retained keys, strings, counters and objects conservatively;
+        # this is an allocation estimate, not a bound on process RSS.
+        size = sys.getsizeof(key) + sys.getsizeof(key[2]) + sys.getsizeof(key[1])
+        size += sum(sys.getsizeof(path) for path in key[1])
+        size += sys.getsizeof(document.fields) + 256  # entry/LRU overhead
+        for field in document.fields:
+            size += sys.getsizeof(field) + sys.getsizeof(field.__dict__)
+            size += sum(sys.getsizeof(value) for value in (
+                field.path, field.normalized_text, field.normalized_phrase_text,
+                field.length, field.frequencies,
+            ))
+            size += sum(sys.getsizeof(term) + sys.getsizeof(count)
+                        for term, count in field.frequencies.items())
+        with self._lock:
+            if generation != self._generation or size > self.max_bytes:
+                return document
+            prior = self._entries.pop(key, None)
+            if prior is not None:
+                self._bytes -= prior[2]
+            while self._entries and (
+                len(self._entries) >= self.max_entries or self._bytes + size > self.max_bytes
+            ):
+                _, evicted = self._entries.popitem(last=False)
+                self._bytes -= evicted[2]
+            self._entries[key] = (document.fields, document.length, size)
+            self._bytes += size
+        return document
 
 
 @dataclass(frozen=True)
@@ -136,6 +210,10 @@ class LexicalScore:
             "corpusDocumentCount": self.corpus_document_count,
             "lexicalCandidateSource": candidate_source,
             "lexicalCandidateCount": candidate_count,
+            "lexicalAnalyzer": LEXICAL_ANALYZER_ID,
+            "lexicalCandidateAnalyzer": (
+                FTS_CANDIDATE_ANALYZER_ID if candidate_source == "sqlite_fts5" else None
+            ),
         }
         if fts_expression:
             details["lexicalFtsExpression"] = fts_expression
@@ -388,7 +466,12 @@ def _flatten(value: object, path: str) -> Iterable[tuple[str, str]]:
 
 
 def _document(record: VyralRecord, fields: Sequence[str]) -> _Document:
-    root = record.to_dict()
+    return _prepare_document(record, fields, record.to_dict())
+
+
+def _prepare_document(
+    record: VyralRecord, fields: Sequence[str], root: Mapping[str, Any],
+) -> _Document:
     extracted: list[_Field] = []
     for path in fields:
         found, value = _resolve_pointer(root, path)
@@ -400,7 +483,7 @@ def _document(record: VyralRecord, fields: Sequence[str]) -> _Document:
                 _Field(
                     path=leaf_path,
                     normalized_text=_normalize_text(text),
-                    normalized_phrase_text=_normalize_phrase_text(text),
+                    normalized_phrase_text=" ".join(terms),
                     frequencies=dict(Counter(terms)),
                     length=len(terms),
                 )
@@ -490,13 +573,16 @@ def score_many(
     records: Sequence[VyralRecord],
     query: str,
     options: LexicalSearchOptions,
+    *,
+    prepared_cache: PreparedLexicalCache | None = None,
 ) -> tuple[LexicalScore, ...]:
     if not query.strip():
         raise QueryValidationError("Lexical search query is required.")
     normalized = normalize_options(options)
     parts = _query_parts(query)
     terms = _query_terms(parts.tokens)
-    documents = tuple(_document(record, normalized.fields) for record in records)
+    prepare = prepared_cache.prepare if prepared_cache is not None else _document
+    documents = tuple(prepare(record, normalized.fields) for record in records)
     documents = tuple(
         document
         for document in documents
