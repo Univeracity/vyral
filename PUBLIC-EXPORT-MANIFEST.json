@@ -1,5 +1,5 @@
 {
-  "fileCount": 1024,
+  "fileCount": 1028,
   "files": [
     {
       "mode": "644",
@@ -144,7 +144,7 @@
     {
       "mode": "644",
       "path": ".gitignore",
-      "sha256": "1cf8dbb165a5eeeda5e3c7efc07b3bcb020cf95bc571b118f2da3b166e0c744d"
+      "sha256": "541e8bfa0775968129c22414fded5c2356a6d0ec401535e98725bdc61a821406"
     },
     {
       "mode": "644",
@@ -714,7 +714,7 @@
     {
       "mode": "644",
       "path": "docs/guides/source-native-retrieval.md",
-      "sha256": "c6e22d6137d6d1544d752b722dc634c69f4429207cd298f2b590948528ba54a7"
+      "sha256": "8533d94bdb5acc6a30d6e4fab3fdf4dd1e29843fa6913d8e5e22a41c01500f10"
     },
     {
       "mode": "644",
@@ -730,6 +730,11 @@
       "mode": "644",
       "path": "docs/reference/execution-runtime-limitations.md",
       "sha256": "106da29f1fbab9f8dc8a8b4a40e83e0c402a29dd959ef194ec8862188583577d"
+    },
+    {
+      "mode": "644",
+      "path": "docs/reference/python-retrieval-qualification.md",
+      "sha256": "ae929e75e31ca6460c0489aed49af77229b566f5822bf58ade86bae39c56bb2d"
     },
     {
       "mode": "644",
@@ -1269,7 +1274,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/local/lexical.py",
-      "sha256": "03bc3f3415463353ddbce55a3deafceb95f3c1a6baab7e7b3b788bfd6cb6f0d9"
+      "sha256": "1d9ee69d359ccbe8b0ab5b3add897737add3606d8014854b5a4354e40c798e3d"
     },
     {
       "mode": "644",
@@ -1294,7 +1299,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/local/record_store.py",
-      "sha256": "311defd9048dec0700afc87040baf4550f94c9f477afeac7d7590cdbed50cc26"
+      "sha256": "b04d156e9df36297487896dc108b8bfb74b9fd46dc53063134c2b962346b3658"
     },
     {
       "mode": "644",
@@ -1389,7 +1394,7 @@
     {
       "mode": "644",
       "path": "runtimes/python/src/vyral_runtime/runtime.py",
-      "sha256": "4c56f3198ed2b9cdc3013b03635b2d430a917d1693674b8a4794d422760eb41d"
+      "sha256": "3c3d800d128f226d611b6627a985ad0f7c1bd6e8e54fa89158adb36cb1520ecf"
     },
     {
       "mode": "644",
@@ -1450,6 +1455,11 @@
       "mode": "644",
       "path": "runtimes/python/tests/test_host_cli.py",
       "sha256": "ae7f4f7980383e0e9d4044c6fb4f5089bb15d8c2ebc73150e0d1b462df9d2875"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/tests/test_lexical_qualification.py",
+      "sha256": "8d511db0bda61087329a1126fac7a1a287ce32148689839671edb5ac2ddb6d5f"
     },
     {
       "mode": "644",
@@ -1535,6 +1545,11 @@
       "mode": "644",
       "path": "runtimes/python/tests/test_trace_store.py",
       "sha256": "a6a0180f0b98f7f9acbf65b2e2b8012710d0aeca29dd4cbb7e3599152fd6cd06"
+    },
+    {
+      "mode": "644",
+      "path": "runtimes/python/tests/test_vector_qualification.py",
+      "sha256": "f8edd90d97943ddc5600a1c910643ca050ecf775d4d7930cddae30d08b14f712"
     },
     {
       "mode": "644",
@@ -1682,6 +1697,11 @@
       "sha256": "316d22dede41145a3e8b37cf75e71a857322e63b50252265df18781726007daf"
     },
     {
+      "mode": "644",
+      "path": "scripts/benchmark-python-retrieval.py",
+      "sha256": "76bc5af8670717932be86ad68dfd4b1b3fa8b44a605cb1fd3200395c1e3833cd"
+    },
+    {
       "mode": "755",
       "path": "scripts/benchmark-python-runtime.py",
       "sha256": "1cb7a1080ba809a52eedc7bfb3882a5e3e935946094587cf9a46fc7d59336a98"
@@ -1714,7 +1734,7 @@
     {
       "mode": "755",
       "path": "scripts/export-public-tree.py",
-      "sha256": "5cb47f2271a03f8554625915079b2f3bcaeeb4cbea84d34f3473c5a6e3f2b99c"
+      "sha256": "ba25d438dc2f9d4de816346b4c8a56a735c6a8a1195d66bea39ba203e6fd87c0"
     },
     {
       "mode": "755",
@@ -5124,5 +5144,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "40f1bc04d72968ec752470c60712834e9d7b6e110022c3362ce8c02e4f481144"
+  "treeSha256": "c890e131a900cde9b7d8d5b989c31b897e7537cc68965e14289cf4992c0e493d"
 }
