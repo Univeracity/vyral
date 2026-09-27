@@ -9,6 +9,11 @@ public static class ProviderCapabilityIds
     public const string AiReview = "ai.review";
     public const string AiScaffold = "ai.scaffold";
     public const string AiToolPlan = "ai.toolPlan";
+    /// <summary>
+    /// Typed judgment over a fixed option set: a calibrated choice/probability distribution
+    /// (<see cref="ProviderOutputKinds.Judgment"/>) rather than generated text or a proposed action.
+    /// </summary>
+    public const string AiJudge = "ai.judge";
     public const string RetrievalSearch = "retrieval.search";
     public const string RetrievalIndex = "retrieval.index";
     public const string StorageObject = "storage.object";

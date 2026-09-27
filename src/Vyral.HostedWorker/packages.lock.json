@@ -639,6 +639,12 @@
           "Vyral.Providers.Abstractions": "[0.3.0, )"
         }
       },
+      "vyral.providers.jev": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Providers.Abstractions": "[0.3.0, )"
+        }
+      },
       "vyral.providers.jules": {
         "type": "Project",
         "dependencies": {
@@ -678,6 +684,7 @@
           "Vyral.Pgvector": "[0.3.0, )",
           "Vyral.Providers.Abstractions": "[0.3.0, )",
           "Vyral.Providers.Cli": "[0.3.0, )",
+          "Vyral.Providers.Jev": "[0.3.0, )",
           "Vyral.Providers.Jules": "[0.3.0, )",
           "Vyral.Providers.Local": "[0.3.0, )",
           "Vyral.Providers.Onnx": "[0.3.0, )"

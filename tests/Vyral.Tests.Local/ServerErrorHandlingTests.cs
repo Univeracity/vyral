@@ -767,6 +767,54 @@ public class ServerErrorHandlingTests
         throw new Xunit.Sdk.XunitException($"Provider run job {jobId} did not reach a terminal state.");
     }
 
+    [Fact]
+    public async Task ObjectUpload_EnforcesConfiguredLimitWithoutChangingOtherRoutes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-upload-limit-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        await using var factory = CreateFactory(Path.Combine(root, "data.sqlite"), Path.Combine(root, "objects"),
+            new Dictionary<string, string?> { ["Server:ObjectUploadMaxBytes"] = "4" });
+        var client = factory.CreateClient();
+        var rejected = await client.PutAsync("/objects/limit/rejected", new ByteArrayContent(new byte[5]));
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, rejected.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/objects/limit/rejected")).StatusCode);
+        var accepted = await client.PutAsync("/objects/limit/accepted", new ByteArrayContent(new byte[4]));
+        accepted.EnsureSuccessStatusCode();
+        Assert.Equal(4, (await client.GetByteArrayAsync("/objects/limit/accepted")).Length);
+        (await client.GetAsync("/health")).EnsureSuccessStatusCode();
+    }
+
+    [Theory]
+    [InlineData("Cpu", "onnx-nli-judge-cpu", null, 0)]
+    [InlineData("Gpu", "onnx-nli-judge-gpu", null, 0)]
+    [InlineData("Cpu", "onnx-nli-judge-cpu", "0", 0)]
+    [InlineData("Cpu", "onnx-nli-judge-cpu", "1", 1)]
+    public async Task OnnxJudge_UsesCheckpointClassOrderAndAcceptsZeroBasedOverride(
+        string section, string provider, string? configuredIndex, int expectedIndex)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-judge-config-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        await using var factory = CreateFactory(Path.Combine(root, "data.sqlite"), Path.Combine(root, "objects"),
+            new Dictionary<string, string?> { [$"Providers:OnnxJudge:{section}:EntailmentIndex"] = configuredIndex });
+        using var client = factory.CreateClient();
+        var doctor = await client.GetFromJsonAsync<ProviderDoctorResult>($"/providers/{provider}/doctor");
+        var check = Assert.Single(doctor!.Checks, item => item.Id == "judgment.equivalence");
+        var index = Assert.IsType<System.Text.Json.JsonElement>(check.Details["entailmentIndex"]);
+        Assert.Equal(expectedIndex, index.GetInt32());
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("1073741825")]
+    public async Task ObjectUpload_RejectsInvalidLimitAtStartup(string value)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-upload-config-{Guid.NewGuid():N}");
+        await using var factory = CreateFactory(Path.Combine(root, "data.sqlite"), Path.Combine(root, "objects"),
+            new Dictionary<string, string?> { ["Server:ObjectUploadMaxBytes"] = value });
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        Assert.Contains("Server:ObjectUploadMaxBytes", error.Message);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(
         string dbPath,
         string objectsPath,

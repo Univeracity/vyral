@@ -49,6 +49,12 @@ public static class ProviderOutputKinds
     public const string Patch = "patch";
     /// <summary>Output is a generated artifact (file, document, or resource).</summary>
     public const string Artifact = "artifact";
+    /// <summary>
+    /// Output is a typed judgment over a fixed option set: a choice with a calibrated probability
+    /// distribution, or a single probability. No text is generated and no action is proposed; the
+    /// output is data meant to be consumed programmatically. See <see cref="ProviderCapabilityIds.AiJudge"/>.
+    /// </summary>
+    public const string Judgment = "judgment";
 }
 
 public sealed class ProviderModePolicy

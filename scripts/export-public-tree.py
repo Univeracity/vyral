@@ -81,6 +81,7 @@ PUBLIC_DOC_FILES = {
 }
 
 PUBLIC_DESIGN_FILES = {
+    "design/local-logprob-judge.md",
     "design/admission-contract.md",
     "design/aws-opensearch-record-projection.md",
     "design/developer-adoption-and-evidence-growth.md",
