@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         options:
-          - server-v0.3.4
+          - server-v0.3.5
       confirm:
         description: I have reviewed the release evidence and worker capability notes
         required: true
@@ -17,7 +17,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: publish-server-container-v0.3.4
+  group: publish-server-container-v0.3.5
   cancel-in-progress: false
 
 jobs:
@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$CONFIRM" = "true"
-          test "$RELEASE_TAG" = "server-v0.3.4"
+          test "$RELEASE_TAG" = "server-v0.3.5"
           git fetch --force --tags origin
           test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
           source_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
@@ -102,12 +102,12 @@ jobs:
           sbom: true
           provenance: mode=max
           build-args: |
-            VYRAL_IMAGE_VERSION=0.3.4
+            VYRAL_IMAGE_VERSION=0.3.5
             VYRAL_IMAGE_REVISION=${{ needs.validate.outputs.source_sha }}
-          tags: ghcr.io/univeracity/vyral-server:0.3.4
+          tags: ghcr.io/univeracity/vyral-server:0.3.5
           labels: |
             org.opencontainers.image.source=https://github.com/Univeracity/vyral
-            org.opencontainers.image.version=0.3.4
+            org.opencontainers.image.version=0.3.5
             org.opencontainers.image.revision=${{ needs.validate.outputs.source_sha }}
 
       - name: Qualify the exact published worker image
@@ -146,7 +146,7 @@ jobs:
       - name: Retain published-image evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: server-container-server-v0.3.4
+          name: server-container-server-v0.3.5
           path: artifacts/publish
           if-no-files-found: error
           retention-days: 30

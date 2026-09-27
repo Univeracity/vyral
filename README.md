@@ -204,8 +204,8 @@ also need TLS, rate limits, authenticated ingress, and deployment-specific
 identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
 and the [deployment guide](deploy).
 
-The worker-capable server image is `ghcr.io/univeracity/vyral-server:0.3.4`;
-production deployments should pin its published digest and use the same API-key
+The server image version described by this source is `ghcr.io/univeracity/vyral-server:0.3.5`;
+verify registry availability before deploying, pin its published digest, and use the same API-key
 and runtime restrictions shown above. The default entrypoint remains the public
 API server. A separate, least-privilege deployment can run the preview generic
 hosted worker from the same pinned digest with command `dotnet` and argument
