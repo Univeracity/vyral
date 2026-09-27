@@ -31,7 +31,7 @@ from .query_engine import (
     encode_continuation_token,
     validate_page_limit,
 )
-from .lexical import build_fts_expression, score_many
+from .lexical import PreparedLexicalCache, build_fts_expression, score_many
 from .query_models import (
     LexicalSearchOptions,
     QueryEnvelope,
@@ -115,14 +115,23 @@ class SQLiteRecordStore:
         *,
         busy_timeout_ms: int = 5000,
         clock: Callable[[], datetime] | None = None,
+        lexical_cache_max_entries: int = 1024,
+        lexical_cache_max_bytes: int = 8 * 1024 * 1024,
     ) -> None:
         if isinstance(busy_timeout_ms, bool) or busy_timeout_ms < 0:
             raise ValueError("busy_timeout_ms must be a non-negative integer")
         self.database_path = Path(database_path).expanduser().resolve()
         self.busy_timeout_ms = busy_timeout_ms
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._lexical_cache = PreparedLexicalCache(
+            lexical_cache_max_entries, lexical_cache_max_bytes,
+        )
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
+
+    def clear_lexical_cache(self) -> None:
+        """Discard retained field preparations; persisted records are unchanged."""
+        self._lexical_cache.clear()
 
     @contextmanager
     def _connection(self, *, write: bool = False) -> Iterator[sqlite3.Connection]:
@@ -309,6 +318,7 @@ class SQLiteRecordStore:
                 (collection,),
             )
             connection.execute("DELETE FROM vyral_py_collections WHERE name=?", (collection,))
+            self.clear_lexical_cache()
 
     def upsert_record(
         self,
@@ -381,6 +391,7 @@ class SQLiteRecordStore:
             self._replace_vectors(connection, collection, stored)
             self._replace_metadata_index(connection, collection, stored, policy)
             self._replace_lexical_index(connection, collection, stored)
+            self.clear_lexical_cache()
             return stored
 
     def upsert_records(
@@ -477,6 +488,7 @@ class SQLiteRecordStore:
                 """,
                 (collection, partition_key, record_id),
             )
+            self.clear_lexical_cache()
 
     def query_records_page(
         self,
@@ -614,7 +626,9 @@ class SQLiteRecordStore:
             )
             candidate_source = "scan"
 
-        scores = score_many(records, lexical.query, lexical)
+        scores = score_many(
+            records, lexical.query, lexical, prepared_cache=self._lexical_cache,
+        )
         matches: list[VyralRecordMatch] = []
         for scored in scores:
             if scored.score <= 0:
@@ -889,7 +903,8 @@ class SQLiteRecordStore:
                 policy.indexed_metadata,
                 vector_search.field,
             )
-            matches: list[VyralRecordMatch] = []
+            matches: list[tuple[float, VyralRecord]] = []
+            similarity = _PreparedSimilarity(field_policy.distance_function, query_vector)
             for row in connection.execute(plan.sql, plan.parameters):
                 record = VyralRecord.from_value(json.loads(row["record_json"]))
                 stored_dimensions = int(row["dimensions"])
@@ -907,52 +922,39 @@ class SQLiteRecordStore:
                     f"<{stored_dimensions}f",
                     vector_data,
                 )
-                score = _similarity_score(
-                    field_policy.distance_function,
-                    query_vector,
-                    stored_vector,
-                )
+                score = similarity.score(stored_vector)
                 if (
                     vector_search.min_score is not None
                     and score < vector_search.min_score
                 ):
                     continue
-                matches.append(
-                    VyralRecordMatch(
-                        record=record,
-                        score=score,
-                        diagnostics=_vector_diagnostics(
-                            collection,
-                            record,
-                            vector_search.field,
-                            field_policy.distance_function,
-                            score,
-                        ),
-                    )
-                )
+                matches.append((score, record))
         matches.sort(
             key=lambda match: (
-                -match.score,
-                match.record.partition_key,
-                match.record.id,
+                -match[0],
+                match[1].partition_key,
+                match[1].id,
             )
         )
-        ranked = matches[: vector_search.top]
+        selected = matches[: vector_search.top]
         candidate_count = len(matches)
         ranked = [
             VyralRecordMatch(
-                record=match.record,
-                score=match.score,
+                record=record,
+                score=score,
                 diagnostics=_ranked_diagnostics(
-                    match.diagnostics,
+                    _vector_diagnostics(
+                        collection, record, vector_search.field,
+                        field_policy.distance_function, score,
+                    ),
                     rank=index + 1,
                     candidate_count=candidate_count,
-                    returned_count=len(ranked),
+                    returned_count=len(selected),
                     mode="vector",
-                    match=match,
+                    match=VyralRecordMatch(record=record, score=score),
                 ),
             )
-            for index, match in enumerate(ranked)
+            for index, (score, record) in enumerate(selected)
         ]
         offset = decode_continuation_token(query.continuation_token)
         page_size = query.limit or vector_search.top
@@ -1302,47 +1304,59 @@ def _float32_values(values: Sequence[float], label: str) -> tuple[float, ...]:
     return tuple(_float32(float(value), label) for value in values)
 
 
-def _similarity_score(
-    distance_function: str,
-    query: Sequence[float],
-    stored: Sequence[float],
-) -> float:
-    if len(query) != len(stored):
-        raise RecordStoreError(
-            f"Vector dimensions differ: {len(query)} != {len(stored)}."
+class _PreparedSimilarity:
+    def __init__(self, distance_function: str, query: Sequence[float]) -> None:
+        self.distance_function = distance_function
+        self.query = query
+        self.query_norm: float | None = None
+
+    def score(self, stored: Sequence[float]) -> float:
+        distance_function = self.distance_function
+        query = self.query
+        if len(query) != len(stored):
+            raise RecordStoreError(
+                f"Vector dimensions differ: {len(query)} != {len(stored)}."
+            )
+
+        def dot(left: Sequence[float], right: Sequence[float]) -> float:
+            total = 0.0
+            for first, second in zip(left, right):
+                total = _float32(
+                    total + _float32(first * second, "Vector score"),
+                    "Vector score",
+                )
+            return total
+
+        normalized = distance_function.lower()
+        if normalized == "dotproduct":
+            return dot(query, stored)
+        if normalized == "euclidean":
+            total = 0.0
+            for first, second in zip(query, stored):
+                difference = _float32(first - second, "Vector score")
+                total = _float32(
+                    total + _float32(difference * difference, "Vector score"),
+                    "Vector score",
+                )
+            return _float32(1.0 / (1.0 + math.sqrt(total)), "Vector score")
+        if normalized == "cosine":
+            numerator = dot(query, stored)
+            if self.query_norm is None:
+                self.query_norm = math.sqrt(max(0.0, dot(query, query)))
+            query_norm = self.query_norm
+            stored_norm = math.sqrt(max(0.0, dot(stored, stored)))
+            if query_norm == 0.0 or stored_norm == 0.0:
+                return 0.0
+            return _float32(numerator / (query_norm * stored_norm), "Vector score")
+        raise RecordValidationError(
+            f"Vector distance function {distance_function!r} is not supported."
         )
 
-    def dot(left: Sequence[float], right: Sequence[float]) -> float:
-        total = 0.0
-        for first, second in zip(left, right):
-            total = _float32(
-                total + _float32(first * second, "Vector score"),
-                "Vector score",
-            )
-        return total
 
-    normalized = distance_function.lower()
-    if normalized == "dotproduct":
-        return dot(query, stored)
-    if normalized == "euclidean":
-        total = 0.0
-        for first, second in zip(query, stored):
-            difference = _float32(first - second, "Vector score")
-            total = _float32(
-                total + _float32(difference * difference, "Vector score"),
-                "Vector score",
-            )
-        return _float32(1.0 / (1.0 + math.sqrt(total)), "Vector score")
-    if normalized == "cosine":
-        numerator = dot(query, stored)
-        query_norm = math.sqrt(max(0.0, dot(query, query)))
-        stored_norm = math.sqrt(max(0.0, dot(stored, stored)))
-        if query_norm == 0.0 or stored_norm == 0.0:
-            return 0.0
-        return _float32(numerator / (query_norm * stored_norm), "Vector score")
-    raise RecordValidationError(
-        f"Vector distance function {distance_function!r} is not supported."
-    )
+def _similarity_score(
+    distance_function: str, query: Sequence[float], stored: Sequence[float],
+) -> float:
+    return _PreparedSimilarity(distance_function, query).score(stored)
 
 
 def _result_identity(collection: str, record: VyralRecord) -> JSONObject:

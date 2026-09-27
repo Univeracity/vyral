@@ -75,6 +75,7 @@ PUBLIC_DOC_FILES = {
     "docs/guides/stateless-mcp.md",
     "docs/maintainers/releasing.md",
     "docs/reference/execution-runtime-limitations.md",
+    "docs/reference/python-retrieval-qualification.md",
     "docs/reference/stability.md",
     "docs/roman.md",
     "docs/temporal-operator-guide.md",

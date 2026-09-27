@@ -182,6 +182,10 @@ Each `cases` entry supplies a normal retrieval request, expected matches, hard
 negatives, and `k`. Normalize each source-native result to the same labeled
 file or source id so it can be scored beside the indexed variants.
 
+For Python experiments, retain the analyzer identities and candidate-pool
+settings described in [Python local retrieval qualification](../reference/python-retrieval-qualification.md).
+That reference also documents cache controls and the bounded preparation probe.
+
 Record at least these measures:
 
 | Measure | What to retain |
