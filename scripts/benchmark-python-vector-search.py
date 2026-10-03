@@ -102,14 +102,32 @@ def main() -> None:
                     outputs.append(response)
                 if outputs[0] != outputs[1]: raise RuntimeError("Complete retrieval/serialization parity failed")
                 responses += 1
-                if repeat == 0:
-                    # Group after retrieval using caller-owned identity; never change engine scores.
-                    seen: set[str] = set()
-                    for match in outputs[1]["items"]:
-                        identity = match["record"]["metadata"]["item"]
-                        if identity not in seen: seen.add(identity)
-                    grouped.append({"metric": query["vector"]["field"], "passages": len(outputs[1]["items"]),
-                                    "distinctItems": len(seen), "poolBeforeGrouping": 30})
+        # Distinct-item budgets are a caller-owned intervention. Compare complete
+        # responses at each candidate pool, then cap grouped output at ten items.
+        budget_responses = 0
+        for query in queries:
+            for pool in (10, 30, 100):
+                pooled_query = {**query, "limit": pool,
+                                "vector": {**query["vector"], "top": pool}}
+                before = baseline.search_records_page("items", pooled_query).to_dict()
+                after = candidate.search_records_page("items", pooled_query).to_dict()
+                if before != after:
+                    raise RuntimeError("Budgeted retrieval parity failed")
+                budget_responses += 1
+                seen: set[str] = set()
+                selected: list[str] = []
+                consumed = 0
+                for match in after["items"]:
+                    consumed += 1
+                    identity = match["record"]["metadata"]["item"]
+                    if identity not in seen:
+                        seen.add(identity); selected.append(identity)
+                    if len(selected) == 10:
+                        break
+                grouped.append({"metric": query["vector"]["field"], "candidatePool": pool,
+                                "returnedBeforeGrouping": len(after["items"]),
+                                "passagesConsumed": consumed, "outputItemBudget": 10,
+                                "distinctItemsReturned": len(selected)})
         output = {
             "schemaVersion": "vyral.python-vector-qualification.v1",
             "sourceSha256": hashlib.sha256((ROOT / source_path).read_bytes()).hexdigest(),
@@ -117,7 +135,7 @@ def main() -> None:
             "inputSha256": input_hash.hexdigest(), "python": platform.python_version(),
             "platform": platform.platform(), "sqlite": sqlite3.sqlite_version,
             "records": args.records, "dimensions": args.dimensions, "numericErrorControls": controls,
-            "completeResponses": responses, "completeParity": True, "timingScope": "retrieval and serialization; no encoder/model",
+            "completeResponses": responses, "completeBudgetResponses": budget_responses, "completeParity": True, "timingScope": "retrieval and serialization; no encoder/model",
             "timings": {name: {"p50Ms": statistics.median(values), "samples": len(values)} for name, values in timings.items()},
             "grouping": grouped,
             "limits": ["one synthetic host fixture; no SLA or relevance claim",

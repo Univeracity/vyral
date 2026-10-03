@@ -130,6 +130,11 @@ investigation, not application relevance qualification or full runtime promotion
 The [dated synthetic receipt](../../qualification/python-vector-mechanics-2026-10-03.json)
 retains all 2,075 numeric/error controls and nine complete responses from a
 1,000-record, 384-dimension fixture. Median complete retrieval/serialization was
-1,026.9 ms before and 957.1 ms after on this host. Treat this as bounded mechanics
+1,020.7 ms before and 933.4 ms after on this host. Treat this as bounded mechanics
 evidence. The supported-platform workflow repeats the same parity controls on
 Python 3.10–3.12 across Linux, macOS and Windows with a smaller record count.
+
+Nine additional complete baseline/candidate responses agree at candidate pools
+of 10, 30 and 100. Caller-side grouping caps distinct output at ten items, with
+returned rows, consumed passages and distinct outputs recorded separately.
+A candidate pool is not the number of rows the caller has actually received.

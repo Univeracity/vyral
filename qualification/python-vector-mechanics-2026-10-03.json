@@ -10,36 +10,91 @@
   "dimensions": 384,
   "numericErrorControls": 2075,
   "completeResponses": 9,
+  "completeBudgetResponses": 9,
   "completeParity": true,
   "timingScope": "retrieval and serialization; no encoder/model",
   "timings": {
     "baseline": {
-      "p50Ms": 1026.8696510029258,
+      "p50Ms": 1020.7279659953201,
       "samples": 9
     },
     "candidate": {
-      "p50Ms": 957.0861140091438,
+      "p50Ms": 933.4267340018414,
       "samples": 9
     }
   },
   "grouping": [
     {
       "metric": "cosine",
-      "passages": 10,
-      "distinctItems": 10,
-      "poolBeforeGrouping": 30
+      "candidatePool": 10,
+      "returnedBeforeGrouping": 10,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "cosine",
+      "candidatePool": 30,
+      "returnedBeforeGrouping": 30,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "cosine",
+      "candidatePool": 100,
+      "returnedBeforeGrouping": 100,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
     },
     {
       "metric": "dotproduct",
-      "passages": 10,
-      "distinctItems": 10,
-      "poolBeforeGrouping": 30
+      "candidatePool": 10,
+      "returnedBeforeGrouping": 10,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "dotproduct",
+      "candidatePool": 30,
+      "returnedBeforeGrouping": 30,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "dotproduct",
+      "candidatePool": 100,
+      "returnedBeforeGrouping": 100,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
     },
     {
       "metric": "euclidean",
-      "passages": 10,
-      "distinctItems": 9,
-      "poolBeforeGrouping": 30
+      "candidatePool": 10,
+      "returnedBeforeGrouping": 10,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 9
+    },
+    {
+      "metric": "euclidean",
+      "candidatePool": 30,
+      "returnedBeforeGrouping": 30,
+      "passagesConsumed": 11,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "euclidean",
+      "candidatePool": 100,
+      "returnedBeforeGrouping": 100,
+      "passagesConsumed": 11,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
     }
   ],
   "limits": [
