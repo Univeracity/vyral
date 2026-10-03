@@ -2224,7 +2224,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-python-runtime-upgrade.py",
-      "sha256": "d94319490309a9a57a6fe62071f9fd98b650d4b7bd04a54a46730ff2c88e035c"
+      "sha256": "2c9c7a584391b5f1b4a16ba587c94661f11d7e88a8d949602aeac89dcbec88bd"
     },
     {
       "mode": "755",
@@ -5209,5 +5209,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "0568a86f64fdf56d1080be98759edf95c4a62fb73d4b8713eac6096263aa24eb"
+  "treeSha256": "bb12a8d8268b11bcb073d8d4e6478a276d2e41aedb7f946d44d97caa0b233494"
 }
