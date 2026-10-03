@@ -749,7 +749,7 @@
     {
       "mode": "644",
       "path": "docs/reference/python-retrieval-qualification.md",
-      "sha256": "3b95396282d3c08ee2c0b8c9ec22ebf4868076e5f276d99bfea00c61694ae0be"
+      "sha256": "a36eadef09c3644c07836a579b6b2a76cb76639027e5d48cd9116a50aa828c66"
     },
     {
       "mode": "644",
@@ -864,7 +864,7 @@
     {
       "mode": "644",
       "path": "qualification/python-vector-mechanics-2026-10-03.json",
-      "sha256": "a1572c9a742185dc2f0c0435016efef94891faa44cd4b3898034acd9bacbb677"
+      "sha256": "3abddd46637129ceb549a4667ed1a2a8e9a3ac4ff572bccce97a58ba586a1973"
     },
     {
       "mode": "644",
@@ -1734,7 +1734,7 @@
     {
       "mode": "644",
       "path": "scripts/benchmark-python-vector-search.py",
-      "sha256": "2e64c64a35afcf1472d15924b136c1684752c88f32dddf08128cbbed1901bc2c"
+      "sha256": "96e110a2be60c5ecdf9ef2dfaba3dd34faf24fc1a3679b4d56dc7194546b4bcf"
     },
     {
       "mode": "755",
@@ -5209,5 +5209,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "c3841815abae1932500735d9cc25f29fd106e2e3c9c530f7df540c07f582cbfb"
+  "treeSha256": "32eda2d67e62a4a9f37764f7c63a6c5e2a3b374b4ed527f4a7951855d957cd52"
 }
