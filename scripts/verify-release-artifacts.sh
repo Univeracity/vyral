@@ -310,8 +310,8 @@ for package in packages:
         package_id = value("id")
         package_version = value("version")
         expected_versions = {
-            "Vyral.Abstractions": "0.3.2",
-            "Vyral.Local": "0.3.2",
+            "Vyral.Abstractions": "0.3.3",
+            "Vyral.Local": "0.3.3",
             "Vyral.Primitives": "0.2.0",
             "Vyral.Execution": "0.2.0",
             "Vyral.Execution.Aws": "0.2.0",
@@ -521,8 +521,8 @@ from pathlib import Path
 import sys
 
 artifacts = Path(sys.argv[1])
-wheels = list(artifacts.glob("vyral-0.1.3-*.whl"))
-sdists = list(artifacts.glob("vyral-0.1.3.tar.gz"))
+wheels = list(artifacts.glob("vyral-0.1.4-*.whl"))
+sdists = list(artifacts.glob("vyral-0.1.4.tar.gz"))
 if len(wheels) != 1 or len(sdists) != 1:
     raise SystemExit(
         "Expected one vyral runtime wheel and one source distribution."

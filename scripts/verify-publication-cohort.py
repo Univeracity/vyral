@@ -15,7 +15,7 @@ EXPECTED = (
     (
         "nuget",
         "Vyral.Abstractions",
-        "0.3.2",
+        "0.3.3",
         "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
         "publish-nuget",
         "public",
@@ -23,7 +23,7 @@ EXPECTED = (
     (
         "nuget",
         "Vyral.Local",
-        "0.3.2",
+        "0.3.3",
         "src/Vyral.Local/Vyral.Local.csproj",
         "publish-nuget",
         "public",
@@ -31,17 +31,24 @@ EXPECTED = (
     (
         "pypi",
         "vyral",
-        "0.1.3",
+        "0.1.4",
         "runtimes/python/pyproject.toml",
         "publish-pypi",
         "prototype",
+    ),
+    (
+        "npm",
+        "vyral-client",
+        "0.3.3",
+        "clients/javascript/package.json",
+        "publish-npm",
+        "public",
     ),
 )
 UNCHANGED = (
     "Vyral.Primitives 0.2.0",
     "Vyral.Execution 0.2.0",
     "Vyral.Execution.Local 0.2.0",
-    "vyral-client 0.3.0",
 )
 EXCLUDED = {
     "cloud-provider packages",
@@ -53,12 +60,12 @@ EXCLUDED = {
 }
 AUTHORIZATION = {
     "mode": "manual-protected-environment",
-    "releaseTag": "v0.3.2",
+    "releaseTag": "v0.3.3",
     "workflow": ".github/workflows/publish-first-cohort.yml",
     "requirements": (
         "a GitHub-verified signed annotated release tag that resolves to current main",
         "a successful canonical Release Integrity push run for that exact commit",
-        "the exact NuGet and PyPI registry trusted-publisher relationships",
+        "the exact NuGet, PyPI and npm registry trusted-publisher relationships",
         "a manual dispatch from main through the named protected environments",
     ),
     "publishers": (
@@ -74,6 +81,13 @@ AUTHORIZATION = {
             "https://upload.pypi.org/legacy/",
             "publish-first-cohort.yml",
             "publish-pypi",
+            "GitHub Actions OIDC trusted publishing",
+        ),
+        (
+            "npm",
+            "https://registry.npmjs.org",
+            "publish-first-cohort.yml",
+            "publish-npm",
             "GitHub Actions OIDC trusted publishing",
         ),
     ),
@@ -114,6 +128,9 @@ def _source_identity(ecosystem: str, source: Path) -> tuple[str, str]:
         return _dotnet_identity(source)
     if ecosystem == "pypi":
         return _python_identity(source)
+    if ecosystem == "npm":
+        package = json.loads(source.read_text(encoding="utf-8"))
+        return package["name"], package["version"]
     raise SystemExit(f"Unsupported publication ecosystem: {ecosystem}")
 
 

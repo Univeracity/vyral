@@ -98,12 +98,14 @@ The exact currently authorized package cohort is recorded in
 The manual [`Publish package release`](../../.github/workflows/publish-first-cohort.yml)
 workflow is the only source path allowed to publish that cohort. Its filename is retained because
 NuGet and PyPI trusted-publisher identities include the workflow filename. It accepts only the
-reviewed `v0.3.2` package patch, and before packaging requires a GitHub-verified signed
+reviewed `v0.3.3` package patch, and before packaging requires a GitHub-verified signed
 annotated tag at current `main` plus a successful canonical Release Integrity
 push run for that commit. Each registry job uses its own protected environment
 and least-privilege identity. It has no automatic trigger. The patch publishes
-`Vyral.Abstractions` and `Vyral.Local` `0.3.2` plus the Python runtime `0.1.3`;
-unchanged execution and JavaScript packages are not rebuilt or republished.
+`Vyral.Abstractions` and `Vyral.Local` `0.3.3`, the Python runtime `0.1.4`,
+and the JavaScript HTTP SDK `vyral-client@0.3.3`. Execution registry packages
+remain unchanged. The lightweight Python HTTP SDK source is versioned `0.3.3`
+and packaged for GitHub release use; its PyPI distribution remains outside the cohort.
 
 The server's `0.3.1` security correction is a deliberately separate,
 container-only delivery: [`packaging/container-security-release.json`](../../packaging/container-security-release.json)
@@ -129,11 +131,14 @@ for publication by this container release; the judge targets are not
 
 Before dispatching it, configure the exact publisher tuple in the cohort
 manifest at each trusted registry: `Univeracity/vyral`, workflow file
-`publish-first-cohort.yml`, and its named environment. NuGet and PyPI use
+`publish-first-cohort.yml`, and its named environment. NuGet, PyPI and npm use
 GitHub Actions OIDC trusted publishing; NuGet additionally needs the
 `NUGET_USERNAME` environment variable for its short-lived-key exchange. The separate
 container workflow uses only the repository-scoped `GITHUB_TOKEN` with
-`packages: write`. npm remains outside the current patch. This source authorization is not a claim that any package is
+`packages: write`. npm requires a trusted publisher permitting direct publication
+for the same workflow and the `publish-npm` environment; its pinned CLI publishes
+the exact authorized archive with provenance. See the [npm trusted publishing guide](https://docs.npmjs.com/trusted-publishers/).
+This source authorization is not a claim that any package is
 already available: absent registry trust or an environment approval, the manual
 job fails closed and publishes nothing.
 
