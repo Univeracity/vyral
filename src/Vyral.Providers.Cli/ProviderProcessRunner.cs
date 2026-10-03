@@ -40,6 +40,9 @@ public sealed class SystemProviderProcessRunner : IProviderProcessRunner
 {
     public async Task<ProviderProcessRunResult> RunAsync(ProviderProcessRunRequest request, CancellationToken ct = default)
     {
+        // Admission through stdin, exit and pipe draining share one timeout.
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(request.Timeout);
         var startInfo = new ProcessStartInfo
         {
             FileName = request.Command,
@@ -73,10 +76,15 @@ public sealed class SystemProviderProcessRunner : IProviderProcessRunner
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         try
         {
+            timeoutCts.Token.ThrowIfCancellationRequested();
             if (!process.Start())
             {
                 return new ProviderProcessRunResult { ExitCode = -1, StartError = "Process failed to start." };
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return new ProviderProcessRunResult { ExitCode = -1, Cancelled = ct.IsCancellationRequested, TimedOut = !ct.IsCancellationRequested };
         }
         catch (Win32Exception ex)
         {
@@ -88,52 +96,66 @@ public sealed class SystemProviderProcessRunner : IProviderProcessRunner
             };
         }
 
-        var stdoutTask = ReadWithLimitAsync(process.StandardOutput, request.MaxOutputBytes);
-        var stderrTask = ReadWithLimitAsync(process.StandardError, request.MaxOutputBytes);
-
+        var stdoutTask = ReadWithLimitAsync(process.StandardOutput, request.MaxOutputBytes, timeoutCts.Token);
+        var stderrTask = ReadWithLimitAsync(process.StandardError, request.MaxOutputBytes, timeoutCts.Token);
         var timedOut = false;
         var cancelled = false;
+        string? failure = null;
         try
         {
             if (request.StandardInput is not null)
             {
-                await process.StandardInput.WriteAsync(request.StandardInput.AsMemory(), ct);
+                await process.StandardInput.WriteAsync(request.StandardInput.AsMemory(), timeoutCts.Token);
+                await process.StandardInput.FlushAsync(timeoutCts.Token);
                 process.StandardInput.Close();
             }
-
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(request.Timeout);
             await process.WaitForExitAsync(timeoutCts.Token);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            cancelled = true;
-            KillProcessTree(process);
+            await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(timeoutCts.Token);
+            timeoutCts.Token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {
-            timedOut = true;
-            KillProcessTree(process);
+            cancelled = ct.IsCancellationRequested;
+            timedOut = !cancelled;
         }
-
-        if (timedOut || cancelled)
+        catch (IOException)
         {
-            await WaitForExitQuietlyAsync(process);
+            failure = "Process input or output delivery failed.";
         }
 
-        var stdout = await stdoutTask;
-        var stderr = await stderrTask;
+        if (timedOut || cancelled || failure is not null)
+        {
+            KillProcessTree(process);
+            // Cleanup is separate from execution permission: no new work may start.
+            // One fixed grace bounds waiting for exit and outstanding pipe readers.
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            timeoutCts.Cancel();
+            try
+            {
+                await process.WaitForExitAsync(cleanup.Token);
+                await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(cleanup.Token);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or InvalidOperationException or IOException)
+            {
+                failure = "Process cleanup did not complete; remaining effects are unresolved.";
+            }
+        }
 
+        var stdout = stdoutTask.IsCompletedSuccessfully ? stdoutTask.Result : new BoundedProcessOutput(string.Empty, 0, true, true);
+        var stderr = stderrTask.IsCompletedSuccessfully ? stderrTask.Result : new BoundedProcessOutput(string.Empty, 0, true, true);
+        if (stdout.Incomplete || stderr.Incomplete)
+            failure ??= "Process pipes did not reach EOF; remaining effects are unresolved.";
         return new ProviderProcessRunResult
         {
-            ExitCode = timedOut || cancelled ? -1 : process.ExitCode,
+            ExitCode = timedOut || cancelled || failure is not null || !process.HasExited ? -1 : process.ExitCode,
             StandardOutput = stdout.Text,
             StandardError = stderr.Text,
             StandardOutputBytes = stdout.CapturedBytes,
             StandardErrorBytes = stderr.CapturedBytes,
             TimedOut = timedOut,
             Cancelled = cancelled,
-            OutputTruncated = stdout.Truncated || stderr.Truncated
+            OutputTruncated = stdout.Truncated || stderr.Truncated,
+            StartError = failure
         };
     }
 
@@ -146,18 +168,7 @@ public sealed class SystemProviderProcessRunner : IProviderProcessRunner
                 process.Kill(entireProcessTree: true);
             }
         }
-        catch (InvalidOperationException)
-        {
-        }
-    }
-
-    private static async Task WaitForExitQuietlyAsync(Process process)
-    {
-        try
-        {
-            await process.WaitForExitAsync(CancellationToken.None);
-        }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
         {
         }
     }
@@ -168,20 +179,23 @@ public sealed class SystemProviderProcessRunner : IProviderProcessRunner
     /// complete transcript; continuing to drain after the limit prevents the
     /// child process from blocking on a full pipe.
     /// </summary>
-    private static async Task<BoundedProcessOutput> ReadWithLimitAsync(StreamReader reader, int maxBytes)
+    private static async Task<BoundedProcessOutput> ReadWithLimitAsync(StreamReader reader, int maxBytes, CancellationToken ct)
     {
         var capture = new BoundedUtf8Capture(Math.Max(0, maxBytes));
         var buffer = new char[4096];
 
-        while (true)
+        try
         {
-            var read = await reader.ReadAsync(buffer.AsMemory());
-            if (read == 0)
+            while (true)
             {
-                break;
+                var read = await reader.ReadAsync(buffer.AsMemory(), ct);
+                if (read == 0) break;
+                capture.Append(buffer.AsSpan(0, read));
             }
-
-            capture.Append(buffer.AsSpan(0, read));
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException)
+        {
+            return capture.Complete() with { Incomplete = true };
         }
 
         return capture.Complete();
@@ -268,5 +282,5 @@ public sealed class SystemProviderProcessRunner : IProviderProcessRunner
         };
     }
 
-    private sealed record BoundedProcessOutput(string Text, int CapturedBytes, bool Truncated);
+    private sealed record BoundedProcessOutput(string Text, int CapturedBytes, bool Truncated, bool Incomplete = false);
 }

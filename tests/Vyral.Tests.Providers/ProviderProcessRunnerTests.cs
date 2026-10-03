@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Vyral.Providers.Cli;
 
@@ -5,6 +6,94 @@ namespace Vyral.Tests.Providers;
 
 public class ProviderProcessRunnerTests
 {
+    [Fact]
+    public async Task SystemRunner_PreCancelledRequestDoesNotStartAProcess()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var result = await new SystemProviderProcessRunner().RunAsync(new ProviderProcessRunRequest
+        {
+            Command = "missing-command-must-not-be-started",
+            Timeout = TimeSpan.FromSeconds(1)
+        }, cancellation.Token);
+        Assert.True(result.Cancelled);
+        Assert.False(result.TimedOut);
+        Assert.Null(result.StartError);
+    }
+
+    [Fact]
+    public async Task SystemRunner_CancelsDescendantsWhileTheParentIsRunning()
+    {
+        if (!OperatingSystem.IsLinux() || !File.Exists("/bin/sh"))
+            throw Xunit.Sdk.SkipException.ForSkip("This descendant regression requires /bin/sh on Linux.");
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        var result = await new SystemProviderProcessRunner().RunAsync(new ProviderProcessRunRequest
+        {
+            Command = "/bin/sh",
+            Arguments = new[] { "-c", "sleep 30 & echo $!; wait" },
+            Timeout = TimeSpan.FromSeconds(5)
+        }, cancellation.Token);
+        Assert.True(result.Cancelled);
+        Assert.False(result.TimedOut);
+        Assert.True(int.TryParse(result.StandardOutput.Trim(), out var pid));
+        try
+        {
+            using var child = Process.GetProcessById(pid);
+            using var safety = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await child.WaitForExitAsync(safety.Token);
+        }
+        catch (ArgumentException) { } // Already reaped.
+    }
+
+    [Fact]
+    public async Task SystemRunner_BoundsPipesInheritedAfterParentExit()
+    {
+        if (!OperatingSystem.IsLinux() || !File.Exists("/bin/sh"))
+            throw Xunit.Sdk.SkipException.ForSkip("This pipe regression requires /bin/sh on Linux.");
+        int pid = 0;
+        try
+        {
+            using var safety = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var result = await new SystemProviderProcessRunner().RunAsync(new ProviderProcessRunRequest
+            {
+                Command = "/bin/sh",
+                Arguments = new[] { "-c", "sleep 10 & echo $!; exit 0" },
+                Timeout = TimeSpan.FromMilliseconds(300)
+            }, safety.Token);
+            int.TryParse(result.StandardOutput.Trim(), out pid);
+            Assert.True(result.TimedOut);
+            Assert.False(result.Cancelled);
+            Assert.Contains("unresolved", result.StartError);
+        }
+        finally
+        {
+            if (pid != 0)
+            {
+                try { using var child = Process.GetProcessById(pid); child.Kill(); }
+                catch (ArgumentException) { }
+                catch (InvalidOperationException) { }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SystemRunner_TimeoutIncludesBlockedStandardInput()
+    {
+        if (!OperatingSystem.IsLinux() || !File.Exists("/bin/sh"))
+            throw Xunit.Sdk.SkipException.ForSkip("This pipe regression requires /bin/sh on Linux.");
+        using var safety = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var result = await new SystemProviderProcessRunner().RunAsync(new ProviderProcessRunRequest
+        {
+            Command = "/bin/sh",
+            Arguments = new[] { "-c", "sleep 10" },
+            StandardInput = new string('x', 1024 * 1024),
+            Timeout = TimeSpan.FromMilliseconds(100),
+            MaxOutputBytes = 1024
+        }, safety.Token);
+        Assert.True(result.TimedOut);
+        Assert.False(result.Cancelled);
+    }
+
     [Fact]
     public async Task SystemRunner_BoundsAndDrainsMultiMegabyteOutput()
     {

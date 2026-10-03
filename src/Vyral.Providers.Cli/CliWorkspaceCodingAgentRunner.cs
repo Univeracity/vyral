@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Vyral.Providers.Abstractions;
@@ -72,7 +73,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
         _options = options;
         _processRunner = processRunner ?? new SystemProviderProcessRunner();
-        AdapterId = $"cli-bwrap:{options.AgentProfile}";
+        AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v2";
     }
 
     public string AdapterId { get; }
@@ -80,10 +81,35 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
     public async Task<WorkspaceCodingAgentExecution> RunAsync(WorkspaceCodingAgentExecutionRequest executionRequest, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(executionRequest);
+        var callerToken = ct;
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(callerToken);
+        lifetime.CancelAfter(executionRequest.Timeout);
+        ct = lifetime.Token;
+        var clock = Stopwatch.StartNew();
         var request = executionRequest.Request;
         string? staging = null;
+        WorkspaceCodingAgentResult? evidence = null;
+        TimeSpan Remaining()
+        {
+            ct.ThrowIfCancellationRequested();
+            var remaining = executionRequest.Timeout - clock.Elapsed;
+            if (remaining <= TimeSpan.Zero) throw new OperationCanceledException(ct);
+            return remaining;
+        }
+        WorkspaceCodingAgentExecution Stop(string code, string error, string failure, ProviderRunStatus status)
+        {
+            if (evidence is not null)
+            {
+                FillSkippedValidations(request, evidence.Validation);
+                evidence.Summary = "Workspace run stopped; no successful application is claimed.";
+                if (!evidence.ChangeSetReconciled || Encoding.UTF8.GetByteCount(ProviderJson.ToJsonObject(evidence).ToJsonString(ProviderJson.Options)) > executionRequest.MaxOutputBytes)
+                    evidence = null;
+            }
+            return Failure(code, error, failure, status, evidence);
+        }
         try
         {
+            _ = Remaining();
             var sourceRoot = await GetCleanWorkspaceRootAsync(request.WorkspaceRoot, ct);
             if (!IsUnderConfiguredRoot(sourceRoot))
             {
@@ -95,7 +121,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 return Failure("staging_root_inside_workspace", "The configured staging root must not be inside the source workspace.", ProviderFailureClasses.Configuration);
             }
 
-            EnsureNoSymlinks(sourceRoot);
+            EnsureNoSymlinks(sourceRoot, ct);
             var baseCommit = (await GetGitOutputAsync(sourceRoot, "rev-parse", "HEAD", ct)).Trim();
             if (!IsCommit(baseCommit))
             {
@@ -104,15 +130,18 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
             staging = Path.Combine(Path.GetFullPath(_options.StagingRoot), $"vyral-workspace-agent-{Guid.NewGuid():N}");
             Directory.CreateDirectory(staging);
-            CopyWorkspace(sourceRoot, staging);
-            PrepareWritablePaths(staging, request.AllowedPaths);
-            PrepareAvoidedPaths(staging, request.AvoidedPaths);
+            await CopyWorkspaceAsync(sourceRoot, staging, ct);
+            PrepareWritablePaths(staging, request.AllowedPaths, ct);
+            PrepareAvoidedPaths(staging, request.AvoidedPaths, ct);
 
+            evidence = CreateEvidence(baseCommit, Array.Empty<WorkspaceChangedPath>(), new(), new());
+            evidence.ChangeSetReconciled = false;
             var agentPrompt = ComposeAgentPrompt(request);
             var agentResult = await RunSandboxedAsync(
                 staging,
                 request,
                 executionRequest,
+                Remaining(),
                 ResolveAgentCommand(),
                 "/vyral-agent/agent",
                 BuildAgentArguments(agentPrompt, executionRequest.ModelId),
@@ -120,10 +149,12 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 includeDeclaredTools: false,
                 ct: ct);
 
+            _ = Remaining();
             var changes = await DiscoverChangesAsync(staging, baseCommit, ct);
             var validations = new List<WorkspaceValidationResult>();
             var executed = new List<string>();
             var result = CreateEvidence(baseCommit, changes, validations, executed);
+            evidence = result;
 
             if (agentResult.Cancelled)
             {
@@ -180,7 +211,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             // The host later reads the staged paths directly. Reject links before
             // reconciling so a sandbox-created link cannot cause the host to read
             // a file outside the disposable staging tree after Bubblewrap exits.
-            EnsureNoSymlinks(staging, "sandbox_symlink_present", "The agent created a symbolic link in the staged workspace; changes were not applied.");
+            EnsureNoSymlinks(staging, ct, "sandbox_symlink_present", "The agent created a symbolic link in the staged workspace; changes were not applied.");
 
             var stagedHead = (await GetGitOutputAsync(staging, "rev-parse", "HEAD", ct)).Trim();
             if (!string.Equals(baseCommit, stagedHead, StringComparison.Ordinal))
@@ -196,7 +227,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 };
             }
 
-            var stagedSnapshot = SnapshotWorkspace(staging);
+            var stagedSnapshot = await SnapshotWorkspaceAsync(staging, ct);
 
             foreach (var validationCommand in request.ValidationCommands)
             {
@@ -205,6 +236,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                     staging,
                     request,
                     executionRequest,
+                    Remaining(),
                     tool,
                     $"/vyral-tools/{validationCommand.FileName}",
                     validationCommand.Arguments,
@@ -225,6 +257,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                     Summary = status == WorkspaceValidationStatuses.Passed ? "passed" : status == WorkspaceValidationStatuses.Skipped ? "skipped" : "failed"
                 });
 
+                _ = Remaining();
                 if (status != WorkspaceValidationStatuses.Passed)
                 {
                     FillSkippedValidations(request, validations);
@@ -239,8 +272,8 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 }
             }
 
-            EnsureNoSymlinks(staging, "sandbox_symlink_present", "A validation created a symbolic link in the staged workspace; changes were not applied.");
-            if (!SnapshotEquals(stagedSnapshot, SnapshotWorkspace(staging)))
+            EnsureNoSymlinks(staging, ct, "sandbox_symlink_present", "A validation created a symbolic link in the staged workspace; changes were not applied.");
+            if (!SnapshotEquals(stagedSnapshot, await SnapshotWorkspaceAsync(staging, ct)))
             {
                 return new WorkspaceCodingAgentExecution
                 {
@@ -254,20 +287,23 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
             result.Summary = "Agent changes were sandboxed, validated, reconciled, and applied for review.";
             EnsureResultFitsOutputLimit(result, executionRequest.MaxOutputBytes);
-            await ApplyChangesAsync(sourceRoot, staging, baseCommit, request, changes, ct);
+            _ = Remaining();
+            await ApplyChangesAsync(sourceRoot, staging, baseCommit, request, changes, ct, Remaining);
             return new WorkspaceCodingAgentExecution { Status = ProviderRunStatus.Succeeded, Result = result, ProviderStatus = "succeeded" };
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
-            return Failure("cancelled", "Workspace coding-agent run was cancelled.", ProviderFailureClasses.Cancelled, ProviderRunStatus.Cancelled);
+            return callerToken.IsCancellationRequested
+                ? Stop("cancelled", "Workspace coding-agent run was cancelled.", ProviderFailureClasses.Cancelled, ProviderRunStatus.Cancelled)
+                : Stop("timeout", "Workspace coding-agent deadline expired; no successful application is claimed.", ProviderFailureClasses.Timeout, ProviderRunStatus.TimedOut);
         }
         catch (WorkspaceHostException ex)
         {
-            return Failure(ex.Status, ex.Message, ex.FailureClass, ex.RunStatus);
+            return Stop(ex.Status, ex.Message, ex.FailureClass, ex.RunStatus);
         }
         catch (Exception)
         {
-            return Failure("workspace_host_failed", "Workspace coding-agent host failed before applying changes.", ProviderFailureClasses.Unknown);
+            return Stop("workspace_host_failed", "Workspace coding-agent host failed before applying changes.", ProviderFailureClasses.Unknown, ProviderRunStatus.Failed);
         }
         finally
         {
@@ -309,6 +345,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         string staging,
         WorkspaceCodingAgentRequest request,
         WorkspaceCodingAgentExecutionRequest executionRequest,
+        TimeSpan remaining,
         string command,
         string executableDestination,
         IReadOnlyList<string> commandArguments,
@@ -322,7 +359,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             Command = _options.BubblewrapCommand,
             Arguments = arguments,
             StandardInput = standardInput,
-            Timeout = executionRequest.Timeout,
+            Timeout = remaining,
             MaxOutputBytes = executionRequest.MaxOutputBytes
         }, ct);
     }
@@ -487,7 +524,8 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         string baseCommit,
         WorkspaceCodingAgentRequest request,
         IReadOnlyList<WorkspaceChangedPath> changes,
-        CancellationToken ct)
+        CancellationToken ct,
+        Func<TimeSpan> remaining)
     {
         var sourceHead = (await GetGitOutputAsync(sourceRoot, "rev-parse", "HEAD", ct)).Trim();
         var sourceStatus = await GetGitOutputAsync(sourceRoot, "status", "--porcelain=v1", "--untracked-files=all", ct);
@@ -503,6 +541,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         {
             foreach (var changed in changes)
             {
+                _ = remaining();
                 var path = NormalizeRelativePath(changed.Path);
                 if (!IsWithinAllowedPath(path, request.AllowedPaths) || IsWithinAnyAvoidedPath(path, request.AvoidedPaths))
                 {
@@ -516,7 +555,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                     throw new WorkspaceHostException("change_set_missing_file", "The sandbox change set referenced a missing file; changes were not applied.", ProviderFailureClasses.Trust);
                 }
 
-                rollback.Add(CreateBackup(sourcePath, rollbackDirectory, path));
+                rollback.Add(await CreateBackupAsync(sourcePath, rollbackDirectory, path, ct));
                 if (changed.Kind == "deleted")
                 {
                     if (File.Exists(sourcePath)) File.Delete(sourcePath);
@@ -524,17 +563,19 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 }
 
                 EnsureDestinationDirectory(sourceRoot, sourcePath, createdDirectories);
-                CopyFilePreservingMode(stagingPath, sourcePath);
+                await CopyFilePreservingModeAsync(stagingPath, sourcePath, ct);
             }
+            _ = remaining();
         }
         catch
         {
-            RestoreSourceWorkspace(rollback, createdDirectories);
+            if (!RestoreSourceWorkspace(rollback, createdDirectories))
+                throw new WorkspaceHostException("rollback_incomplete", "Workspace rollback did not complete; source state needs operator review.", ProviderFailureClasses.Unknown);
             throw;
         }
     }
 
-    private static WorkspaceFileBackup CreateBackup(string sourcePath, string rollbackDirectory, string relativePath)
+    private static async Task<WorkspaceFileBackup> CreateBackupAsync(string sourcePath, string rollbackDirectory, string relativePath, CancellationToken ct)
     {
         if (!File.Exists(sourcePath))
         {
@@ -543,7 +584,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
         var backupPath = Path.Combine(rollbackDirectory, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
-        File.Copy(sourcePath, backupPath, overwrite: false);
+        await CopyFileAsync(sourcePath, backupPath, overwrite: false, ct);
         return new WorkspaceFileBackup(sourcePath, backupPath, GetUnixFileMode(sourcePath));
     }
 
@@ -564,14 +605,24 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         }
     }
 
-    private static void CopyFilePreservingMode(string source, string destination)
+    private static async Task CopyFilePreservingModeAsync(string source, string destination, CancellationToken ct)
     {
-        File.Copy(source, destination, overwrite: true);
+        await CopyFileAsync(source, destination, overwrite: true, ct);
         SetUnixFileMode(destination, GetUnixFileMode(source));
     }
 
-    private static void RestoreSourceWorkspace(IEnumerable<WorkspaceFileBackup> rollback, IEnumerable<string> createdDirectories)
+    private static async Task CopyFileAsync(string source, string destination, bool overwrite, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
+        await using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+        await using var output = new FileStream(destination, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        await input.CopyToAsync(output, ct);
+        ct.ThrowIfCancellationRequested();
+    }
+
+    private static bool RestoreSourceWorkspace(IEnumerable<WorkspaceFileBackup> rollback, IEnumerable<string> createdDirectories)
+    {
+        var complete = true;
         foreach (var backup in rollback.Reverse())
         {
             try
@@ -586,7 +637,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                     if (backup.UnixMode is not null) SetUnixFileMode(backup.SourcePath, backup.UnixMode.Value);
                 }
             }
-            catch { }
+            catch { complete = false; }
         }
 
         foreach (var directory in createdDirectories.Reverse())
@@ -595,8 +646,9 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             {
                 if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
             }
-            catch { }
+            catch { complete = false; }
         }
+        return complete;
     }
 
     private async Task<string> GetGitOutputAsync(string workingDirectory, params object[] values)
@@ -745,10 +797,11 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         _ => throw new WorkspaceHostException("invalid_prompt_transport", "Workspace coding-agent prompt transport must be argument or stdin.", ProviderFailureClasses.Configuration)
     };
 
-    private static void PrepareWritablePaths(string staging, IEnumerable<string> allowedPaths)
+    private static void PrepareWritablePaths(string staging, IEnumerable<string> allowedPaths, CancellationToken ct)
     {
         foreach (var path in allowedPaths.Select(NormalizeRelativePath))
         {
+            ct.ThrowIfCancellationRequested();
             if (path == ".") continue;
             var fullPath = Path.Combine(staging, path);
             if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
@@ -758,10 +811,11 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         }
     }
 
-    private static void PrepareAvoidedPaths(string staging, IEnumerable<string> avoidedPaths)
+    private static void PrepareAvoidedPaths(string staging, IEnumerable<string> avoidedPaths, CancellationToken ct)
     {
         foreach (var path in avoidedPaths.Select(NormalizeRelativePath))
         {
+            ct.ThrowIfCancellationRequested();
             var fullPath = Path.Combine(staging, path);
             if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
             {
@@ -770,10 +824,11 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         }
     }
 
-    private static void EnsureNoSymlinks(string root, string status = "workspace_symlink_present", string message = "Workspace coding-agent runs reject source worktrees containing symlinks to prevent path escape.")
+    private static void EnsureNoSymlinks(string root, CancellationToken ct, string status = "workspace_symlink_present", string message = "Workspace coding-agent runs reject source worktrees containing symlinks to prevent path escape.")
     {
         foreach (var path in Directory.EnumerateFileSystemEntries(root))
         {
+            ct.ThrowIfCancellationRequested();
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
             {
                 throw new WorkspaceHostException(status, message, ProviderFailureClasses.Policy);
@@ -781,16 +836,17 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
             if (Directory.Exists(path))
             {
-                EnsureNoSymlinks(path, status, message);
+                EnsureNoSymlinks(path, ct, status, message);
             }
         }
     }
 
-    private static Dictionary<string, string> SnapshotWorkspace(string root)
+    private static async Task<Dictionary<string, string>> SnapshotWorkspaceAsync(string root, CancellationToken ct)
     {
         var snapshot = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var entry in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories))
         {
+            ct.ThrowIfCancellationRequested();
             var relative = NormalizeRelativePath(Path.GetRelativePath(root, entry));
             if (relative == ".git" || relative.StartsWith(".git/", StringComparison.Ordinal)) continue;
 
@@ -801,7 +857,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             }
 
             using var stream = File.OpenRead(entry);
-            snapshot[relative] = $"file:{Convert.ToHexString(SHA256.HashData(stream))}:{GetUnixFileMode(entry)}";
+            snapshot[relative] = $"file:{Convert.ToHexString(await SHA256.HashDataAsync(stream, ct))}:{GetUnixFileMode(entry)}";
         }
 
         return snapshot;
@@ -830,20 +886,22 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         File.SetUnixFileMode(path, mode);
     }
 
-    private static void CopyWorkspace(string source, string destination)
+    private static async Task CopyWorkspaceAsync(string source, string destination, CancellationToken ct)
     {
         foreach (var entry in Directory.EnumerateFileSystemEntries(source))
         {
+            ct.ThrowIfCancellationRequested();
             var name = Path.GetFileName(entry);
             var target = Path.Combine(destination, name);
             if (Directory.Exists(entry))
             {
                 Directory.CreateDirectory(target);
-                CopyWorkspace(entry, target);
+                await CopyWorkspaceAsync(entry, target, ct);
             }
             else
             {
-                File.Copy(entry, target, overwrite: false);
+                await CopyFileAsync(entry, target, overwrite: false, ct);
+                SetUnixFileMode(target, GetUnixFileMode(entry));
             }
         }
     }
@@ -870,9 +928,10 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         return segments.Length == 0 ? "." : string.Join('/', segments);
     }
 
-    private static WorkspaceCodingAgentExecution Failure(string providerStatus, string error, string failureClass, ProviderRunStatus status = ProviderRunStatus.Failed) => new()
+    private static WorkspaceCodingAgentExecution Failure(string providerStatus, string error, string failureClass, ProviderRunStatus status = ProviderRunStatus.Failed, WorkspaceCodingAgentResult? result = null) => new()
     {
         Status = status,
+        Result = result,
         ProviderStatus = providerStatus,
         Error = error,
         FailureClass = failureClass

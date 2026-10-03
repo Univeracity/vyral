@@ -24,6 +24,57 @@ internal static class BubblewrapTestEnvironment
 public class CliWorkspaceCodingAgentRunnerTests
 {
     [BubblewrapFact]
+    public async Task Runner_PreservesExecutableFilesWhileStaging()
+    {
+        if (!OperatingSystem.IsLinux())
+            throw Xunit.Sdk.SkipException.ForSkip("Executable modes require Linux.");
+        await using var fixture = await WorkspaceFixture.CreateAsync("write-untracked");
+        var script = Path.Combine(fixture.Workspace, "src", "run.sh");
+        await File.WriteAllTextAsync(script, "#!/bin/sh\nexit 0\n");
+        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        await fixture.GitAsync("add", "src/run.sh");
+        await fixture.GitAsync("commit", "-qm", "seed executable");
+        var result = await fixture.CreateTarget().RunWorkspaceAsync(fixture.CreateRequest());
+        Assert.DoesNotContain(result.ChangedPaths, change => change.Path == "src/run.sh");
+        Assert.True(File.GetUnixFileMode(script).HasFlag(UnixFileMode.UserExecute));
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_UsesOneDeadlineAcrossAgentAndValidation()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+        var request = fixture.CreateRequest(validationCommand: "delay");
+        var result = await fixture.CreateTarget().RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(request, timeoutSeconds: 1));
+        Assert.Equal(ProviderRunStatus.TimedOut, result.Status);
+        Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src", "generated.txt")));
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_PreparationConsumesTheSameDeadline()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+        var runner = new DelayedPreparationRunner();
+        var result = await fixture.CreateTarget(processRunner: runner).RunAsync(
+            ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest(), timeoutSeconds: 1));
+        Assert.Equal(ProviderRunStatus.TimedOut, result.Status);
+        Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src", "generated.txt")));
+    }
+
+    private sealed class DelayedPreparationRunner : IProviderProcessRunner
+    {
+        private bool _delayed;
+        public async Task<ProviderProcessRunResult> RunAsync(ProviderProcessRunRequest request, CancellationToken ct = default)
+        {
+            if (!_delayed && request.Command == "git")
+            {
+                _delayed = true;
+                await Task.Delay(700, ct);
+            }
+            return await new SystemProviderProcessRunner().RunAsync(request, ct);
+        }
+    }
+
+    [BubblewrapFact]
     public async Task Runner_AppliesAllowedUntrackedChangesOnlyAfterDeclaredValidation()
     {
         await using var fixture = await WorkspaceFixture.CreateAsync("write-untracked");
@@ -200,12 +251,16 @@ public class CliWorkspaceCodingAgentRunnerTests
                   *loop*) while :; do :; done ;;
                 esac
                 """);
+            if (behavior == "delayed-write")
+            {
+                await File.WriteAllTextAsync(agentScript, "#!/usr/bin/python3\nimport time\ntime.sleep(0.7)\nwith open('/workspace/src/generated.txt', 'w') as output: output.write('generated')\n");
+            }
             File.SetUnixFileMode(agentScript, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             Directory.CreateDirectory(Path.Combine(root, "staging"));
             return new WorkspaceFixture(root, workspace, agentScript, baseCommit.Trim(), behavior);
         }
 
-        public WorkspaceCodingAgentProviderTarget CreateTarget(string? agentCommand = null, List<string>? agentArguments = null, string? promptTransport = null)
+        public WorkspaceCodingAgentProviderTarget CreateTarget(string? agentCommand = null, List<string>? agentArguments = null, string? promptTransport = null, IProviderProcessRunner? processRunner = null)
         {
             var runnerOptions = new CliWorkspaceCodingAgentOptions
             {
@@ -218,7 +273,7 @@ public class CliWorkspaceCodingAgentRunnerTests
                 StagingRoot = Path.Combine(Root, "staging"),
                 BubblewrapCommand = BubblewrapTestEnvironment.Command,
                 GitCommand = "git",
-                RuntimeReadOnlyPaths = new List<string> { "/lib", "/lib64" },
+                RuntimeReadOnlyPaths = new List<string> { "/lib", "/lib64" }.Concat(Behavior == "delayed-write" ? Directory.GetDirectories("/usr/lib", "python3.*") : Array.Empty<string>()).ToList(),
                 ToolSearchPaths = new List<string> { "/usr/bin", "/bin" }
             };
             return new WorkspaceCodingAgentProviderTarget(new WorkspaceCodingAgentProviderTargetOptions
@@ -226,13 +281,14 @@ public class CliWorkspaceCodingAgentRunnerTests
                 ProviderId = runnerOptions.ProviderId,
                 DisplayName = "Fixture workspace CLI",
                 AllowedWorkspaceRoots = runnerOptions.AllowedWorkspaceRoots.ToList()
-            }, new CliWorkspaceCodingAgentRunner(runnerOptions));
+            }, new CliWorkspaceCodingAgentRunner(runnerOptions, processRunner));
         }
 
         public WorkspaceCodingAgentRequest CreateRequest(bool includeGitTool = false, string validationCommand = "verify")
         {
             var validation = validationCommand switch
             {
+                "delay" => new WorkspaceCommand { Id = "verify", FileName = "python3", Arguments = new List<string> { "-c", "import time; time.sleep(0.7)" } },
                 "false" => new WorkspaceCommand { Id = "verify", FileName = "sh", Arguments = new List<string> { "-c", "exit 1" } },
                 "mutate" => new WorkspaceCommand { Id = "verify", FileName = "sh", Arguments = new List<string> { "-c", "printf validator > src/validator.txt" } },
                 _ => new WorkspaceCommand { Id = "verify", FileName = "sh", Arguments = new List<string> { "-c", "test -f src/seed.txt" } }
