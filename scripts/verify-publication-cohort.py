@@ -15,7 +15,7 @@ EXPECTED = (
     (
         "nuget",
         "Vyral.Abstractions",
-        "0.3.3",
+        "0.3.4",
         "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
         "publish-nuget",
         "public",
@@ -23,7 +23,7 @@ EXPECTED = (
     (
         "nuget",
         "Vyral.Local",
-        "0.3.3",
+        "0.3.4",
         "src/Vyral.Local/Vyral.Local.csproj",
         "publish-nuget",
         "public",
@@ -39,7 +39,7 @@ EXPECTED = (
     (
         "npm",
         "vyral-client",
-        "0.3.3",
+        "0.3.4",
         "clients/javascript/package.json",
         "publish-npm",
         "public",
@@ -60,7 +60,7 @@ EXCLUDED = {
 }
 AUTHORIZATION = {
     "mode": "manual-protected-environment",
-    "releaseTag": "v0.3.3",
+    "releaseTag": "v0.3.4",
     "workflow": ".github/workflows/publish-first-cohort.yml",
     "requirements": (
         "a GitHub-verified signed annotated release tag that resolves to current main",

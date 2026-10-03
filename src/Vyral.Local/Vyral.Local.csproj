@@ -13,8 +13,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Version>0.3.3</Version>
-    <PackageVersion>0.3.3</PackageVersion>
+    <Version>0.3.4</Version>
+    <PackageVersion>0.3.4</PackageVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

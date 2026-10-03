@@ -168,7 +168,7 @@ jobs:
               raise SystemExit("The baseline runtime wheel SHA-256 is invalid.")
           name = Path(urlsplit(url).path).name
           if not re.fullmatch(
-              r"vyral_runtime-0\.1\.\d+-py3-none-any\.whl",
+              r"vyral(?:_runtime)?-0\.1\.\d+-py3-none-any\.whl",
               name,
           ):
               raise SystemExit(

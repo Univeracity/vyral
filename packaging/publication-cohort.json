@@ -5,7 +5,7 @@
     {
       "ecosystem": "nuget",
       "name": "Vyral.Abstractions",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "source": "src/Vyral.Abstractions/Vyral.Abstractions.csproj",
       "environment": "publish-nuget",
       "maturity": "public"
@@ -13,7 +13,7 @@
     {
       "ecosystem": "nuget",
       "name": "Vyral.Local",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "source": "src/Vyral.Local/Vyral.Local.csproj",
       "environment": "publish-nuget",
       "maturity": "public"
@@ -29,7 +29,7 @@
     {
       "ecosystem": "npm",
       "name": "vyral-client",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "source": "clients/javascript/package.json",
       "environment": "publish-npm",
       "maturity": "public"
@@ -50,7 +50,7 @@
   ],
   "authorization": {
     "mode": "manual-protected-environment",
-    "releaseTag": "v0.3.3",
+    "releaseTag": "v0.3.4",
     "workflow": ".github/workflows/publish-first-cohort.yml",
     "requirements": [
       "a GitHub-verified signed annotated release tag that resolves to current main",
@@ -82,5 +82,5 @@
       }
     ]
   },
-  "authorizationBoundary": "This reviewed authorization permits only the listed package patch through the named manual workflow. It excludes unchanged execution packages, the Python HTTP client registry distribution, provider packages, and container publication. The npm 0.3.3 archive has an explicitly authorized operator-token exception; no npm token is stored in GitHub, source or workflow files, and no npm OIDC provenance is claimed."
+  "authorizationBoundary": "This reviewed authorization permits only the listed package patch through the named manual workflow. It excludes unchanged execution packages, the Python HTTP client registry distribution, provider packages, and container publication. The npm 0.3.4 archive has an explicitly authorized operator-token exception; no npm token is stored in GitHub, source or workflow files, and no npm OIDC provenance is claimed."
 }

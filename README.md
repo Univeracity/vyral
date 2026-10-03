@@ -14,7 +14,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-111111"></a>
   <a href="https://github.com/Univeracity/vyral/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/Univeracity/vyral/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="docs/reference/stability.md"><img alt="Version 0.3.3" src="https://img.shields.io/badge/version-0.3.3-111111"></a>
+  <a href="docs/reference/stability.md"><img alt="Version 0.3.4" src="https://img.shields.io/badge/version-0.3.4-111111"></a>
   <a href="runtimes/python"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/python-3.10%2B-111111"></a>
   <a href="design/public-sdk-surface-and-stateless-mcp.md"><img alt="MCP 2026-07-28" src="https://img.shields.io/badge/MCP-2026--07--28-111111"></a>
   <a href="#capability-boundaries"><img alt="Readiness is evidence-scoped" src="https://img.shields.io/badge/readiness-evidence--scoped-6b7280"></a>
@@ -204,7 +204,7 @@ also need TLS, rate limits, authenticated ingress, and deployment-specific
 identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
 and the [deployment guide](deploy).
 
-The general package release is `v0.3.3` (core NuGet and JavaScript SDK `0.3.3`,
+The general package release is `v0.3.4` (core NuGet and JavaScript SDK `0.3.4`,
 prototype Python runtime `0.1.4`). It advances independently of the server container.
 The lightweight Python HTTP SDK is available as a release archive, not a PyPI publication.
 

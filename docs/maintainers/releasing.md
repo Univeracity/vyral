@@ -48,7 +48,7 @@ retained as release evidence.
    registry version, repository URL, and SHA-512 archive integrity against its independently built
    distribution. This exception does not claim npm OIDC provenance or a trusted-publisher
    relationship. The operator renewed this exact-archive exception for
-   `vyral-client@0.3.3`; use the same local-token publication and protected integrity
+   `vyral-client@0.3.4`; use the same local-token publication and protected integrity
    verification boundary. Other npm versions require new explicit authorization or
    an account configuration that permits npm trusted publishing. Do not place the token in GitHub, the repository, or a
    workflow file.
@@ -100,13 +100,13 @@ The exact currently authorized package cohort is recorded in
 The manual [`Publish package release`](../../.github/workflows/publish-first-cohort.yml)
 workflow is the only source path allowed to publish that cohort. Its filename is retained because
 NuGet and PyPI trusted-publisher identities include the workflow filename. It accepts only the
-reviewed `v0.3.3` package patch, and before packaging requires a GitHub-verified signed
+reviewed `v0.3.4` package patch, and before packaging requires a GitHub-verified signed
 annotated tag at current `main` plus a successful canonical Release Integrity
 push run for that commit. Each registry job uses its own protected environment
 and least-privilege identity. It has no automatic trigger. The patch publishes
-`Vyral.Abstractions` and `Vyral.Local` `0.3.3`, the Python runtime `0.1.4`,
-and the JavaScript HTTP SDK `vyral-client@0.3.3`. Execution registry packages
-remain unchanged. The lightweight Python HTTP SDK source is versioned `0.3.3`
+`Vyral.Abstractions` and `Vyral.Local` `0.3.4`, the Python runtime `0.1.4`,
+and the JavaScript HTTP SDK `vyral-client@0.3.4`. Execution registry packages
+remain unchanged. The lightweight Python HTTP SDK source is versioned `0.3.4`
 and packaged for GitHub release use; its PyPI distribution remains outside the cohort.
 
 The server's `0.3.1` security correction is a deliberately separate,
@@ -138,7 +138,7 @@ GitHub Actions OIDC trusted publishing; NuGet additionally needs the
 `NUGET_USERNAME` environment variable for its short-lived-key exchange. The separate
 container workflow uses only the repository-scoped `GITHUB_TOKEN` with
 `packages: write`. npm uses the explicitly renewed operator-token exception
-for `vyral-client@0.3.3`: publish only the exact authorized archive after the signed
+for `vyral-client@0.3.4`: publish only the exact authorized archive after the signed
 tag and canonical checks exist, then dispatch with `npm_direct_token_published: true`.
 The protected npm environment verifies its version, repository URL and SHA-512
 integrity against an independently built archive. No npm token is placed in GitHub
