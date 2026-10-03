@@ -70,6 +70,33 @@ VYRAL_R2_SECRET_ACCESS_KEY=your-r2-secret
 VYRAL_R2_BUCKET=your-vyral-artifact-bucket
 ```
 
+### R2 Storage And Delivery Ownership
+
+`R2ObjectStore` implements authenticated S3 data-plane put, get, delete, and
+list operations through `IObjectStore`. Provision the bucket separately.
+The consuming application and its Worker or edge deployment own custom domains,
+public routing, end-user authorization, cache policy, immutable-delivery headers,
+and delivery observability. Selecting R2 does not configure those delivery
+behaviors or a Cloudflare Queues execution route.
+
+Keep R2 S3 credentials in the Vyral host's secret configuration. Use
+[bucket-scoped Object Read & Write credentials](https://developers.cloudflare.com/r2/api/tokens/)
+for the configured artifact bucket rather than account-wide administration.
+The readiness probe writes and deletes a temporary object, so read-only access
+is insufficient for this setup. Never send storage credentials to browser
+clients or include them in artifact metadata, public URLs, or logs.
+
+R2 supports a subset of S3. Check Cloudflare's current
+[S3 compatibility matrix](https://developers.cloudflare.com/r2/api/s3/api/)
+for required operations and headers; AWS ACL, bucket-policy, object-lock, and
+checksum behavior must not be assumed. The adapter uses the account endpoint
+and `auto` signing region and defaults to disabling payload signing and automatic
+put checksum validation for compatibility. These settings are not an integrity
+qualification: verify byte-for-byte round trips, conditional no-replace writes,
+metadata, pagination, cancellation, and deletion against an isolated bucket
+before deployment. The R2 adapter remains preview; no live qualification is
+claimed here.
+
 Any consumer can submit a record and its artifact to:
 
 ```bash
