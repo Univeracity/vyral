@@ -36,19 +36,12 @@ EXPECTED = (
         "publish-pypi",
         "prototype",
     ),
-    (
-        "npm",
-        "vyral-client",
-        "0.3.4",
-        "clients/javascript/package.json",
-        "publish-npm",
-        "public",
-    ),
 )
 UNCHANGED = (
     "Vyral.Primitives 0.2.0",
     "Vyral.Execution 0.2.0",
     "Vyral.Execution.Local 0.2.0",
+    "npm vyral-client 0.3.0",
 )
 EXCLUDED = {
     "cloud-provider packages",
@@ -57,6 +50,7 @@ EXCLUDED = {
     "Python HTTP client distribution (vyral-client)",
     "prototype integrations",
     "server container",
+    "npm registry distribution (vyral-client)",
 }
 AUTHORIZATION = {
     "mode": "manual-protected-environment",
@@ -65,7 +59,7 @@ AUTHORIZATION = {
     "requirements": (
         "a GitHub-verified signed annotated release tag that resolves to current main",
         "a successful canonical Release Integrity push run for that exact commit",
-        "the exact NuGet and PyPI registry trusted-publisher relationships and verified direct-token npm archive",
+        "the exact NuGet and PyPI registry trusted-publisher relationships",
         "a manual dispatch from main through the named protected environments",
     ),
     "publishers": (
@@ -82,13 +76,6 @@ AUTHORIZATION = {
             "publish-first-cohort.yml",
             "publish-pypi",
             "GitHub Actions OIDC trusted publishing",
-        ),
-        (
-            "npm",
-            "https://registry.npmjs.org",
-            "publish-first-cohort.yml",
-            "publish-npm",
-            "operator-controlled npm token; exact archive verified by protected workflow",
         ),
     ),
 }

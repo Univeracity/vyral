@@ -136,16 +136,11 @@ def main() -> int:
         "release-integrity.yml/runs?head_sha=",
         "name: publish-nuget",
         "name: publish-pypi",
-        "name: publish-npm",
         "name: package-release-v0.3.4",
         'SOURCE_DATE_EPOCH: "315532800"',
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
         "skip-existing: true",
-        "npm_direct_token_published:",
-        'test "$NPM_DIRECT_TOKEN_PUBLISHED" = "true"',
-        "npm view vyral-client@0.3.4 dist.integrity",
-        "expected_integrity",
         "Verify public package availability",
     ):
         if requirement not in publisher:
@@ -169,7 +164,7 @@ def main() -> int:
     ):
         if PUBLISH_PATTERNS[label].search(publisher):
             errors.append(
-                f"{FIRST_COHORT_PUBLISH_WORKFLOW} may publish only the reviewed NuGet and PyPI packages and verify the authorized npm archive, not {label}"
+                f"{FIRST_COHORT_PUBLISH_WORKFLOW} may publish only the reviewed NuGet and PyPI packages, not {label}"
             )
     if re.search(
         r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",

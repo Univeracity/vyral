@@ -204,9 +204,10 @@ also need TLS, rate limits, authenticated ingress, and deployment-specific
 identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
 and the [deployment guide](deploy).
 
-The general package release is `v0.3.4` (core NuGet and JavaScript SDK `0.3.4`,
-prototype Python runtime `0.1.4`). It advances independently of the server container.
-The lightweight Python HTTP SDK is available as a release archive, not a PyPI publication.
+The general package release is `v0.3.4` (core NuGet `0.3.4`, prototype Python
+runtime `0.1.4`, and HTTP SDK archives `0.3.4`). It advances independently of the server container.
+The HTTP SDKs are available as release archives. JavaScript npm publication is deferred;
+the lightweight Python HTTP SDK remains outside PyPI publication.
 
 The server image version described by this source is `ghcr.io/univeracity/vyral-server:0.3.6`;
 verify registry availability before deploying, pin its published digest, and use the same API-key
