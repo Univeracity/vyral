@@ -734,7 +734,7 @@
     {
       "mode": "644",
       "path": "docs/reference/cloudflare-r2-qualification.md",
-      "sha256": "acba44e4d9d7da0a341b985dd8bdb479e0b9f7b6a0e50e5870acf78d8b5ba985"
+      "sha256": "09784639f082a0c1b77edf68d29ddcb10b9a04cb7ebf762958c665d0e26cfae6"
     },
     {
       "mode": "644",
@@ -5209,5 +5209,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "32eda2d67e62a4a9f37764f7c63a6c5e2a3b374b4ed527f4a7951855d957cd52"
+  "treeSha256": "7f7b839a961f43efed49425ba5b7830524c3cd35bb8b3a0e351ebf79d9a69623"
 }
