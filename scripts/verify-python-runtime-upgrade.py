@@ -484,6 +484,33 @@ def _qualify(
             json.loads(state_path.read_text(encoding="utf-8")),
             "baseline state",
         )
+        # Read the seeded baseline's ledger before starting the candidate. A
+        # published patch may already use schema 1; it must preserve that ledger
+        # rather than claim a migration from schema 0.
+        with sqlite3.connect(
+            (runtime_root / "vyral.sqlite").resolve().as_uri() + "?mode=ro",
+            uri=True,
+        ) as connection:
+            ledger_exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+                "AND name = 'vyral_py_runtime_schema'"
+            ).fetchone()
+            baseline_ledger = (
+                connection.execute(
+                    "SELECT schema_version, migrated_by_runtime_version "
+                    "FROM vyral_py_runtime_schema WHERE component = ?",
+                    ("portable-local",),
+                ).fetchone()
+                if ledger_exists is not None
+                else None
+            )
+        baseline_schema = 0 if baseline_ledger is None else baseline_ledger[0]
+        baseline_migrated_by = (
+            None if baseline_ledger is None else baseline_ledger[1]
+        )
+        if type(baseline_schema) is not int or baseline_schema not in (0, 1):
+            raise RuntimeError("The baseline storage schema is not qualified.")
+        expected_applied = [1] if baseline_schema == 0 else []
         candidate_python = _install(
             candidate_wheel,
             work / "candidate-environment",
@@ -537,13 +564,20 @@ def _qualify(
             )
             first_schema = _schema_details(readiness)
             if (
-                first_schema.get("fromVersion") != 0
+                first_schema.get("fromVersion") != baseline_schema
                 or first_schema.get("toVersion") != 1
-                or first_schema.get("appliedVersions") != [1]
-                or first_schema.get("upgraded") is not True
+                or first_schema.get("appliedVersions") != expected_applied
+                or first_schema.get("upgraded") is not bool(expected_applied)
+                or first_schema.get("databasePreexisting") is not True
+                or first_schema.get("migratedByRuntimeVersion") != (
+                    candidate_version
+                    if baseline_schema == 0
+                    else baseline_migrated_by
+                )
             ):
                 raise RuntimeError(
-                    "The first candidate start did not apply schema 0 -> 1."
+                    "The first candidate start did not preserve the expected "
+                    f"schema decision {baseline_schema} -> 1."
                 )
             _verify_persisted_state(base_url, api_key, state)
             _verify_mcp(base_url, api_key)
@@ -638,6 +672,7 @@ def _qualify(
             },
             "environment": environment,
             "storage": {
+                "baselineSchemaVersion": baseline_schema,
                 "firstStart": first_schema,
                 "secondStart": second_schema,
                 "integrityCheck": integrity,
@@ -645,7 +680,11 @@ def _qualify(
             },
             "checks": [
                 "baseline-seed",
-                "forward-schema-migration",
+                (
+                    "forward-schema-migration"
+                    if baseline_schema == 0
+                    else "current-schema-preserved"
+                ),
                 "authentication-after-upgrade",
                 "records-after-upgrade",
                 "canonical-after-upgrade",
@@ -665,7 +704,7 @@ def _qualify(
         print(
             "python-runtime-upgrade=ok "
             f"baseline={baseline_version} candidate={candidate_version} "
-            "schema=0->1 restart=passed auth=passed mcp=passed"
+            f"schema={baseline_schema}->1 restart=passed auth=passed mcp=passed"
         )
 
 
