@@ -114,7 +114,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/publish-first-cohort.yml",
-      "sha256": "dee563b7e5ac4d24e3582a2e9f91291a313005b17d716996ed632efbb5f8ed8f"
+      "sha256": "3d0b82e48587d1852535fa5ee59c345f33f079fd51cb49c2bc71f7f8842822f1"
     },
     {
       "mode": "644",
@@ -729,7 +729,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "9d63f07bb53e24d62dcc9a4da58416de9ffbe0c06a7fd8b72de3a975a1a249de"
+      "sha256": "d970da0ccd58caa70e64bab318dc74eb38bfb81a4547d91764cc85aa0be1a5e1"
     },
     {
       "mode": "644",
@@ -834,7 +834,7 @@
     {
       "mode": "644",
       "path": "packaging/publication-cohort.json",
-      "sha256": "b87b3c1f84c407227f15eef7e87ffa3796a57646b8a991de19b1232544ab541d"
+      "sha256": "ec434a615ff3cc70f447a320047cc7c119c634e9d7813b81860029d3b31ab455"
     },
     {
       "mode": "644",
@@ -2164,12 +2164,12 @@
     {
       "mode": "755",
       "path": "scripts/verify-publication-cohort.py",
-      "sha256": "0b9c5ba9d96959142ac9b100a0ef80d9e19ea1238f5109b0313e21bb51037704"
+      "sha256": "4aeb37ec008dfbddd887fb93f6fd64676bb16d16762e5bed1baf112bf653e944"
     },
     {
       "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "6b41c5f74b0162842d50345f53d5143a12dbf6707f7e0f1e92363c63d35e8cd9"
+      "sha256": "b58746ac44ed16bde9dfa829126a686fa05d4b1b0f1a478b715d9360cf9275a9"
     },
     {
       "mode": "755",
@@ -5209,5 +5209,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "30c09b43c2947daf7b25724169be70c50a49bc01277d04a9e6c3b7c21f726d3b"
+  "treeSha256": "c8ac050a3906e5d2d1a72f0e6d22b7816cae16b696bc2b89ef2de0fb092c67a6"
 }
