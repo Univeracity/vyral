@@ -16,7 +16,7 @@ RUN dotnet restore src/Vyral.Server/Vyral.Server.csproj --locked-mode --disable-
     /p:UseAppHost=false \
     && mkdir -p /app/publish/.vyral
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:6385dc0eaef704fad88d3f65c334e791a371bbe448f52ca39d83d2df49251e28
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:00e0ad6a7ef8c0c1391b87f05c7ac757a15740455688f2bfcd146a3f4b987efd
 
 ARG VYRAL_IMAGE_VERSION=0.3.5
 ARG VYRAL_IMAGE_REVISION=local
