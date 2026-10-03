@@ -2159,7 +2159,7 @@
     {
       "mode": "755",
       "path": "scripts/verify-public-sdk-surface.py",
-      "sha256": "342889e432211f89016bc3cdb0770140e531f4c12c120fded0a5fb4fd4a60aea"
+      "sha256": "33397b94810022ee726f5e8298907258b129faf1141565c87ef857d4d94df8bd"
     },
     {
       "mode": "755",
@@ -5209,5 +5209,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "ccd7fea2e93cc799bcd43d537bd780d1c7fa09a7da51d130fc19e2f5938136cc"
+  "treeSha256": "30c09b43c2947daf7b25724169be70c50a49bc01277d04a9e6c3b7c21f726d3b"
 }
