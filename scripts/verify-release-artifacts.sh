@@ -310,8 +310,8 @@ for package in packages:
         package_id = value("id")
         package_version = value("version")
         expected_versions = {
-            "Vyral.Abstractions": "0.3.3",
-            "Vyral.Local": "0.3.3",
+            "Vyral.Abstractions": "0.3.4",
+            "Vyral.Local": "0.3.4",
             "Vyral.Primitives": "0.2.0",
             "Vyral.Execution": "0.2.0",
             "Vyral.Execution.Aws": "0.2.0",

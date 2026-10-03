@@ -155,6 +155,31 @@ def _unused_port() -> int:
         return int(listener.getsockname()[1])
 
 
+def _serve_probe(root: Path, port: int, receipt_path: Path) -> int:
+    """Observe the installed CLI's runtime factory without exposing diagnostics."""
+    from unittest.mock import patch
+    from vyral_runtime.host import cli  # type: ignore[import-not-found]
+
+    create_application = cli.create_host_application
+
+    def observed_application(*arguments: Any, **keywords: Any) -> Any:
+        application = create_application(*arguments, **keywords)
+        with receipt_path.open("x", encoding="utf-8") as stream:
+            json.dump(application.runtime.storage_schema_receipt.to_dict(), stream)
+        receipt_path.chmod(0o600)
+        return application
+
+    with patch.object(cli, "create_host_application", observed_application):
+        return cast(
+            int,
+            cli.main([
+                "--root", str(root), "--host", "127.0.0.1",
+                "--port", str(port), "--log-level", "warning",
+                "--require-api-key",
+            ]),
+        )
+
+
 def _request(
     base_url: str,
     method: str,
@@ -271,25 +296,21 @@ def _host(
     runtime_root: Path,
     api_key: str,
     log_path: Path,
-) -> Iterator[str]:
+) -> Iterator[tuple[str, dict[str, Any]]]:
     port = _unused_port()
     base_url = f"http://127.0.0.1:{port}"
+    receipt_path = log_path.with_name("startup-" + token_hex(8) + ".json")
     environment = os.environ.copy()
     environment["VYRAL_API_KEY"] = api_key
     with log_path.open("ab") as log:
         process = subprocess.Popen(
             [
                 str(python),
-                "-m",
-                "vyral_runtime.host",
-                "--root",
+                str(Path(__file__).resolve()),
+                "_serve_probe",
                 str(runtime_root),
-                "--host",
-                "127.0.0.1",
-                "--port",
                 str(port),
-                "--log-level",
-                "warning",
+                str(receipt_path),
             ],
             env=environment,
             stdin=subprocess.DEVNULL,
@@ -298,7 +319,10 @@ def _host(
         )
         try:
             _wait_for_server(process, base_url, log_path)
-            yield base_url
+            yield base_url, _object(
+                json.loads(receipt_path.read_text(encoding="utf-8")),
+                "owner-local startup receipt",
+            )
         finally:
             if process.poll() is None:
                 process.terminate()
@@ -309,7 +333,7 @@ def _host(
                     process.wait(timeout=5)
 
 
-def _schema_details(readiness: Mapping[str, Any]) -> dict[str, Any]:
+def _verify_public_schema_readiness(readiness: Mapping[str, Any]) -> None:
     checks = readiness.get("checks")
     if not isinstance(checks, list):
         raise RuntimeError("Readiness did not contain checks.")
@@ -320,7 +344,9 @@ def _schema_details(readiness: Mapping[str, Any]) -> dict[str, Any]:
                     "The storage-schema readiness check failed: "
                     + json.dumps(value, sort_keys=True)
                 )
-            return _object(value.get("details"), "storage schema details")
+            if value.get("details") not in (None, {}):
+                raise RuntimeError("Public readiness exposed local diagnostic detail.")
+            return
     raise RuntimeError("Readiness omitted the storage-schema check.")
 
 
@@ -484,6 +510,33 @@ def _qualify(
             json.loads(state_path.read_text(encoding="utf-8")),
             "baseline state",
         )
+        # Read the seeded baseline's ledger before starting the candidate. A
+        # published patch may already use schema 1; it must preserve that ledger
+        # rather than claim a migration from schema 0.
+        with sqlite3.connect(
+            (runtime_root / "vyral.sqlite").resolve().as_uri() + "?mode=ro",
+            uri=True,
+        ) as connection:
+            ledger_exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+                "AND name = 'vyral_py_runtime_schema'"
+            ).fetchone()
+            baseline_ledger = (
+                connection.execute(
+                    "SELECT schema_version, migrated_by_runtime_version "
+                    "FROM vyral_py_runtime_schema WHERE component = ?",
+                    ("portable-local",),
+                ).fetchone()
+                if ledger_exists is not None
+                else None
+            )
+        baseline_schema = 0 if baseline_ledger is None else baseline_ledger[0]
+        baseline_migrated_by = (
+            None if baseline_ledger is None else baseline_ledger[1]
+        )
+        if type(baseline_schema) is not int or baseline_schema not in (0, 1):
+            raise RuntimeError("The baseline storage schema is not qualified.")
+        expected_applied = [1] if baseline_schema == 0 else []
         candidate_python = _install(
             candidate_wheel,
             work / "candidate-environment",
@@ -512,7 +565,7 @@ def _qualify(
             runtime_root,
             api_key,
             log_path,
-        ) as base_url:
+        ) as (base_url, first_schema):
             unauthorized, _, _ = _request(
                 base_url,
                 "GET",
@@ -535,15 +588,23 @@ def _qualify(
                 ),
                 "first readiness",
             )
-            first_schema = _schema_details(readiness)
+            _verify_public_schema_readiness(readiness)
             if (
-                first_schema.get("fromVersion") != 0
+                first_schema.get("fromVersion") != baseline_schema
                 or first_schema.get("toVersion") != 1
-                or first_schema.get("appliedVersions") != [1]
-                or first_schema.get("upgraded") is not True
+                or first_schema.get("appliedVersions") != expected_applied
+                or first_schema.get("upgraded") is not bool(expected_applied)
+                or first_schema.get("databasePreexisting") is not True
+                or first_schema.get("migratedByRuntimeVersion") != (
+                    candidate_version
+                    if baseline_schema == 0
+                    else baseline_migrated_by
+                )
             ):
                 raise RuntimeError(
-                    "The first candidate start did not apply schema 0 -> 1."
+                    "The first candidate start did not preserve the expected "
+                    f"schema decision {baseline_schema} -> 1: "
+                    + json.dumps(first_schema, sort_keys=True)
                 )
             _verify_persisted_state(base_url, api_key, state)
             _verify_mcp(base_url, api_key)
@@ -571,7 +632,7 @@ def _qualify(
             runtime_root,
             api_key,
             log_path,
-        ) as base_url:
+        ) as (base_url, second_schema):
             readiness = _object(
                 _json(
                     base_url,
@@ -581,7 +642,7 @@ def _qualify(
                 ),
                 "restart readiness",
             )
-            second_schema = _schema_details(readiness)
+            _verify_public_schema_readiness(readiness)
             if (
                 second_schema.get("fromVersion") != 1
                 or second_schema.get("toVersion") != 1
@@ -638,6 +699,11 @@ def _qualify(
             },
             "environment": environment,
             "storage": {
+                "observation": (
+                    "owner-local startup receipt from the installed CLI factory; "
+                    "public readiness remains redacted"
+                ),
+                "baselineSchemaVersion": baseline_schema,
                 "firstStart": first_schema,
                 "secondStart": second_schema,
                 "integrityCheck": integrity,
@@ -645,7 +711,11 @@ def _qualify(
             },
             "checks": [
                 "baseline-seed",
-                "forward-schema-migration",
+                (
+                    "forward-schema-migration"
+                    if baseline_schema == 0
+                    else "current-schema-preserved"
+                ),
                 "authentication-after-upgrade",
                 "records-after-upgrade",
                 "canonical-after-upgrade",
@@ -665,11 +735,13 @@ def _qualify(
         print(
             "python-runtime-upgrade=ok "
             f"baseline={baseline_version} candidate={candidate_version} "
-            "schema=0->1 restart=passed auth=passed mcp=passed"
+            f"schema={baseline_schema}->1 restart=passed auth=passed mcp=passed"
         )
 
 
 def main() -> int:
+    if len(sys.argv) == 5 and sys.argv[1] == "_serve_probe":
+        return _serve_probe(Path(sys.argv[2]), int(sys.argv[3]), Path(sys.argv[4]))
     if len(sys.argv) == 4 and sys.argv[1] == "_seed":
         return _seed_baseline(Path(sys.argv[2]), Path(sys.argv[3]))
 

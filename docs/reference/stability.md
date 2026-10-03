@@ -49,8 +49,9 @@ that was produced for 0.2. A future execution minor release must regenerate its
 qualification evidence and update all related package and descriptor versions
 together.
 
-The general GitHub package release is `v0.3.3`: core NuGet and HTTP SDK packages
-use `0.3.3`, and the prototype Python runtime uses `0.1.4`. The server container
+The general GitHub package release is `v0.3.4`: core NuGet and HTTP SDK packages
+use `0.3.4`, and the prototype Python runtime uses `0.1.4`. The HTTP SDKs
+are attached as archives; npm registry delivery is deferred. The server container
 remains the separately tagged `server-v0.3.6` release. Contract catalog versions
 remain `0.3.0` within this compatible patch; execution evidence remains on `0.2.0`.
 
