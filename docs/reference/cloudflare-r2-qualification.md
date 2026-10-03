@@ -25,7 +25,7 @@ and accepts optional session credentials. A caller must reconcile effects after
 a dispatched request fails or is cancelled; pre-cancellation is the only live
 cancellation case qualified here.
 
-Reproduction requires VYRAL_R2_ACCOUNT_ID, VYRAL_R2_ACCESS_KEY_ID,
+Reproduction requires VYRAL_CLOUDFLARE_ACCOUNT_ID, VYRAL_R2_ACCESS_KEY_ID,
 VYRAL_R2_SECRET_ACCESS_KEY, optional VYRAL_R2_SESSION_TOKEN and VYRAL_R2_BUCKET,
 then dotnet test tests/Vyral.Tests.Cloudflare/Vyral.Tests.Cloudflare.csproj.
 Use an isolated bucket and temporary credentials. The tests use random prefixes
