@@ -67,6 +67,7 @@ public static class ServerStorageFactory
             AccountId = options.CloudflareAccountId,
             AccessKeyId = options.CloudflareR2AccessKeyId,
             SecretAccessKey = options.CloudflareR2SecretAccessKey,
+            SessionToken = options.CloudflareR2SessionToken,
             ServiceUrl = options.CloudflareR2ServiceUrl
         }),
         _ => throw new InvalidOperationException($"Object store backend '{options.ObjectStore}' is not supported by this host.")

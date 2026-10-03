@@ -158,6 +158,10 @@ public sealed class DeterministicAiProviderTarget : IProviderTarget, IProviderQu
             return Task.FromResult(CreateResult(request, trace, stopwatch, ProviderRunStatus.Rejected, "Unknown provider mode.", ProviderFailureClasses.Policy, "unknown_mode"));
         }
 
+        if (request.Capability == ProviderCapabilityIds.AiChat && request.Payload["maxOutputTokens"] is not null)
+            return Task.FromResult(CreateResult(request, trace, stopwatch, ProviderRunStatus.Unsupported,
+                "This provider cannot enforce a generated-token ceiling.", ProviderFailureClasses.Unsupported, "token_ceiling_unsupported"));
+
         var payloadBytes = Encoding.UTF8.GetByteCount(request.Payload.ToJsonString(ProviderJson.Options));
         if (payloadBytes > policy.MaxInputBytes)
         {

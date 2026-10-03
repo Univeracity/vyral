@@ -11287,6 +11287,9 @@
               "$ref": "#/$defs/AiToolPlanPayload"
             },
             {
+              "$ref": "#/$defs/AiJudgePayload"
+            },
+            {
               "type": "object",
               "additionalProperties": true,
               "description": "Provider-specific extension payload."
@@ -11298,7 +11301,8 @@
             "ai.rerank": "#/components/schemas/AiRerankPayload",
             "ai.review": "#/components/schemas/AiReviewPayload",
             "ai.scaffold": "#/components/schemas/AiScaffoldPayload",
-            "ai.toolPlan": "#/components/schemas/AiToolPlanPayload"
+            "ai.toolPlan": "#/components/schemas/AiToolPlanPayload",
+            "ai.judge": "#/components/schemas/AiJudgePayload"
           }
         },
         "correlationId": {
@@ -11403,6 +11407,9 @@
               "$ref": "#/$defs/AiToolPlanResult"
             },
             {
+              "$ref": "#/$defs/AiJudgeResult"
+            },
+            {
               "type": "object",
               "additionalProperties": true,
               "description": "Provider-specific extension output."
@@ -11414,7 +11421,8 @@
             "ai.rerank": "#/components/schemas/AiRerankResult",
             "ai.review": "#/components/schemas/AiReviewResult",
             "ai.scaffold": "#/components/schemas/AiScaffoldResult",
-            "ai.toolPlan": "#/components/schemas/AiToolPlanResult"
+            "ai.toolPlan": "#/components/schemas/AiToolPlanResult",
+            "ai.judge": "#/components/schemas/AiJudgeResult"
           }
         },
         "failureClass": {
@@ -12626,6 +12634,15 @@
             "null"
           ],
           "format": "int32"
+        },
+        "maxOutputTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32",
+          "minimum": 1,
+          "description": "Positive ceiling on all generated tokens, including reasoning. Adapters that cannot enforce it reject before inference; character and byte limits remain separate."
         }
       }
     },
@@ -14155,6 +14172,206 @@
         },
         "budgetTruncated": {
           "type": "boolean"
+        }
+      }
+    },
+    "AiJudgeOption": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "AiJudgeQuestion": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "prompt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "choice",
+            "noul",
+            "score"
+          ]
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AiJudgeOption"
+          }
+        }
+      }
+    },
+    "AiJudgePayload": {
+      "type": "object",
+      "required": [
+        "questions"
+      ],
+      "properties": {
+        "context": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AiJudgeQuestion"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AiReference"
+          }
+        }
+      }
+    },
+    "AiJudgeAnswer": {
+      "type": "object",
+      "required": [
+        "questionId",
+        "calibrated"
+      ],
+      "properties": {
+        "questionId": {
+          "type": "string"
+        },
+        "choice": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Expected zero-based ordered level index."
+        },
+        "legend": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "probability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "labelMassCoverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum unconditioned decision-label mass over rotations; null means unavailable."
+        },
+        "rotationAgreement": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Share of rotations whose argmax agrees with the final winner; null means unavailable."
+        },
+        "probabilities": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "rawLabelProbabilities": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "Mean unconditioned mass per original option; not a normalized probability distribution."
+        },
+        "rawClassProbabilities": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "AiJudgeResult": {
+      "type": "object",
+      "required": [
+        "answers",
+        "validationStatus"
+      ],
+      "properties": {
+        "answers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AiJudgeAnswer"
+          }
+        },
+        "validationStatus": {
+          "type": "string"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     }

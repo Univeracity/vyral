@@ -354,7 +354,7 @@ internal sealed class ScopedS3ObjectStore : IObjectStore, IAsyncDisposable
                     ContinuationToken = continuationToken
                 });
 
-                foreach (var obj in listResponse.S3Objects)
+                foreach (var obj in listResponse.S3Objects ?? new List<S3Object>())
                 {
                     try
                     {

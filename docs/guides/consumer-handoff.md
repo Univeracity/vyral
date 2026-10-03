@@ -32,6 +32,7 @@ Useful startup variables:
 | `VYRAL_CLOUDFLARE_ACCOUNT_ID` | Cloudflare account id for R2 when `VYRAL_OBJECT_STORE=cloudflare-r2`. |
 | `VYRAL_R2_ACCESS_KEY_ID` | Cloudflare R2 S3 API access key id. |
 | `VYRAL_R2_SECRET_ACCESS_KEY` | Cloudflare R2 S3 API secret access key. |
+| `VYRAL_R2_SESSION_TOKEN` | Optional security token for short-lived, bucket-scoped S3 credentials. |
 | `VYRAL_R2_BUCKET` | R2 bucket used by readiness probes and artifact ingestion when R2 is selected. |
 | `VYRAL_PROVIDER_ARTIFACT_DIR` | Provider run artifact directory. |
 | `VYRAL_API_KEY` | Enables API-key protection when set. Send as bearer token or `X-Vyral-Api-Key`. |
@@ -94,8 +95,8 @@ and `auto` signing region and defaults to disabling payload signing and automati
 put checksum validation for compatibility. These settings are not an integrity
 qualification: verify byte-for-byte round trips, conditional no-replace writes,
 metadata, pagination, cancellation, and deletion against an isolated bucket
-before deployment. The R2 adapter remains preview; no live qualification is
-claimed here.
+before deployment. The R2 adapter remains preview. The [bounded live qualification](../reference/cloudflare-r2-qualification.md)
+covers its supported object subset; conditional deletion is explicitly refused.
 
 Any consumer can submit a record and its artifact to:
 

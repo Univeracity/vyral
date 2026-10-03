@@ -113,11 +113,11 @@ GitHub-verified signed `server-v0.3.1` tag at current `main` and a successful
 Release Integrity run for that commit. It does not republish the unaffected
 NuGet, PyPI, or npm artifacts.
 
-The server's `0.3.5` source authorization is likewise container-only:
+The server's `0.3.6` source authorization is likewise container-only:
 [`packaging/worker-container-release.json`](../../packaging/worker-container-release.json)
 and the manual [`Publish server container`](../../.github/workflows/publish-worker-container.yml)
-workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.5`. It requires a
-GitHub-verified signed `server-v0.3.5` tag at current `main`, successful canonical
+workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.6`. It requires a
+GitHub-verified signed `server-v0.3.6` tag at current `main`, successful canonical
 Release Integrity evidence containing the hosted-worker receipt, and a second
 MCP and hosted-worker qualification plus pinned Trivy scan against the exact published digest. The
 hosted-worker entrypoint is preview and initially hosts only

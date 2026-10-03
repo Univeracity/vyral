@@ -13,6 +13,9 @@ public static class ProviderRunResults
     public static AiChatResult GetChat(ProviderRunResult result)
         => Deserialize<AiChatResult>(result);
 
+    public static AiJudgeResult GetJudge(ProviderRunResult result)
+        => Deserialize<AiJudgeResult>(result);
+
     public static AiExtractResult GetExtract(ProviderRunResult result)
         => Deserialize<AiExtractResult>(result);
 

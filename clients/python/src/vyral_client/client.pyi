@@ -158,7 +158,7 @@ def build_rerank_options(*, provider: str | None=None, enabled: bool=True, mode:
 def build_provider_run_request(capability: str, payload: dict[str, Any], *, provider: str | None=None, operation: str='run', mode: str='advisory', model_id: str | None=None, correlation_id: str | None=None, context_refs: Sequence[str] | None=None, timeout_seconds: int | None=None, max_output_bytes: int | None=None, artifact_directory: str | None=None) -> dict[str, Any]:
     ...
 
-def build_provider_chat_request(messages: Sequence[dict[str, Any]], *, system: str | None=None, max_output_chars: int | None=None, **run_options: Any) -> dict[str, Any]:
+def build_provider_chat_request(messages: Sequence[dict[str, Any]], *, system: str | None=None, max_output_chars: int | None=None, max_output_tokens: int | None=None, **run_options: Any) -> dict[str, Any]:
     ...
 
 def build_provider_extract_request(text: str, *, schema: dict[str, Any] | None=None, instructions: str | None=None, **run_options: Any) -> dict[str, Any]:

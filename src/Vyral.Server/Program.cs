@@ -4408,6 +4408,34 @@ static ProviderTargetRegistry CreateProviderTargetRegistry(IConfiguration config
         OnnxNliJudgeProviderTargets.CreateGpu(GetOnnxJudgeProviderOptions(configuration, "Providers:OnnxJudge:Gpu"))
     };
 
+    if (ParseOptionalBool(configuration["Providers:WorkspaceAgent:Enabled"], "Providers:WorkspaceAgent:Enabled") == true)
+    {
+        if (!ServerAccessOptions.FromConfiguration(configuration).Enabled)
+        {
+            throw new InvalidOperationException("Providers:WorkspaceAgent:Enabled requires Server API-key authentication. Configure Server:RequireApiKey and Server:ApiKey before registering a source-writing target.");
+        }
+
+        targets.Add(CliProviderTargets.CreateWorkspaceCodingAgent(GetCliWorkspaceCodingAgentOptions(configuration)));
+    }
+
+    if (ParseOptionalBool(configuration["Providers:LocalRuntime:Enabled"], "Providers:LocalRuntime:Enabled") == true)
+    {
+        var runtime = new LlamaCppRuntimeOptions
+        {
+            Endpoint = new Uri(configuration["Providers:LocalRuntime:Endpoint"] ?? "http://127.0.0.1:8080/"),
+            ModelId = configuration["Providers:LocalRuntime:ModelId"] ?? "",
+            ModelPath = configuration["Providers:LocalRuntime:ModelPath"] ?? "",
+            ModelSha256 = configuration["Providers:LocalRuntime:ModelSha256"] ?? "",
+            BuildInfo = configuration["Providers:LocalRuntime:BuildInfo"] ?? "",
+            TemplateSha256 = configuration["Providers:LocalRuntime:TemplateSha256"] ?? "",
+            TemplateProbeSha256 = configuration["Providers:LocalRuntime:TemplateProbeSha256"] ?? "",
+            ContextTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:ContextTokens"], "Providers:LocalRuntime:ContextTokens") ?? 2048,
+            MaxOutputTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:MaxOutputTokens"], "Providers:LocalRuntime:MaxOutputTokens") ?? 512
+        };
+        targets.Add(new LocalLlamaCppProviderTarget(runtime));
+        targets.Add(new LocalLogprobJudgeProviderTarget(new LlamaCppRuntimeSessionFactory(runtime)));
+    }
+
     var enableLiveTargets = ParseOptionalBool(configuration["Providers:EnableLiveTargets"], "Providers:EnableLiveTargets") ?? false;
     if (!enableLiveTargets)
     {
@@ -4419,16 +4447,6 @@ static ProviderTargetRegistry CreateProviderTargetRegistry(IConfiguration config
     targets.Add(CliProviderTargets.CreateGemini(overrides: GetCliProviderOptions(configuration, "Providers:Gemini")));
     targets.Add(CliProviderTargets.CreateAntigravity(overrides: GetCliProviderOptions(configuration, "Providers:Antigravity")));
     targets.Add(CliProviderTargets.CreateGrokBuild(overrides: GetGrokBuildProviderOptions(configuration, "Providers:GrokBuild")));
-
-    if (ParseOptionalBool(configuration["Providers:WorkspaceAgent:Enabled"], "Providers:WorkspaceAgent:Enabled") == true)
-    {
-        if (!ServerAccessOptions.FromConfiguration(configuration).Enabled)
-        {
-            throw new InvalidOperationException("Providers:WorkspaceAgent:Enabled requires Server API-key authentication. Configure Server:RequireApiKey and Server:ApiKey before registering a source-writing target.");
-        }
-
-        targets.Add(CliProviderTargets.CreateWorkspaceCodingAgent(GetCliWorkspaceCodingAgentOptions(configuration)));
-    }
 
     targets.Add(new JulesProviderTarget(new JulesProviderOptions
     {

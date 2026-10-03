@@ -813,7 +813,8 @@ export function buildProviderChatRequest(messages, options = {}) {
   };
   assignDefined(payload, {
     system: options.system,
-    maxOutputChars: options.maxOutputChars
+    maxOutputChars: options.maxOutputChars,
+    maxOutputTokens: options.maxOutputTokens
   });
   return buildProviderRunRequest("ai.chat", payload, options);
 }

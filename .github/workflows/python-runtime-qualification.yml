@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -60,6 +62,12 @@ jobs:
           python -m coverage run --branch --source=runtimes/python/src/vyral_runtime -m unittest discover -s runtimes/python/tests -p "test_*.py"
           python -m coverage report --fail-under=77.5 --precision=1
           python -m mypy --config-file runtimes/python/pyproject.toml runtimes/python/src/vyral_runtime runtimes/python/tests/typecheck_consumer.py runtimes/python/tests/test_record_store.py
+
+      - name: Qualify high-dimensional retrieval against the frozen source baseline
+        run: >-
+          python scripts/benchmark-python-vector-search.py
+          --records 100 --dimensions 384 --repeats 1
+          --output artifacts/qualification/vector-parity.json
 
       - name: Build and consume clean artifacts
         run: |

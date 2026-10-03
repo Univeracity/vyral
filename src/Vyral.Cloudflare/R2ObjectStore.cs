@@ -33,14 +33,17 @@ public sealed class R2ObjectStore : IObjectStore, IDisposable
     {
         options.ValidateCredentials();
 
-        var credentials = new BasicAWSCredentials(options.AccessKeyId!, options.SecretAccessKey!);
+        AWSCredentials credentials = string.IsNullOrWhiteSpace(options.SessionToken)
+            ? new BasicAWSCredentials(options.AccessKeyId!, options.SecretAccessKey!)
+            : new SessionAWSCredentials(options.AccessKeyId!, options.SecretAccessKey!, options.SessionToken);
         var client = new AmazonS3Client(credentials, new AmazonS3Config
         {
             ServiceURL = options.ResolveServiceUrl(),
             AuthenticationRegion = string.IsNullOrWhiteSpace(options.AuthenticationRegion)
                 ? "auto"
                 : options.AuthenticationRegion.Trim(),
-            ForcePathStyle = options.ForcePathStyle
+            ForcePathStyle = options.ForcePathStyle,
+            MaxErrorRetry = options.MaxErrorRetry
         });
 
         return new R2ObjectStore(client, new S3ObjectStoreOptions
@@ -56,8 +59,14 @@ public sealed class R2ObjectStore : IObjectStore, IDisposable
     public Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default) =>
         _inner.GetObjectAsync(request, ct);
 
-    public Task DeleteObjectAsync(ObjectDeleteRequest request, CancellationToken ct = default) =>
-        _inner.DeleteObjectAsync(request, ct);
+    public Task DeleteObjectAsync(ObjectDeleteRequest request, CancellationToken ct = default)
+    {
+        // The qualified R2 S3 endpoint ignored DeleteObject If-Match. A HEAD followed
+        // by DELETE would race, so never substitute that for an atomic precondition.
+        if (!string.IsNullOrWhiteSpace(request.IfMatch))
+            throw new InvalidOperationException("Conditional object deletion is unsupported by the R2 profile.");
+        return _inner.DeleteObjectAsync(request, ct);
+    }
 
     public Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default) =>
         _inner.ListObjectsAsync(request, ct);

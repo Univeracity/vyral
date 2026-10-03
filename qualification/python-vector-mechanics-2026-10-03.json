@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "vyral.python-vector-qualification.v1",
+  "sourceSha256": "dd882719f63ccfaf8ce392b7d7080677dc35bea56248af89aa0b41d9d48b082b",
+  "referenceSha256": "b04d156e9df36297487896dc108b8bfb74b9fd46dc53063134c2b962346b3658",
+  "inputSha256": "0c5b7833ac045a568f34c1e19153b5c5befd8f7ceb03c5eb660d4cd5dfdf3e94",
+  "python": "3.12.3",
+  "platform": "Linux-6.8.0-142-lowlatency-x86_64-with-glibc2.39",
+  "sqlite": "3.45.1",
+  "records": 1000,
+  "dimensions": 384,
+  "numericErrorControls": 2075,
+  "completeResponses": 9,
+  "completeBudgetResponses": 9,
+  "completeParity": true,
+  "timingScope": "retrieval and serialization; no encoder/model",
+  "timings": {
+    "baseline": {
+      "p50Ms": 1020.7279659953201,
+      "samples": 9
+    },
+    "candidate": {
+      "p50Ms": 933.4267340018414,
+      "samples": 9
+    }
+  },
+  "grouping": [
+    {
+      "metric": "cosine",
+      "candidatePool": 10,
+      "returnedBeforeGrouping": 10,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "cosine",
+      "candidatePool": 30,
+      "returnedBeforeGrouping": 30,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "cosine",
+      "candidatePool": 100,
+      "returnedBeforeGrouping": 100,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "dotproduct",
+      "candidatePool": 10,
+      "returnedBeforeGrouping": 10,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "dotproduct",
+      "candidatePool": 30,
+      "returnedBeforeGrouping": 30,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "dotproduct",
+      "candidatePool": 100,
+      "returnedBeforeGrouping": 100,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "euclidean",
+      "candidatePool": 10,
+      "returnedBeforeGrouping": 10,
+      "passagesConsumed": 10,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 9
+    },
+    {
+      "metric": "euclidean",
+      "candidatePool": 30,
+      "returnedBeforeGrouping": 30,
+      "passagesConsumed": 11,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    },
+    {
+      "metric": "euclidean",
+      "candidatePool": 100,
+      "returnedBeforeGrouping": 100,
+      "passagesConsumed": 11,
+      "outputItemBudget": 10,
+      "distinctItemsReturned": 10
+    }
+  ],
+  "limits": [
+    "one synthetic host fixture; no SLA or relevance claim",
+    "full eligible record validation retained; no rank-before-hydration",
+    "distinct-item grouping is caller-owned and evaluated separately"
+  ]
+}

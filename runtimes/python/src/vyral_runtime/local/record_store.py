@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from ctypes import c_float, sizeof
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import heapq
 import math
 from pathlib import Path
 import re
@@ -60,6 +62,8 @@ _SUPPORTED_DATATYPES = frozenset({"float32"})
 _SUPPORTED_DISTANCES = frozenset({"cosine", "dotproduct", "euclidean"})
 _SUPPORTED_INDEX_TYPES = frozenset({"flat", "quantizedflat", "diskann"})
 _VALUE_BOUNDARY_TOKEN = "x" * 257
+if sizeof(c_float) != 4:
+    raise RuntimeError("The local vector profile requires a four-byte C float.")
 
 
 class RecordStoreError(RuntimeError):
@@ -903,41 +907,42 @@ class SQLiteRecordStore:
                 policy.indexed_metadata,
                 vector_search.field,
             )
-            matches: list[tuple[float, VyralRecord]] = []
+            candidate_count = 0
             similarity = _PreparedSimilarity(field_policy.distance_function, query_vector)
-            for row in connection.execute(plan.sql, plan.parameters):
-                record = VyralRecord.from_value(json.loads(row["record_json"]))
-                stored_dimensions = int(row["dimensions"])
-                if stored_dimensions != field_policy.dimensions:
-                    raise RecordStoreError(
-                        f"Stored vector for record {record.id!r} has dimensions "
-                        f"{stored_dimensions}, but policy expects {field_policy.dimensions}."
+
+            def candidates() -> Iterator[tuple[float, VyralRecord]]:
+                nonlocal candidate_count
+                for row in connection.execute(plan.sql, plan.parameters):
+                    record = VyralRecord.from_value(json.loads(row["record_json"]))
+                    stored_dimensions = int(row["dimensions"])
+                    if stored_dimensions != field_policy.dimensions:
+                        raise RecordStoreError(
+                            f"Stored vector for record {record.id!r} has dimensions "
+                            f"{stored_dimensions}, but policy expects {field_policy.dimensions}."
+                        )
+                    vector_data = bytes(row["vector_data"])
+                    if len(vector_data) != stored_dimensions * 4:
+                        raise RecordStoreError(
+                            f"Stored vector for record {record.id!r} has an invalid byte length."
+                        )
+                    stored_vector = struct.unpack(
+                        f"<{stored_dimensions}f",
+                        vector_data,
                     )
-                vector_data = bytes(row["vector_data"])
-                if len(vector_data) != stored_dimensions * 4:
-                    raise RecordStoreError(
-                        f"Stored vector for record {record.id!r} has an invalid byte length."
-                    )
-                stored_vector = struct.unpack(
-                    f"<{stored_dimensions}f",
-                    vector_data,
-                )
-                score = similarity.score(stored_vector)
-                if (
-                    vector_search.min_score is not None
-                    and score < vector_search.min_score
-                ):
-                    continue
-                matches.append((score, record))
-        matches.sort(
-            key=lambda match: (
-                -match[0],
-                match[1].partition_key,
-                match[1].id,
+                    score = similarity.score(stored_vector)
+                    if (
+                        vector_search.min_score is not None
+                        and score < vector_search.min_score
+                    ):
+                        continue
+                    candidate_count += 1
+                    yield score, record
+
+            # Exhaust and validate every eligible row, retaining only the bounded top pool.
+            selected = heapq.nsmallest(
+                vector_search.top, candidates(),
+                key=lambda match: (-match[0], match[1].partition_key, match[1].id),
             )
-        )
-        selected = matches[: vector_search.top]
-        candidate_count = len(matches)
         ranked = [
             VyralRecordMatch(
                 record=record,
@@ -1291,10 +1296,8 @@ def _validate_vectors(
 def _float32(value: float, label: str) -> float:
     if not math.isfinite(value):
         raise RecordValidationError(f"{label} contains a non-finite value.")
-    try:
-        normalized = float(struct.unpack("<f", struct.pack("<f", value))[0])
-    except (OverflowError, struct.error) as exc:
-        raise RecordValidationError(f"{label} contains a value outside float32 range.") from exc
+    # Preserve individual float32 rounding and the original accumulation order.
+    normalized = c_float(value).value
     if not math.isfinite(normalized):
         raise RecordValidationError(f"{label} contains a value outside float32 range.")
     return normalized

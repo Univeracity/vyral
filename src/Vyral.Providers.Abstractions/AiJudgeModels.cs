@@ -131,6 +131,18 @@ public sealed class AiJudgeAnswer
     [JsonPropertyName("rawClassProbabilities")]
     public Dictionary<string, double>? RawClassProbabilities { get; set; }
 
+    /// <summary>Minimum full-vocabulary decision-label mass over scored rotations. Null means unavailable.</summary>
+    [JsonPropertyName("labelMassCoverage")]
+    public double? LabelMassCoverage { get; set; }
+
+    /// <summary>Mean unconditioned probability per original option; distinct from normalized Probabilities.</summary>
+    [JsonPropertyName("rawLabelProbabilities")]
+    public Dictionary<string, double>? RawLabelProbabilities { get; set; }
+
+    /// <summary>Share of rotations whose argmax equals the final winning option. Null means unavailable.</summary>
+    [JsonPropertyName("rotationAgreement")]
+    public double? RotationAgreement { get; set; }
+
     /// <summary>
     /// True only when the underlying probability model has been fit against labeled outcomes
     /// (e.g. a temperature-scaling calibration). False means the probability is a heuristic proxy

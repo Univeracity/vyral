@@ -1,17 +1,18 @@
 # Local log-probability judgment
 
-Status: proposal. No new provider is registered by this document, and no
-backend has been qualified. The existing in-process ONNX judge remains the
-available local implementation. This proposal addresses fixed-option Choice
-scoring with a generative model without coupling Vyral to a particular host,
-service, model package, deployment, or consumer task.
+Status: implemented as an opt-in prototype. The portable Choice-scoring target,
+injected session contract and bounded native loopback adapter are available.
+See [the runtime guide](../docs/reference/local-runtime-providers.md) for supported
+contracts, controls and reproduction. Fake-session, transport and pinned real-model
+mechanics checks pass; this is not an accuracy, calibration or production-issuer
+qualification. The existing in-process ONNX classifier remains available.
 
 ## Boundary
 
 Keep `ai.judge` and its shared-context batch request as the caller-facing
-contract. A proposed `LocalLogprobJudgeProviderTarget` would own prompt
+contract. The `LocalLogprobJudgeProviderTarget` owns prompt
 construction, option rotations, probability accounting, validation, and
-mapping results back to caller option IDs. It would initially advertise only
+mapping results back to caller option IDs. It advertises only
 Choice questions; Noul and Score must return `unsupported` until implemented
 and tested explicitly.
 
@@ -39,7 +40,10 @@ bounded cleanup token even when the caller token is cancelled. Renewal
 failure terminates the batch. Credentials and lease secrets stay in memory
 and are excluded from traces, config hashes, errors, and raw output.
 
-## HTTP compatibility
+## Optional host transport compatibility
+
+The following streaming transport is an extension point; it is not implemented
+by the native adapter shipped here.
 
 An optional HTTP session can use an OpenAI-compatible chat-completions
 response shape. That shape alone is insufficient evidence of scoring support.
@@ -125,7 +129,8 @@ backend error code. Preserve the original failure if cleanup also fails.
 Before registering a target, require offline tests for rotation invariance,
 complete and missing label sets, byte/ID mismatch, full-vocabulary mass,
 low coverage, unsupported question types, exact context boundaries,
-cancellation, split/truncated SSE frames, and disposal on every exit path.
+cancellation and disposal on every exit path. A future streaming adapter must
+also qualify split/truncated SSE frames before registration.
 Exercise the batch with a counting session to prove one acquisition/load and
 one release, including failures partway through a batch. Test serialization
 of the additive answer evidence and keep existing judge conformance passing.

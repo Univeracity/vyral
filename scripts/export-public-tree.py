@@ -76,12 +76,15 @@ PUBLIC_DOC_FILES = {
     "docs/maintainers/releasing.md",
     "docs/reference/execution-runtime-limitations.md",
     "docs/reference/python-retrieval-qualification.md",
+    "docs/reference/local-runtime-providers.md",
+    "docs/reference/cloudflare-r2-qualification.md",
     "docs/reference/stability.md",
     "docs/roman.md",
     "docs/temporal-operator-guide.md",
 }
 
 PUBLIC_DESIGN_FILES = {
+    "design/cloudflare-queues-bridge.md",
     "design/local-logprob-judge.md",
     "design/admission-contract.md",
     "design/aws-opensearch-record-projection.md",

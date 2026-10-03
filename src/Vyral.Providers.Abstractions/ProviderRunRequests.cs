@@ -25,6 +25,14 @@ public static class ProviderRunRequests
         int? timeoutSeconds = null)
         => Build(ProviderCapabilityIds.AiChat, chat, provider, modelId, mode, timeoutSeconds);
 
+    public static ProviderRunRequest ForJudge(
+        AiJudgeRequest judge,
+        string? provider = null,
+        string? modelId = null,
+        string mode = ProviderModes.Mechanics,
+        int? timeoutSeconds = null)
+        => Build(ProviderCapabilityIds.AiJudge, judge, provider, modelId, mode, timeoutSeconds);
+
     public static ProviderRunRequest ForExtract(
         AiExtractRequest extract,
         string? provider = null,

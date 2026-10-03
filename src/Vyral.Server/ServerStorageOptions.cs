@@ -16,6 +16,7 @@ public sealed class ServerStorageOptions
     public string? CloudflareAccountId { get; init; }
     public string? CloudflareR2AccessKeyId { get; init; }
     public string? CloudflareR2SecretAccessKey { get; init; }
+    public string? CloudflareR2SessionToken { get; init; }
     public string? CloudflareR2ServiceUrl { get; init; }
     public string ObjectProbeContainer { get; init; } = "vyral-readiness";
 
@@ -99,6 +100,10 @@ public sealed class ServerStorageOptions
             CloudflareR2ServiceUrl = FirstNonEmpty(
                 configuration["Cloudflare:R2:ServiceUrl"],
                 configuration["VYRAL_R2_SERVICE_URL"],
+                null),
+            CloudflareR2SessionToken = FirstNonEmpty(
+                configuration["Cloudflare:R2:SessionToken"],
+                configuration["VYRAL_R2_SESSION_TOKEN"],
                 null),
             ObjectProbeContainer = objectProbeContainer
         };

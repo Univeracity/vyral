@@ -18,7 +18,7 @@ RUN dotnet restore src/Vyral.Server/Vyral.Server.csproj --locked-mode --disable-
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:00e0ad6a7ef8c0c1391b87f05c7ac757a15740455688f2bfcd146a3f4b987efd
 
-ARG VYRAL_IMAGE_VERSION=0.3.5
+ARG VYRAL_IMAGE_VERSION=0.3.6
 ARG VYRAL_IMAGE_REVISION=local
 LABEL org.opencontainers.image.title="Vyral Server" \
       org.opencontainers.image.description="Provider-portable records, retrieval, durable execution, and MCP server" \

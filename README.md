@@ -204,7 +204,7 @@ also need TLS, rate limits, authenticated ingress, and deployment-specific
 identity policy. See the [CanonicalStore guide](docs/concepts/canonical-store.md)
 and the [deployment guide](deploy).
 
-The server image version described by this source is `ghcr.io/univeracity/vyral-server:0.3.5`;
+The server image version described by this source is `ghcr.io/univeracity/vyral-server:0.3.6`;
 verify registry availability before deploying, pin its published digest, and use the same API-key
 and runtime restrictions shown above. The default entrypoint remains the public
 API server. A separate, least-privilege deployment can run the preview generic
@@ -424,10 +424,13 @@ Every answer carries a `calibrated` flag so callers cannot mistake an
 uncalibrated or vendor-claimed-but-unverified score for a validated
 likelihood.
 
-The [local log-probability judge proposal](design/local-logprob-judge.md)
-describes a possible Choice-only extension with verified label coverage and
-an optional runtime-session adapter. It is a design proposal, not a fourth
-implemented or qualified provider.
+The [local runtime provider guide](docs/reference/local-runtime-providers.md)
+describes the opt-in native chat and Choice-only log-probability judge.
+The judge uses verified label bytes, cyclic rotations, explicit raw label mass
+and rotation agreement. It reports calibrated=false. Local runtime sessions
+are injectable; no particular host service is required. Both targets remain
+prototype, with a bounded native smoke profile rather than production worker
+or trusted-issuer qualification.
 
 ## Execution runtime
 
@@ -473,7 +476,7 @@ Start with the [execution design](design/execution-runtime.md),
 | AWS storage and execution | Live qualified for isolated S3, DynamoDB, and SQS; managed OpenSearch remains subject to end-user validation |
 | Google execution | Live qualified; other Google adapters retain their separate qualification posture |
 | Temporal coordinator and projection | Prototype; disposable and operator-provisioned qualification gates |
-| Cloudflare R2 | Preview object-store adapter |
+| Cloudflare R2 | Preview; supported object subset live tested, conditional deletion refused |
 | Generation-bound retrieval projections | Local reference plus OpenSearch and Worker/R2 shapes; maturity is topology- and evidence-scoped |
 
 An adapter is `live_qualified` only when the versioned

@@ -2509,7 +2509,7 @@ export interface ProviderRunRequest {
   operation?: string;
   mode?: string;
   modelId?: string | null;
-  payload: AiChatPayload | AiExtractPayload | AiRerankPayload | AiReviewPayload | AiScaffoldPayload | AiToolPlanPayload | JsonObject;
+  payload: AiChatPayload | AiExtractPayload | AiRerankPayload | AiReviewPayload | AiScaffoldPayload | AiToolPlanPayload | AiJudgePayload | JsonObject;
   correlationId?: string;
   contextRefs?: Array<string>;
   timeoutSeconds?: number | null;
@@ -2524,7 +2524,7 @@ export interface ProviderRunResult {
   capability: string;
   operation: string;
   mode: string;
-  output: AiChatResult | AiExtractResult | AiRerankResult | AiReviewResult | AiScaffoldResult | AiToolPlanResult | JsonObject;
+  output: AiChatResult | AiExtractResult | AiRerankResult | AiReviewResult | AiScaffoldResult | AiToolPlanResult | AiJudgeResult | JsonObject;
   failureClass?: string | null;
   providerStatus?: string | null;
   error?: string | null;
@@ -2732,6 +2732,7 @@ export interface AiChatPayload {
   messages?: Array<AiMessage>;
   system?: string | null;
   maxOutputChars?: number | null;
+  maxOutputTokens?: number | null;
 }
 
 export interface AiChatResult {
@@ -3087,6 +3088,45 @@ export interface RagContextGraphEvaluationFailureModes {
   graphContextTextMissing?: boolean;
   contextTextTruncated?: boolean;
   budgetTruncated?: boolean;
+}
+
+export interface AiJudgeOption {
+  id: string;
+  label: string;
+}
+
+export interface AiJudgeQuestion {
+  id: string;
+  type: "choice" | "noul" | "score";
+  prompt: string;
+  options?: Array<AiJudgeOption>;
+}
+
+export interface AiJudgePayload {
+  context?: string | null;
+  questions: Array<AiJudgeQuestion>;
+  references?: Array<AiReference>;
+}
+
+export interface AiJudgeAnswer {
+  questionId: string;
+  choice?: string | null;
+  calibrated: boolean;
+  score?: number | null;
+  legend?: JsonObject | null;
+  probability?: number | null;
+  confidence?: number | null;
+  labelMassCoverage?: number | null;
+  rotationAgreement?: number | null;
+  probabilities?: JsonObject | null;
+  rawLabelProbabilities?: JsonObject | null;
+  rawClassProbabilities?: JsonObject | null;
+}
+
+export interface AiJudgeResult {
+  answers: Array<AiJudgeAnswer>;
+  validationStatus: string;
+  modelId?: string | null;
 }
 
 export interface VyralRequestOptions {
