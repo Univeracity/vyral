@@ -485,14 +485,16 @@ def verify_catalog(catalog: dict[str, Any], openapi: dict[str, Any], expected_te
     contract_versions = {
         "catalog": catalog.get("catalogVersion"),
         "openapi": openapi.get("info", {}).get("version"),
-        "python": python_version,
-        "javascript": javascript_version,
     }
     if len(set(contract_versions.values())) != 1:
         errors.append(
             "Public contract versions differ: "
             + ", ".join(f"{name}={version}" for name, version in contract_versions.items())
         )
+    # SDK distribution patches can advance without changing the wire catalog.
+    # verify-version-policy.py enforces the current exact contract/package lines.
+    if python_version != javascript_version:
+        raise SystemExit("Python and JavaScript SDK package versions differ.")
 
     for entry in catalog.get("operations", []):
         operation_id = entry.get("id", "<missing>")

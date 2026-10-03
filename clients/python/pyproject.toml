@@ -1,6 +1,6 @@
 [project]
 name = "vyral-client"
-version = "0.3.0"
+version = "0.3.3"
 description = "Python HTTP client for the Vyral local server"
 requires-python = ">=3.10"
 readme = "README.md"

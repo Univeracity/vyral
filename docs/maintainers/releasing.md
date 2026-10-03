@@ -41,14 +41,16 @@ retained as release evidence.
    documented read-only runtime profile, exposes only the approved hosted-handler catalog, and
    rejects callbacks that lack the dispatch marker or an accepted callback identity.
 4. Publish packages through a trusted-publishing or OIDC-backed registry configuration. Do not
-   place registry tokens in the repository or workflow files. `vyral-client@0.3.0` has an
+   place registry tokens in the repository or workflow files. `vyral-client@0.3.0` historically had an
    explicitly authorized, capability-scoped exception: after the release tag and canonical evidence
    exist, publish the exact packed archive from the authorized commit with a locally controlled npm
    token. Dispatch the protected publisher with `npm_direct_token_published: true`; it verifies the
    registry version, repository URL, and SHA-512 archive integrity against its independently built
    distribution. This exception does not claim npm OIDC provenance or a trusted-publisher
-   relationship. A later npm release requires a new explicit authorization or an account configuration
-   that permits npm trusted publishing. Do not place the token in GitHub, the repository, or a
+   relationship. The operator renewed this exact-archive exception for
+   `vyral-client@0.3.3`; use the same local-token publication and protected integrity
+   verification boundary. Other npm versions require new explicit authorization or
+   an account configuration that permits npm trusted publishing. Do not place the token in GitHub, the repository, or a
    workflow file.
 5. Attach provenance/attestations and SBOMs to the published release; publish container images with
    build provenance and SBOM attestations enabled.
@@ -98,12 +100,14 @@ The exact currently authorized package cohort is recorded in
 The manual [`Publish package release`](../../.github/workflows/publish-first-cohort.yml)
 workflow is the only source path allowed to publish that cohort. Its filename is retained because
 NuGet and PyPI trusted-publisher identities include the workflow filename. It accepts only the
-reviewed `v0.3.2` package patch, and before packaging requires a GitHub-verified signed
+reviewed `v0.3.3` package patch, and before packaging requires a GitHub-verified signed
 annotated tag at current `main` plus a successful canonical Release Integrity
 push run for that commit. Each registry job uses its own protected environment
 and least-privilege identity. It has no automatic trigger. The patch publishes
-`Vyral.Abstractions` and `Vyral.Local` `0.3.2` plus the Python runtime `0.1.3`;
-unchanged execution and JavaScript packages are not rebuilt or republished.
+`Vyral.Abstractions` and `Vyral.Local` `0.3.3`, the Python runtime `0.1.4`,
+and the JavaScript HTTP SDK `vyral-client@0.3.3`. Execution registry packages
+remain unchanged. The lightweight Python HTTP SDK source is versioned `0.3.3`
+and packaged for GitHub release use; its PyPI distribution remains outside the cohort.
 
 The server's `0.3.1` security correction is a deliberately separate,
 container-only delivery: [`packaging/container-security-release.json`](../../packaging/container-security-release.json)
@@ -133,7 +137,13 @@ manifest at each trusted registry: `Univeracity/vyral`, workflow file
 GitHub Actions OIDC trusted publishing; NuGet additionally needs the
 `NUGET_USERNAME` environment variable for its short-lived-key exchange. The separate
 container workflow uses only the repository-scoped `GITHUB_TOKEN` with
-`packages: write`. npm remains outside the current patch. This source authorization is not a claim that any package is
+`packages: write`. npm uses the explicitly renewed operator-token exception
+for `vyral-client@0.3.3`: publish only the exact authorized archive after the signed
+tag and canonical checks exist, then dispatch with `npm_direct_token_published: true`.
+The protected npm environment verifies its version, repository URL and SHA-512
+integrity against an independently built archive. No npm token is placed in GitHub
+and no npm OIDC provenance is claimed.
+This source authorization is not a claim that any package is
 already available: absent registry trust or an environment approval, the manual
 job fails closed and publishes nothing.
 

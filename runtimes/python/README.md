@@ -2,7 +2,7 @@
 
 Python-first implementation of Vyral's portable local runtime.
 
-Current version: `0.1.3`
+Current version: `0.1.4`
 
 Current maturity: `prototype`
 

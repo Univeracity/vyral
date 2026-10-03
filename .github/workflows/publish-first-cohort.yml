@@ -8,7 +8,11 @@ on:
         required: true
         type: choice
         options:
-          - v0.3.2
+          - v0.3.3
+      npm_direct_token_published:
+        description: The exact authorized npm archive has been published with an operator-controlled token
+        required: true
+        type: boolean
       confirm:
         description: I have reviewed the release evidence, package scope, and release notes
         required: true
@@ -17,7 +21,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: publish-package-release-v0.3.2
+  group: publish-package-release-v0.3.3
   cancel-in-progress: false
 
 jobs:
@@ -39,13 +43,15 @@ jobs:
         id: authority
         env:
           CONFIRM: ${{ inputs.confirm }}
+          NPM_DIRECT_TOKEN_PUBLISHED: ${{ inputs.npm_direct_token_published }}
           GITHUB_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$CONFIRM" = "true"
-          test "$RELEASE_TAG" = "v0.3.2"
+          test "$NPM_DIRECT_TOKEN_PUBLISHED" = "true"
+          test "$RELEASE_TAG" = "v0.3.3"
           git fetch --force --tags origin
           test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
           source_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
@@ -87,13 +93,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.14.0"
+          package-manager-cache: false
+
       - name: Build and verify only the authorized distributions
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check build==1.3.0
           python3 scripts/verify-publication-cohort.py
           scripts/verify-dotnet-lockfiles.sh
-          mkdir -p artifacts/publish/nuget artifacts/publish/pypi
+          mkdir -p artifacts/publish/nuget artifacts/publish/pypi artifacts/publish/npm
           for project in \
             src/Vyral.Abstractions/Vyral.Abstractions.csproj \
             src/Vyral.Local/Vyral.Local.csproj; do
@@ -102,18 +114,27 @@ jobs:
           done
           python -m build --outdir artifacts/publish/pypi runtimes/python
           for package in \
-            Vyral.Abstractions.0.3.2 \
-            Vyral.Local.0.3.2; do
+            Vyral.Abstractions.0.3.3 \
+            Vyral.Local.0.3.3; do
             test -s "artifacts/publish/nuget/${package}.nupkg"
             test -s "artifacts/publish/nuget/${package}.snupkg"
           done
-          test -s artifacts/publish/pypi/vyral-0.1.3-py3-none-any.whl
-          test -s artifacts/publish/pypi/vyral-0.1.3.tar.gz
+          test -s artifacts/publish/pypi/vyral-0.1.4-py3-none-any.whl
+          test -s artifacts/publish/pypi/vyral-0.1.4.tar.gz
+          npm ci --ignore-scripts --prefix clients/javascript
+          (
+            cd clients/javascript
+            npm run check
+            npm run typecheck
+            npm test
+            npm pack --json --pack-destination ../../artifacts/publish/npm
+          )
+          test -s artifacts/publish/npm/vyral-client-0.3.3.tgz
 
       - name: Retain immutable publication distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: package-release-v0.3.2
+          name: package-release-v0.3.3
           path: artifacts/publish
           if-no-files-found: error
           retention-days: 30
@@ -136,7 +157,7 @@ jobs:
       - name: Download the authorized distributions
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: package-release-v0.3.2
+          name: package-release-v0.3.3
           path: dist
 
       - name: Exchange the GitHub OIDC token for a short-lived NuGet key
@@ -151,8 +172,8 @@ jobs:
         run: |
           set -euo pipefail
           for package in \
-            Vyral.Abstractions.0.3.2 \
-            Vyral.Local.0.3.2; do
+            Vyral.Abstractions.0.3.3 \
+            Vyral.Local.0.3.3; do
             dotnet nuget push "dist/nuget/${package}.nupkg" \
               --api-key "$NUGET_API_KEY" \
               --skip-duplicate \
@@ -176,7 +197,7 @@ jobs:
       - name: Download the authorized distributions
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: package-release-v0.3.2
+          name: package-release-v0.3.3
           path: dist
 
       - name: Publish the Python runtime with its PyPI attestation
@@ -185,11 +206,42 @@ jobs:
           packages-dir: dist/pypi
           skip-existing: true
 
+  publish-npm:
+    name: Verify authorized direct-token JavaScript SDK
+    needs: build
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-npm
+      url: https://www.npmjs.com/package/vyral-client
+    permissions:
+      contents: read
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.14.0"
+          package-manager-cache: false
+
+      - name: Download the authorized distribution
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package-release-v0.3.3
+          path: dist
+
+      - name: Verify the exact authorized registry archive
+        run: |
+          set -euo pipefail
+          expected_integrity="sha512-$(openssl dgst -sha512 -binary dist/npm/vyral-client-0.3.3.tgz | base64 -w 0)"
+          test "$(npm view vyral-client@0.3.3 version)" = "0.3.3"
+          test "$(npm view vyral-client@0.3.3 repository.url)" = "git+https://github.com/univeracity/vyral.git"
+          test "$(npm view vyral-client@0.3.3 dist.integrity)" = "$expected_integrity"
+
   verify:
     name: Verify public package availability
     needs:
       - publish-nuget
       - publish-pypi
+      - publish-npm
     runs-on: ubuntu-22.04
     permissions: {}
     steps:
@@ -200,8 +252,9 @@ jobs:
             nuget_abstractions="$(curl --fail --silent --show-error https://api.nuget.org/v3-flatcontainer/vyral.abstractions/index.json | jq -r '.versions[-1]')" || true
             nuget_local="$(curl --fail --silent --show-error https://api.nuget.org/v3-flatcontainer/vyral.local/index.json | jq -r '.versions[-1]')" || true
             pypi="$(curl --fail --silent --show-error https://pypi.org/pypi/vyral/json | jq -r '.info.version')" || true
-            if [[ "$nuget_abstractions" == "0.3.2" && "$nuget_local" == "0.3.2" && "$pypi" == "0.1.3" ]]; then
-              printf 'NuGet and PyPI expose every authorized package version.\n' >> "$GITHUB_STEP_SUMMARY"
+            npm_version="$(curl --fail --silent --show-error https://registry.npmjs.org/vyral-client/0.3.3 | jq -r '.version')" || true
+            if [[ "$nuget_abstractions" == "0.3.3" && "$nuget_local" == "0.3.3" && "$pypi" == "0.1.4" && "$npm_version" == "0.3.3" ]]; then
+              printf 'NuGet, PyPI and npm expose every authorized package version.\n' >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             sleep 15

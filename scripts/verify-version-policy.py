@@ -13,10 +13,11 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCT_VERSION = "0.3.0"
-CORE_PACKAGE_VERSION = "0.3.2"
+CORE_PACKAGE_VERSION = "0.3.3"
+SDK_PACKAGE_VERSION = "0.3.3"
 SERVER_IMAGE_VERSION = "0.3.6"
 EXECUTION_VERSION = "0.2.0"
-PYTHON_RUNTIME_VERSION = "0.1.3"
+PYTHON_RUNTIME_VERSION = "0.1.4"
 PYTHON_RUNTIME_FIXTURE_MINIMUM = "0.1.0"
 GO_MINIMUM_VERSION = "1.25.0"
 GO_BUILD_VERSION = "1.27.1"
@@ -94,7 +95,7 @@ def main() -> int:
     require(catalog.get("catalogVersion"), PRODUCT_VERSION, "SDK catalog version")
     require(openapi.get("info", {}).get("version"), PRODUCT_VERSION, "OpenAPI version")
     require(schema.get("version"), PRODUCT_VERSION, "JSON Schema version")
-    require(python_project.get("project", {}).get("version"), PRODUCT_VERSION, "Python package version")
+    require(python_project.get("project", {}).get("version"), SDK_PACKAGE_VERSION, "Python package version")
     require(
         python_runtime.get("project", {}).get("version"),
         PYTHON_RUNTIME_VERSION,
@@ -122,9 +123,9 @@ def main() -> int:
         PYTHON_RUNTIME_FIXTURE_MINIMUM,
         "runtime fixture minimum runner version",
     )
-    require(javascript.get("version"), PRODUCT_VERSION, "JavaScript package version")
-    require(javascript_lock.get("version"), PRODUCT_VERSION, "JavaScript lockfile version")
-    require(javascript_lock.get("packages", {}).get("", {}).get("version"), PRODUCT_VERSION, "JavaScript root lock version")
+    require(javascript.get("version"), SDK_PACKAGE_VERSION, "JavaScript package version")
+    require(javascript_lock.get("version"), SDK_PACKAGE_VERSION, "JavaScript lockfile version")
+    require(javascript_lock.get("packages", {}).get("", {}).get("version"), SDK_PACKAGE_VERSION, "JavaScript root lock version")
 
     mcp = project_properties("src/Vyral.Mcp/Vyral.Mcp.csproj")
     require(mcp.get("Version"), PRODUCT_VERSION, "MCP assembly version")

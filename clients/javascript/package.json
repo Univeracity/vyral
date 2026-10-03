@@ -1,6 +1,6 @@
 {
   "name": "vyral-client",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "JavaScript HTTP client for the Vyral local server",
   "type": "module",
   "main": "./src/index.js",
