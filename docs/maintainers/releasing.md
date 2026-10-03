@@ -41,14 +41,16 @@ retained as release evidence.
    documented read-only runtime profile, exposes only the approved hosted-handler catalog, and
    rejects callbacks that lack the dispatch marker or an accepted callback identity.
 4. Publish packages through a trusted-publishing or OIDC-backed registry configuration. Do not
-   place registry tokens in the repository or workflow files. `vyral-client@0.3.0` has an
+   place registry tokens in the repository or workflow files. `vyral-client@0.3.0` historically had an
    explicitly authorized, capability-scoped exception: after the release tag and canonical evidence
    exist, publish the exact packed archive from the authorized commit with a locally controlled npm
    token. Dispatch the protected publisher with `npm_direct_token_published: true`; it verifies the
    registry version, repository URL, and SHA-512 archive integrity against its independently built
    distribution. This exception does not claim npm OIDC provenance or a trusted-publisher
-   relationship. A later npm release requires a new explicit authorization or an account configuration
-   that permits npm trusted publishing. Do not place the token in GitHub, the repository, or a
+   relationship. The operator renewed this exact-archive exception for
+   `vyral-client@0.3.3`; use the same local-token publication and protected integrity
+   verification boundary. Other npm versions require new explicit authorization or
+   an account configuration that permits npm trusted publishing. Do not place the token in GitHub, the repository, or a
    workflow file.
 5. Attach provenance/attestations and SBOMs to the published release; publish container images with
    build provenance and SBOM attestations enabled.
@@ -131,13 +133,16 @@ for publication by this container release; the judge targets are not
 
 Before dispatching it, configure the exact publisher tuple in the cohort
 manifest at each trusted registry: `Univeracity/vyral`, workflow file
-`publish-first-cohort.yml`, and its named environment. NuGet, PyPI and npm use
+`publish-first-cohort.yml`, and its named environment. NuGet and PyPI use
 GitHub Actions OIDC trusted publishing; NuGet additionally needs the
 `NUGET_USERNAME` environment variable for its short-lived-key exchange. The separate
 container workflow uses only the repository-scoped `GITHUB_TOKEN` with
-`packages: write`. npm requires a trusted publisher permitting direct publication
-for the same workflow and the `publish-npm` environment; its pinned CLI publishes
-the exact authorized archive with provenance. See the [npm trusted publishing guide](https://docs.npmjs.com/trusted-publishers/).
+`packages: write`. npm uses the explicitly renewed operator-token exception
+for `vyral-client@0.3.3`: publish only the exact authorized archive after the signed
+tag and canonical checks exist, then dispatch with `npm_direct_token_published: true`.
+The protected npm environment verifies its version, repository URL and SHA-512
+integrity against an independently built archive. No npm token is placed in GitHub
+and no npm OIDC provenance is claimed.
 This source authorization is not a claim that any package is
 already available: absent registry trust or an environment approval, the manual
 job fails closed and publishes nothing.

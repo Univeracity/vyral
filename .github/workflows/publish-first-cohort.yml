@@ -9,6 +9,10 @@ on:
         type: choice
         options:
           - v0.3.3
+      npm_direct_token_published:
+        description: The exact authorized npm archive has been published with an operator-controlled token
+        required: true
+        type: boolean
       confirm:
         description: I have reviewed the release evidence, package scope, and release notes
         required: true
@@ -39,12 +43,14 @@ jobs:
         id: authority
         env:
           CONFIRM: ${{ inputs.confirm }}
+          NPM_DIRECT_TOKEN_PUBLISHED: ${{ inputs.npm_direct_token_published }}
           GITHUB_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$CONFIRM" = "true"
+          test "$NPM_DIRECT_TOKEN_PUBLISHED" = "true"
           test "$RELEASE_TAG" = "v0.3.3"
           git fetch --force --tags origin
           test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
@@ -201,31 +207,20 @@ jobs:
           skip-existing: true
 
   publish-npm:
-    name: Publish authorized JavaScript SDK
-    needs:
-      - validate
-      - build
+    name: Verify authorized direct-token JavaScript SDK
+    needs: build
     runs-on: ubuntu-22.04
     environment:
       name: publish-npm
       url: https://www.npmjs.com/package/vyral-client
     permissions:
       contents: read
-      id-token: write
     steps:
-      - name: Check out the authorized release commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.validate.outputs.source_sha }}
-
-      - name: Set up trusted-publishing-compatible Node
+      - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22.14.0"
           package-manager-cache: false
-
-      - name: Install the pinned trusted-publishing npm CLI
-        run: npm install --global --ignore-scripts npm@11.5.1
 
       - name: Download the authorized distribution
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -233,18 +228,13 @@ jobs:
           name: package-release-v0.3.3
           path: dist
 
-      - name: Publish the exact SDK archive with OIDC provenance
+      - name: Verify the exact authorized registry archive
         run: |
           set -euo pipefail
-          test "$(npm --version)" = "11.5.1"
           expected_integrity="sha512-$(openssl dgst -sha512 -binary dist/npm/vyral-client-0.3.3.tgz | base64 -w 0)"
-          if existing_integrity="$(npm view vyral-client@0.3.3 dist.integrity --registry https://registry.npmjs.org 2>/dev/null)"; then
-            test "$existing_integrity" = "$expected_integrity"
-          else
-            npm publish dist/npm/vyral-client-0.3.3.tgz \
-              --access public --provenance --ignore-scripts \
-              --registry https://registry.npmjs.org
-          fi
+          test "$(npm view vyral-client@0.3.3 version)" = "0.3.3"
+          test "$(npm view vyral-client@0.3.3 repository.url)" = "git+https://github.com/univeracity/vyral.git"
+          test "$(npm view vyral-client@0.3.3 dist.integrity)" = "$expected_integrity"
 
   verify:
     name: Verify public package availability

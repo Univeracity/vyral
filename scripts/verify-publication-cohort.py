@@ -65,7 +65,7 @@ AUTHORIZATION = {
     "requirements": (
         "a GitHub-verified signed annotated release tag that resolves to current main",
         "a successful canonical Release Integrity push run for that exact commit",
-        "the exact NuGet, PyPI and npm registry trusted-publisher relationships",
+        "the exact NuGet and PyPI registry trusted-publisher relationships and verified direct-token npm archive",
         "a manual dispatch from main through the named protected environments",
     ),
     "publishers": (
@@ -88,7 +88,7 @@ AUTHORIZATION = {
             "https://registry.npmjs.org",
             "publish-first-cohort.yml",
             "publish-npm",
-            "GitHub Actions OIDC trusted publishing",
+            "operator-controlled npm token; exact archive verified by protected workflow",
         ),
     ),
 }

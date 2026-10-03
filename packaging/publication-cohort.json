@@ -55,7 +55,7 @@
     "requirements": [
       "a GitHub-verified signed annotated release tag that resolves to current main",
       "a successful canonical Release Integrity push run for that exact commit",
-      "the exact NuGet, PyPI and npm registry trusted-publisher relationships",
+      "the exact NuGet and PyPI registry trusted-publisher relationships and verified direct-token npm archive",
       "a manual dispatch from main through the named protected environments"
     ],
     "publishers": [
@@ -78,9 +78,9 @@
         "registry": "https://registry.npmjs.org",
         "workflowFile": "publish-first-cohort.yml",
         "environment": "publish-npm",
-        "authentication": "GitHub Actions OIDC trusted publishing"
+        "authentication": "operator-controlled npm token; exact archive verified by protected workflow"
       }
     ]
   },
-  "authorizationBoundary": "This reviewed authorization permits only the listed package patch through the named manual workflow. It excludes unchanged execution packages, the Python HTTP client registry distribution, provider packages, and container publication."
+  "authorizationBoundary": "This reviewed authorization permits only the listed package patch through the named manual workflow. It excludes unchanged execution packages, the Python HTTP client registry distribution, provider packages, and container publication. The npm 0.3.3 archive has an explicitly authorized operator-token exception; no npm token is stored in GitHub, source or workflow files, and no npm OIDC provenance is claimed."
 }

@@ -142,9 +142,10 @@ def main() -> int:
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
         "skip-existing: true",
-        "npm publish dist/npm/vyral-client-0.3.3.tgz",
-        "--access public --provenance --ignore-scripts",
-        "npm@11.5.1",
+        "npm_direct_token_published:",
+        'test "$NPM_DIRECT_TOKEN_PUBLISHED" = "true"',
+        "npm view vyral-client@0.3.3 dist.integrity",
+        "expected_integrity",
         "Verify public package availability",
     ):
         if requirement not in publisher:
@@ -154,7 +155,6 @@ def main() -> int:
     if re.search(r"^  push:\s*$", publisher, re.MULTILINE):
         errors.append(f"{FIRST_COHORT_PUBLISH_WORKFLOW} must not have an automatic push trigger")
     for label in (
-        "JavaScript package publish",
         "NuGet push",
         "registry or release publishing action",
     ):
@@ -162,13 +162,14 @@ def main() -> int:
         if not pattern.search(publisher):
             errors.append(f"{FIRST_COHORT_PUBLISH_WORKFLOW} is missing expected {label}")
     for label in (
+        "JavaScript package publish",
         "Docker push",
         "OCI or Helm push",
         "GitHub release creation",
     ):
         if PUBLISH_PATTERNS[label].search(publisher):
             errors.append(
-                f"{FIRST_COHORT_PUBLISH_WORKFLOW} may publish only the reviewed NuGet, PyPI and npm packages, not {label}"
+                f"{FIRST_COHORT_PUBLISH_WORKFLOW} may publish only the reviewed NuGet and PyPI packages and verify the authorized npm archive, not {label}"
             )
     if re.search(
         r"VYRAL_ENABLE_AUTOMATED_WORKFLOWS\s*[:=]\s*['\"]?true\b",
