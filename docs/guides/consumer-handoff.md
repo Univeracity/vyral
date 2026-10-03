@@ -253,6 +253,18 @@ timeout/concurrency profile and intentionally emits no draft patch if validation
 timeout prevents a successful apply. Consumers should split longer work or retain recovery state in
 their own workflow; partial staging is never applied automatically.
 
+The concrete CLI workspace host uses one monotonic execution deadline for
+preparation, the agent, every validation, reconciliation, and application;
+validation phases do not renew the budget. File copying and hashing observe the
+same cancellation token. The process runner starts its timeout before launch and
+includes stdin delivery and output draining. After stopping work, process exit
+and drain waits share a fixed two-second cleanup grace. Filesystem rollback and
+staging deletion are best-effort integrity cleanup; cancellation cannot preempt a
+blocked OS operation, so this is not a hard wall-clock or complete descendant
+containment guarantee. A child that inherited pipes after its parent exited is
+reported as unresolved rather than treated as successful. These limits do not
+establish that any model attempt stopped or consumed zero tokens.
+
 Use `/providers/capabilities` or the client capability-matrix helper first when a consumer needs to choose between `ai.extract`, `ai.review`, `ai.scaffold`, `ai.rerank`, model listing, quota telemetry, jobs, or artifact-producing workflows.
 
 For `grok-build-cli`, configure these values before qualification. The target clears the inherited environment and rejects calls when any are absent or invalid. `WorkingDirectory` must be a dedicated empty directory; its only permitted entry is the empty prompt-file directory.
