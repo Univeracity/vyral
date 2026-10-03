@@ -14,6 +14,9 @@ public static class CloudflareR2LiveSettings
     public static string? SecretAccessKey =>
         Environment.GetEnvironmentVariable("VYRAL_R2_SECRET_ACCESS_KEY");
 
+    public static string? SessionToken =>
+        Environment.GetEnvironmentVariable("VYRAL_R2_SESSION_TOKEN");
+
     public static string? Bucket =>
         Environment.GetEnvironmentVariable("VYRAL_R2_BUCKET");
 

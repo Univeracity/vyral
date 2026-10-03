@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "vyral.local-runtime-mechanics.v1",
+  "testedAtUtc": "2026-10-03",
+  "level": "prototype",
+  "buildInfo": "b1-4c5957c",
+  "model": "Qwen3-1.7B-Q8_0.gguf",
+  "modelSha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+  "runtimeClosureSha256": {
+    "libggml-base.so": "0015c6661c5763ab9d5f22d66c226ce69f638a0558499e94701478ccadb5f25e",
+    "libggml-base.so.0": "0015c6661c5763ab9d5f22d66c226ce69f638a0558499e94701478ccadb5f25e",
+    "libggml-base.so.0.25.1": "0015c6661c5763ab9d5f22d66c226ce69f638a0558499e94701478ccadb5f25e",
+    "libggml-cpu.so": "2039be98c6ee0d1cee1d3793a95f2deb061706e8ef39c9dd33a1cc3941227d92",
+    "libggml-cpu.so.0": "2039be98c6ee0d1cee1d3793a95f2deb061706e8ef39c9dd33a1cc3941227d92",
+    "libggml-cpu.so.0.25.1": "2039be98c6ee0d1cee1d3793a95f2deb061706e8ef39c9dd33a1cc3941227d92",
+    "libggml.so": "dea80d51796e35a29860f7ed0727a9461e6f0c9b1647be09eb877a2cb1aa856a",
+    "libggml.so.0": "dea80d51796e35a29860f7ed0727a9461e6f0c9b1647be09eb877a2cb1aa856a",
+    "libggml.so.0.25.1": "dea80d51796e35a29860f7ed0727a9461e6f0c9b1647be09eb877a2cb1aa856a",
+    "libllama-cli-impl.so": "ec277578883ed08cd981178a7f3a6c317a3cab8bb52f58b6f7270128423203ca",
+    "libllama-common.so": "a492f075d9555e332901409a25df359b5a4981ebfc3172f552080d57039621d1",
+    "libllama-common.so.0": "a492f075d9555e332901409a25df359b5a4981ebfc3172f552080d57039621d1",
+    "libllama-common.so.0.5.0": "a492f075d9555e332901409a25df359b5a4981ebfc3172f552080d57039621d1",
+    "libllama-server-impl.so": "26bc3756d41f06fabb25c39ab9441d5905878ada1798f8691fd058df5313e35d",
+    "libllama.so": "01c93d2cb0f3716eddca46ba438c5135a252211236f079bc7161862863e94fc5",
+    "libllama.so.0": "01c93d2cb0f3716eddca46ba438c5135a252211236f079bc7161862863e94fc5",
+    "libllama.so.0.5.0": "01c93d2cb0f3716eddca46ba438c5135a252211236f079bc7161862863e94fc5",
+    "libmtmd.so": "9ad8161b860a5deaac9d0dc3d10ed5f3fb3162981d9455c8862fd96ee8f5f71c",
+    "libmtmd.so.0": "9ad8161b860a5deaac9d0dc3d10ed5f3fb3162981d9455c8862fd96ee8f5f71c",
+    "libmtmd.so.0.5.0": "9ad8161b860a5deaac9d0dc3d10ed5f3fb3162981d9455c8862fd96ee8f5f71c",
+    "llama-server": "5ed18fe1236449aa2001f68f4e5fc56828a13d42c76b6f2335848e533f095d33"
+  },
+  "templateSha256": "57f1fd00f0013a2be96aa79b857391f27e23df5b5f847072b524c897e24d0361",
+  "effectiveTemplateProbeSha256": "323214ed1434eb18d9d20cd120d363b3364184c1790b3116228e9a7c55dc23e9",
+  "contextTokens": 2048,
+  "slots": 1,
+  "launchControls": [
+    "literal loopback",
+    "CPU only",
+    "no context shift",
+    "no web UI",
+    "thinking disabled through template arguments"
+  ],
+  "sourceSha256": {
+    "src/Vyral.Providers.Local/LocalLlamaCppProviderTarget.cs": "f30f8e11331ae126db9b2322136899a9661c215532f5d2f3b7c7eb55061e610c",
+    "src/Vyral.Providers.Local/LlamaCppRuntimeSessionFactory.cs": "adbfafe0595364533a17a3ed45f5ca36eb737aa80ecc10d17b5da82179b73c0a",
+    "src/Vyral.Providers.Local/LocalLogprobJudgeProviderTarget.cs": "c7c003673e38e1cc8973bd3344639185514c73ef11b44493cda4b6968ad10303",
+    "src/Vyral.Providers.Local/LocalLogprobSession.cs": "13561224bf68b81ca3a822fb34cc8562fdc82e182b7db95e4c98fb3ca6f5345f",
+    "tests/Vyral.Tests.Providers/LocalNativeRuntimeTests.cs": "a815b018fd5093c072449bf3feda2bff479e9c2f57d83a868950606e1b926bb6",
+    "tests/Vyral.Tests.Providers/LocalLogprobJudgeProviderTests.cs": "2c0b9e5f02926000066ee3adb7c6d5e30c70eccc7c8a30c9853325f495028027"
+  },
+  "tests": {
+    "focusedPassed": 33,
+    "realModelSmokeCases": 2,
+    "scoringMode": "Choice; first output position; two rotations",
+    "receiptSha256": "cd99e0f101ec5258fb2449a31bf7ed8517202ebed568b28b0cf6d81ee5f1f965"
+  },
+  "limits": [
+    "mechanics only; no accuracy or calibration qualification",
+    "operator consistency binding; no proof against a malicious HTTP peer",
+    "no implicit model download or runtime launch",
+    "no complete host egress, descendant or owner-death qualification",
+    "no complete attempt-accounting or protected issuance claim"
+  ]
+}

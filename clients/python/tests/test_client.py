@@ -1277,7 +1277,9 @@ class VyralClientTests(unittest.TestCase):
             [{"role": "user", "content": "Summarize."}],
             model_id="gpt-5.3-codex-spark",
             timeout_seconds=30,
+            max_output_tokens=12,
         )
+        self.assertEqual(12, chat["payload"]["maxOutputTokens"])
         self.assertEqual("ai.chat", chat["capability"])
         self.assertEqual("gpt-5.3-codex-spark", chat["modelId"])
         self.assertEqual("Summarize.", chat["payload"]["messages"][0]["content"])

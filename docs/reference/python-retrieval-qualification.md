@@ -59,12 +59,14 @@ embedded `VyralRuntime` drains its executor and clears its record cache.
 
 ## Flat vector search
 
-The dependency-free Python baseline retains individual float32 rounding steps
+The dependency-free Python baseline uses the standard-library C float scalar
+conversion and retains individual float32 rounding steps
 and their explicit overflow/nonfinite errors. Cosine query-norm preparation is
 reused within one search, and diagnostics are constructed for retained top
 results. Every eligible record and vector row is still hydrated and validated,
 including nonselected records: malformed JSON, dimensions or vector byte lengths
-fail the search. Namespace/partition filtering, thresholds, stable ties and
+fail the search. A bounded top-result heap replaces retaining and sorting every
+matching record; it still exhausts and validates all eligible rows. Namespace/partition filtering, thresholds, stable ties and
 continuation retain their existing behavior.
 
 This remains exhaustive flat search. High-dimensional Python arithmetic and
@@ -94,3 +96,40 @@ For a frozen evidence comparison, preserve the cache manifest, source revisions,
 eligibility filters, fields, prefix/phrase rules and candidate budgets. Use one
 final output renderer and the consuming tokenizer for equal output budgets;
 RAG `maxChars` bounds excerpt text before citation formatting and other output.
+
+## High-dimensional qualification and grouping decision
+
+From a Git source checkout, run:
+
+    python3 scripts/benchmark-python-vector-search.py --output /tmp/vector-search.json
+
+The bounded default uses 1,000 deterministic synthetic 384-dimensional records,
+three metrics and three repeats. It compares complete records, scores, diagnostics
+and continuation against the pinned previous source, plus 2,075 scalar/vector bit
+and error controls. It binds source/input hashes and platform versions. Use the
+existing Python platform workflow to qualify supported Python 3.10–3.12 on Linux,
+macOS and Windows; a single-host timing receipt does not replace that matrix.
+No compiled extension, NumPy dependency, relaxed score tolerance, fast-math or
+model download is introduced.
+
+The current fail-closed policy deliberately prevents ranking before complete record
+validation: a malformed nonselected record must still fail the query. Splitting
+storage validation from hydration would require a separately versioned contract
+and corruption controls. Keep full validation in this profile.
+
+Budget passages and distinct investigation items as separate experiments. Preserve
+one larger candidate pool, group by an explicit caller-owned item identifier after
+retrieval, and retain the first ranked passage per item (or an explicitly bounded
+number). Compare final rendered output under the same tokenizer budget. Report
+pool size, eligible items, selected passages and selected items; grouping after a
+small top pool can hide additional items and cannot establish recall equivalence.
+The probe reports passage/distinct-item counts without changing Vyral scores or
+introducing domain-specific identifiers into the engine. This closes the mechanics
+investigation, not application relevance qualification or full runtime promotion.
+
+The [dated synthetic receipt](../../qualification/python-vector-mechanics-2026-10-03.json)
+retains all 2,075 numeric/error controls and nine complete responses from a
+1,000-record, 384-dimension fixture. Median complete retrieval/serialization was
+1,026.9 ms before and 957.1 ms after on this host. Treat this as bounded mechanics
+evidence. The supported-platform workflow repeats the same parity controls on
+Python 3.10–3.12 across Linux, macOS and Windows with a smaller record count.

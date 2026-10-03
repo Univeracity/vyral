@@ -7,6 +7,9 @@ public sealed class CloudflareR2Options
     public string? AccountId { get; init; }
     public string? AccessKeyId { get; init; }
     public string? SecretAccessKey { get; init; }
+    public string? SessionToken { get; init; }
+    /// <summary>Explicit SDK retries; zero preserves unresolved write outcomes for caller lookup.</summary>
+    public int MaxErrorRetry { get; init; } = 0;
     public string? ServiceUrl { get; init; }
     public string AuthenticationRegion { get; init; } = "auto";
     public bool ForcePathStyle { get; init; } = true;
@@ -37,6 +40,8 @@ public sealed class CloudflareR2Options
 
     public void ValidateCredentials()
     {
+        if (MaxErrorRetry is < 0 or > 3)
+            throw new InvalidOperationException("Cloudflare R2 MaxErrorRetry must be between 0 and 3.");
         if (string.IsNullOrWhiteSpace(AccessKeyId))
         {
             throw new InvalidOperationException("Cloudflare R2 object store requires Cloudflare:R2:AccessKeyId or VYRAL_R2_ACCESS_KEY_ID.");

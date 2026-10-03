@@ -1326,6 +1326,7 @@ def build_provider_chat_request(
     *,
     system: str | None = None,
     max_output_chars: int | None = None,
+    max_output_tokens: int | None = None,
     **run_options: Any,
 ) -> dict[str, Any]:
     if not messages:
@@ -1335,6 +1336,8 @@ def build_provider_chat_request(
         payload["system"] = system
     if max_output_chars is not None:
         payload["maxOutputChars"] = max_output_chars
+    if max_output_tokens is not None:
+        payload["maxOutputTokens"] = max_output_tokens
     return build_provider_run_request("ai.chat", payload, **run_options)
 
 

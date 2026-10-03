@@ -106,7 +106,7 @@ public class S3ObjectStore : IObjectStore
 
         try
         {
-            var response = await _client.GetObjectAsync(new GetObjectRequest
+            using var response = await _client.GetObjectAsync(new GetObjectRequest
             {
                 BucketName = request.Container,
                 Key = key
@@ -185,7 +185,8 @@ public class S3ObjectStore : IObjectStore
         var response = await _client.ListObjectsV2Async(listRequest, ct);
 
         var items = new List<ObjectInfo>();
-        foreach (var obj in response.S3Objects)
+        // AWS SDK v4 leaves absent response collections null, including an empty bucket.
+        foreach (var obj in response.S3Objects ?? new List<S3Object>())
         {
             // S3 ListObjectsV2 does not return metadata per object — would need individual HEAD
             // We return empty metadata and the S3 ETag; content hash requires a separate HEAD.

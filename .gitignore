@@ -61,6 +61,8 @@ docs/reference/*
 !docs/reference/execution-runtime-limitations.md
 !docs/reference/python-retrieval-qualification.md
 !docs/reference/stability.md
+!docs/reference/local-runtime-providers.md
+!docs/reference/cloudflare-r2-qualification.md
 .agent-state/
 .agent-artifacts/
 .vyral/

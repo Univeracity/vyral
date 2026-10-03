@@ -4046,7 +4046,7 @@ public class ServerWorkflowTests
 
         using var factory = CreateFactory(dbPath, objectsPath, settings: new Dictionary<string, string?>
         {
-            ["Providers:EnableLiveTargets"] = "true",
+            ["Providers:EnableLiveTargets"] = "false",
             ["Providers:WorkspaceAgent:Enabled"] = "true"
         });
 
@@ -4069,7 +4069,7 @@ public class ServerWorkflowTests
         {
             await using var factory = CreateFactory(dbPath, objectsPath, settings: new Dictionary<string, string?>
             {
-                ["Providers:EnableLiveTargets"] = "true",
+                ["Providers:EnableLiveTargets"] = "false",
                 ["Providers:WorkspaceAgent:Enabled"] = "true",
                 ["Providers:WorkspaceAgent:AgentCommand"] = "/bin/true",
                 ["Providers:WorkspaceAgent:AllowedWorkspaceRoots:0"] = workspaceRoot,
@@ -4084,12 +4084,37 @@ public class ServerWorkflowTests
 
             Assert.NotNull(providers);
             Assert.Contains(providers, provider => provider.Id == "workspace-cli");
+            Assert.DoesNotContain(providers, provider => provider.Id == "codex-cli");
         }
         finally
         {
             try { Directory.Delete(workspaceRoot, recursive: true); } catch { }
             try { Directory.Delete(stagingRoot, recursive: true); } catch { }
         }
+    }
+
+    [Fact]
+    public async Task Server_RegistersPinnedLocalRuntimeWithoutRemoteCliTargets()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-runtime-{Guid.NewGuid():N}.sqlite");
+        var objectsPath = Path.Combine(Path.GetTempPath(), $"vyral-runtime-{Guid.NewGuid():N}");
+        await using var factory = CreateFactory(dbPath, objectsPath, settings: new Dictionary<string, string?>
+        {
+            ["Providers:EnableLiveTargets"] = "false",
+            ["Providers:LocalRuntime:Enabled"] = "true",
+            ["Providers:LocalRuntime:Endpoint"] = "http://127.0.0.1:18346/",
+            ["Providers:LocalRuntime:ModelId"] = "fixture",
+            ["Providers:LocalRuntime:ModelPath"] = Path.GetFullPath("fixture.gguf"),
+            ["Providers:LocalRuntime:ModelSha256"] = new string('a', 64),
+            ["Providers:LocalRuntime:BuildInfo"] = "fixture-build",
+            ["Providers:LocalRuntime:TemplateSha256"] = new string('b', 64),
+            ["Providers:LocalRuntime:TemplateProbeSha256"] = new string('c', 64)
+        });
+        var providers = await factory.CreateClient().GetFromJsonAsync<List<ProviderProfile>>("/providers");
+        Assert.NotNull(providers);
+        Assert.Contains(providers, p => p.Id == "local-llamacpp");
+        Assert.Contains(providers, p => p.Id == "local-logprob-judge");
+        Assert.DoesNotContain(providers, p => p.Id == "codex-cli");
     }
 
     [Fact]

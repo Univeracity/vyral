@@ -30,6 +30,11 @@ public sealed class AiChatRequest
 
     [JsonPropertyName("maxOutputChars")]
     public int? MaxOutputChars { get; set; }
+
+    /// <summary>Optional positive ceiling on generated tokens, including hidden reasoning.
+    /// An adapter that cannot enforce it must reject the request before inference.</summary>
+    [JsonPropertyName("maxOutputTokens")]
+    public int? MaxOutputTokens { get; set; }
 }
 
 public sealed class AiChatResult

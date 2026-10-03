@@ -8,6 +8,7 @@ using Vyral.Abstractions.Interfaces;
 using Vyral.Abstractions.Models;
 using Vyral.Cloudflare;
 using Vyral.Tests.Conformance;
+using Xunit;
 
 namespace Vyral.Tests.Cloudflare;
 
@@ -30,8 +31,21 @@ public class CloudflareR2ObjectStoreConformanceTests : ObjectStoreConformanceTes
         RunObjectStore_RejectsNonPortableNames();
 
     [CloudflareR2LiveFact]
-    public Task ObjectStore_DeletesObjectsIdempotentlyAndEnforcesPreconditions() =>
-        RunObjectStore_DeletesObjectsIdempotentlyAndEnforcesPreconditions();
+    public async Task ObjectStore_DeletesIdempotentlyAndRefusesUnsupportedConditionalDelete()
+    {
+        await using var store = (ScopedR2ObjectStore)CreateObjectStore();
+        var put = await store.PutObjectAsync(new() { Container = "objects", Key = "docs/delete.txt",
+            Content = new System.IO.MemoryStream(new byte[] { 1, 2, 3 }) });
+        foreach (var etag in new[] { "\"missing\"", put.Etag })
+            await Assert.ThrowsAsync<System.InvalidOperationException>(() => store.DeleteObjectAsync(new() {
+                Container = "objects", Key = "docs/delete.txt", IfMatch = etag }));
+        var retained = await store.GetObjectAsync(new() { Container = "objects", Key = "docs/delete.txt" });
+        Assert.NotNull(retained);
+        await retained!.Content.DisposeAsync();
+        await store.DeleteObjectAsync(new() { Container = "objects", Key = "docs/delete.txt" });
+        await store.DeleteObjectAsync(new() { Container = "objects", Key = "docs/delete.txt" });
+        Assert.Null(await store.GetObjectAsync(new() { Container = "objects", Key = "docs/delete.txt" }));
+    }
 
     [CloudflareR2LiveFact]
     public Task ObjectStore_ListsWithContinuationToken() =>
@@ -41,6 +55,16 @@ public class CloudflareR2ObjectStoreConformanceTests : ObjectStoreConformanceTes
     public Task ObjectStore_RejectsInvalidListLimit() =>
         RunObjectStore_RejectsInvalidListLimit();
 
+    [CloudflareR2LiveFact]
+    public async Task ObjectStore_PreCancelledWriteLeavesNoObject()
+    {
+        await using var store = (ScopedR2ObjectStore)CreateObjectStore();
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<System.OperationCanceledException>(() => store.PutObjectAsync(new() {
+            Container = "objects", Key = "cancelled.txt", Content = new System.IO.MemoryStream(new byte[] { 1 }) }, cancellation.Token));
+        Assert.Null(await store.GetObjectAsync(new() { Container = "objects", Key = "cancelled.txt" }));
+    }
+
     protected override IObjectStore CreateObjectStore()
     {
         var bucket = CloudflareR2LiveSettings.Bucket!;
@@ -49,7 +73,8 @@ public class CloudflareR2ObjectStoreConformanceTests : ObjectStoreConformanceTes
         {
             AccountId = CloudflareR2LiveSettings.AccountId,
             AccessKeyId = CloudflareR2LiveSettings.AccessKeyId,
-            SecretAccessKey = CloudflareR2LiveSettings.SecretAccessKey
+            SecretAccessKey = CloudflareR2LiveSettings.SecretAccessKey,
+            SessionToken = CloudflareR2LiveSettings.SessionToken
         });
 
         return new ScopedR2ObjectStore(store, bucket, keyPrefix);
@@ -71,6 +96,7 @@ internal sealed class ScopedR2ObjectStore : IObjectStore, IAsyncDisposable
 
     public async Task<ObjectInfo> PutObjectAsync(ObjectWriteRequest request, CancellationToken ct = default)
     {
+        ObjectNameValidator.ValidateContainer(request.Container);
         var result = await _inner.PutObjectAsync(MapWrite(request), ct);
         result.Container = request.Container;
         result.Key = request.Key;
@@ -79,6 +105,7 @@ internal sealed class ScopedR2ObjectStore : IObjectStore, IAsyncDisposable
 
     public async Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
     {
+        ObjectNameValidator.ValidateContainer(request.Container);
         var result = await _inner.GetObjectAsync(new ObjectReadRequest
         {
             Container = _bucket,
@@ -93,16 +120,22 @@ internal sealed class ScopedR2ObjectStore : IObjectStore, IAsyncDisposable
         return result;
     }
 
-    public Task DeleteObjectAsync(ObjectDeleteRequest request, CancellationToken ct = default) =>
-        _inner.DeleteObjectAsync(new ObjectDeleteRequest
+    public Task DeleteObjectAsync(ObjectDeleteRequest request, CancellationToken ct = default)
+    {
+        ObjectNameValidator.ValidateContainer(request.Container);
+        return _inner.DeleteObjectAsync(new ObjectDeleteRequest
         {
             Container = _bucket,
             Key = ScopeKey(request.Key),
             IfMatch = request.IfMatch
         }, ct);
+    }
 
     public async Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
     {
+        ObjectNameValidator.ValidateContainer(request.Container);
+        if (!string.IsNullOrEmpty(request.Prefix))
+            ObjectNameValidator.NormalizeObjectKey(request.Prefix, allowTrailingSlash: true);
         var prefix = string.IsNullOrEmpty(request.Prefix)
             ? _keyPrefix + "/"
             : _keyPrefix + "/" + request.Prefix.TrimStart('/');
@@ -118,7 +151,7 @@ internal sealed class ScopedR2ObjectStore : IObjectStore, IAsyncDisposable
         foreach (var item in result.Items)
         {
             item.Container = request.Container;
-            item.Key = item.Key[prefix.Length..].TrimStart('/');
+            item.Key = item.Key[(_keyPrefix.Length + 1)..];
         }
 
         return result;
@@ -164,7 +197,7 @@ internal sealed class ScopedR2ObjectStore : IObjectStore, IAsyncDisposable
         }
     }
 
-    private string ScopeKey(string key) => $"{_keyPrefix}/{key.TrimStart('/')}";
+    private string ScopeKey(string key) => $"{_keyPrefix}/{ObjectNameValidator.NormalizeObjectKey(key)}";
 
     private ObjectWriteRequest MapWrite(ObjectWriteRequest request) =>
         new()

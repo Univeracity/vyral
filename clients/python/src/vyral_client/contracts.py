@@ -2640,7 +2640,7 @@ class ProviderTargetDescriptor(_ProviderTargetDescriptorRequired, total=False):
 
 class _ProviderRunRequestRequired(TypedDict):
     capability: str
-    payload: AiChatPayload | AiExtractPayload | AiRerankPayload | AiReviewPayload | AiScaffoldPayload | AiToolPlanPayload | dict[str, JSONValue]
+    payload: AiChatPayload | AiExtractPayload | AiRerankPayload | AiReviewPayload | AiScaffoldPayload | AiToolPlanPayload | AiJudgePayload | dict[str, JSONValue]
 
 class ProviderRunRequest(_ProviderRunRequestRequired, total=False):
     provider: str | None
@@ -2660,7 +2660,7 @@ class _ProviderRunResultRequired(TypedDict):
     capability: str
     operation: str
     mode: str
-    output: AiChatResult | AiExtractResult | AiRerankResult | AiReviewResult | AiScaffoldResult | AiToolPlanResult | dict[str, JSONValue]
+    output: AiChatResult | AiExtractResult | AiRerankResult | AiReviewResult | AiScaffoldResult | AiToolPlanResult | AiJudgeResult | dict[str, JSONValue]
 
 class ProviderRunResult(_ProviderRunResultRequired, total=False):
     failureClass: str | None
@@ -2886,6 +2886,7 @@ class AiChatPayload(TypedDict, total=False):
     messages: list[AiMessage]
     system: str | None
     maxOutputChars: int | None
+    maxOutputTokens: int | None
 
 class _AiChatResultRequired(TypedDict):
     message: AiMessage
@@ -3257,3 +3258,48 @@ class RagContextGraphEvaluationFailureModes(TypedDict, total=False):
     graphContextTextMissing: bool
     contextTextTruncated: bool
     budgetTruncated: bool
+
+class _AiJudgeOptionRequired(TypedDict):
+    id: str
+    label: str
+
+class AiJudgeOption(_AiJudgeOptionRequired, total=False):
+    pass
+
+class _AiJudgeQuestionRequired(TypedDict):
+    id: str
+    type: Literal['choice', 'noul', 'score']
+    prompt: str
+
+class AiJudgeQuestion(_AiJudgeQuestionRequired, total=False):
+    options: list[AiJudgeOption]
+
+class _AiJudgePayloadRequired(TypedDict):
+    questions: list[AiJudgeQuestion]
+
+class AiJudgePayload(_AiJudgePayloadRequired, total=False):
+    context: str | None
+    references: list[AiReference]
+
+class _AiJudgeAnswerRequired(TypedDict):
+    questionId: str
+    calibrated: bool
+
+class AiJudgeAnswer(_AiJudgeAnswerRequired, total=False):
+    choice: str | None
+    score: float | None
+    legend: dict[str, str] | None
+    probability: float | None
+    confidence: float | None
+    labelMassCoverage: float | None
+    rotationAgreement: float | None
+    probabilities: dict[str, float] | None
+    rawLabelProbabilities: dict[str, float] | None
+    rawClassProbabilities: dict[str, float] | None
+
+class _AiJudgeResultRequired(TypedDict):
+    answers: list[AiJudgeAnswer]
+    validationStatus: str
+
+class AiJudgeResult(_AiJudgeResultRequired, total=False):
+    modelId: str | None

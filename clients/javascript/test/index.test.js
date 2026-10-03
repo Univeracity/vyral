@@ -1045,8 +1045,10 @@ test("provider request builders expose typed AI payloads", () => {
     { role: "user", content: "Summarize." }
   ], {
     modelId: "gpt-5.3-codex-spark",
-    timeoutSeconds: 30
+    timeoutSeconds: 30,
+    maxOutputTokens: 12
   });
+  assert.equal(chat.payload.maxOutputTokens, 12);
   assert.equal(chat.capability, "ai.chat");
   assert.equal(chat.modelId, "gpt-5.3-codex-spark");
   assert.equal(chat.payload.messages[0].content, "Summarize.");

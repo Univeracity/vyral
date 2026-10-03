@@ -394,6 +394,12 @@ public sealed class CliProviderTarget : IProviderTarget, IProviderQualificationP
         string guardedPrompt;
         var policy = ProviderModePolicies.Resolve(_policies, request.Mode);
 
+        if (request.Capability == ProviderCapabilityIds.AiChat && request.Payload["maxOutputTokens"] is not null)
+        {
+            return CreateResult(request, ProviderRunStatus.Unsupported, trace, stopwatch.Elapsed,
+                "This CLI adapter cannot enforce a generated-token ceiling.", ProviderFailureClasses.Unsupported, "token_ceiling_unsupported");
+        }
+
         if (!Capabilities.Any(c => string.Equals(c.Id, request.Capability, StringComparison.OrdinalIgnoreCase)))
         {
             return CreateResult(request, ProviderRunStatus.Unsupported, trace, stopwatch.Elapsed, null, ProviderFailureClasses.Unsupported, "unsupported_capability");
