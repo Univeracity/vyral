@@ -1,6 +1,6 @@
 # vyral-client
 
-Thin JavaScript client for the Vyral local HTTP server.
+Thin JavaScript client for local or hosted Vyral HTTP servers.
 
 The package ships generated TypeScript declarations and OpenAPI-derived interfaces through its `types` export; no separate `@types` package is required.
 
@@ -148,6 +148,19 @@ if (isExecutionRunTerminal(run)) {
 Client URLs must use HTTP or HTTPS and cannot contain user credentials. API keys,
 bearer tokens, and credential headers require HTTPS except on an exact loopback
 address used for local development. Credential-bearing requests do not follow redirects.
+
+The same client is the portable starting point for a Worker calling a hosted
+Vyral API. Its runtime module uses standard fetch APIs and has no Node imports
+or runtime dependencies; use the `fetch` constructor option when the host needs
+to supply its transport. TypeScript declarations ship with the package. The
+package's Node engine requirement describes its tested Node environment and does
+not establish Cloudflare Workers qualification.
+
+Keep the hosted URL and credentials in deployment-controlled configuration,
+use HTTPS, and retain the server's tenant authorization policy. The client does
+not execute the .NET runtime inside a Worker or provide Worker-specific authority,
+secret management, or queue dispatch. Qualify the selected methods in the actual
+Worker deployment before claiming that environment is supported.
 
 Configure transport behavior once for every method, or derive a request-scoped client without mutating the original:
 

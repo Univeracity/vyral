@@ -320,6 +320,12 @@ The [portable cutover guide](docs/guides/portable-cutovers.md) extends that
 local proof into provider preflight, shadowing, cutover, rollback, and retained
 evidence.
 
+For R2 artifacts, see the [storage and delivery ownership boundary](docs/guides/consumer-handoff.md#r2-storage-and-delivery-ownership)
+for credential scoping, S3 compatibility caveats, and the separate edge-deployment
+responsibilities. Hosted API callers can reuse the fetch-based
+[JavaScript client and its TypeScript declarations](clients/javascript/README.md);
+Worker deployment qualification remains separate.
+
 Retrieval supports structured filters, lexical, vector, and hybrid modes;
 configurable fusion and reranking; reusable profiles; and evaluation receipts.
 The deterministic local embedding provider is for mechanics and repeatability,
