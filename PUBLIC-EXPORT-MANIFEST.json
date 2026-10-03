@@ -114,7 +114,7 @@
     {
       "mode": "644",
       "path": ".github/workflows/publish-first-cohort.yml",
-      "sha256": "1af4a5096593b4bdec07f3215be7dee2fddb480df8d366a547981107b34e3547"
+      "sha256": "96f648f19ff95c11f5fc776bf05e85a88cf0f51b7479efa6b3790b649af7bb10"
     },
     {
       "mode": "644",
@@ -174,7 +174,7 @@
     {
       "mode": "644",
       "path": "README.md",
-      "sha256": "cbbdf983fd5f07f87666871905171182b8729948a3402d8428fb58c6ecc7830a"
+      "sha256": "15937d55c2f41b331d646a432695a5b2e041a2edfeb5465380106775b14b7c28"
     },
     {
       "mode": "644",
@@ -729,7 +729,7 @@
     {
       "mode": "644",
       "path": "docs/maintainers/releasing.md",
-      "sha256": "8e9c2faf6a73a0a0b2148de34bc1c8758d4d22db2a77ed38597a4c44fe18109d"
+      "sha256": "604627749a92508692752d19add022f15328b9d507bc23012e9974d0ddeb4334"
     },
     {
       "mode": "644",
@@ -754,7 +754,7 @@
     {
       "mode": "644",
       "path": "docs/reference/stability.md",
-      "sha256": "6f127fb6801d2bb5f14c247b483d2977b935a463e3ae2e824350702de8ae7abf"
+      "sha256": "f41793ef2e8b047ebded6b1ce81b532c8cebaf8ef39ef0a6278c7420082ada2f"
     },
     {
       "mode": "644",
@@ -834,7 +834,7 @@
     {
       "mode": "644",
       "path": "packaging/publication-cohort.json",
-      "sha256": "5a534cf84d9f0afdfb1461a9ee40d639821aaf2f8557b72365fa64a11a26a2ce"
+      "sha256": "27a8198800d2a7289d680f4e9282b66a2bdfc83293457820c8851083e9773aba"
     },
     {
       "mode": "644",
@@ -2164,12 +2164,12 @@
     {
       "mode": "755",
       "path": "scripts/verify-publication-cohort.py",
-      "sha256": "c9a07e1ffba822a141ef500747827908de621906988112f18111e14cfc685c44"
+      "sha256": "0cbfd0f03aa4df1bc42d01b6349fb13b26a52c42d12e53d9a7e969c4628099de"
     },
     {
       "mode": "644",
       "path": "scripts/verify-publication-policy.py",
-      "sha256": "45d9e837d48ee2c822d008ea93045f53bfe6f8d2c574ef9091ff54a8db507abe"
+      "sha256": "f4817f5e111991d21bb142d0ab6679fcd700cd8f2b09eb740197a7b5df5b4513"
     },
     {
       "mode": "755",
@@ -2224,7 +2224,7 @@
     {
       "mode": "644",
       "path": "scripts/verify-python-runtime-upgrade.py",
-      "sha256": "2c9c7a584391b5f1b4a16ba587c94661f11d7e88a8d949602aeac89dcbec88bd"
+      "sha256": "6498a6cfbeed6db9f422557cd9e287001ed17fe60521ef0a999264691c7fd9a1"
     },
     {
       "mode": "755",
@@ -5209,5 +5209,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "bb12a8d8268b11bcb073d8d4e6478a276d2e41aedb7f946d44d97caa0b233494"
+  "treeSha256": "eb4ace52b475676ddf43e8d56c8faf6ba130e64926eb4b87ad8289f95a436096"
 }
