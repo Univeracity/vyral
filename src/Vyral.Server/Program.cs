@@ -4432,7 +4432,9 @@ static ProviderTargetRegistry CreateProviderTargetRegistry(IConfiguration config
             ContextTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:ContextTokens"], "Providers:LocalRuntime:ContextTokens") ?? 2048,
             MaxOutputTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:MaxOutputTokens"], "Providers:LocalRuntime:MaxOutputTokens") ?? 512
         };
-        targets.Add(new LocalLlamaCppProviderTarget(runtime));
+        targets.Add(new LocalLlamaCppProviderTarget(runtime,
+            ParseOptionalInt(configuration["Providers:LocalRuntime:MaxExecutionSeconds"], "Providers:LocalRuntime:MaxExecutionSeconds")
+                ?? LocalLlamaCppProviderTarget.DefaultExecutionSeconds));
         targets.Add(new LocalLogprobJudgeProviderTarget(new LlamaCppRuntimeSessionFactory(runtime)));
     }
 

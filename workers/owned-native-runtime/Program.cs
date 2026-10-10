@@ -36,13 +36,12 @@ try
     var raw = await ReadProfile(args[1]);
     var p = JsonSerializer.Deserialize<OwnedProfile>(raw, json)!;
     if (!OperatingSystem.IsLinux() || p.SchemaVersion != "vyral.owned-native-runtime.v1" ||
-        p.MaxExecutionSeconds is < 1 or > 120 || p.MaxOutputBytes is < 1024 or > 65536)
+        p.MaxOutputBytes is < 1024 or > 65536)
         throw new ArgumentException("unsupported_profile");
+    OwnedNativeDeadline.Remaining(p.DeadlineUtc, p.MaxExecutionSeconds, DateTimeOffset.UtcNow);
     NativeLifetime.BindToParent();
-    var remaining = p.DeadlineUtc - DateTimeOffset.UtcNow;
-    if (p.DeadlineUtc.Offset != TimeSpan.Zero || remaining <= TimeSpan.Zero || remaining > TimeSpan.FromSeconds(p.MaxExecutionSeconds))
-        throw new ArgumentException("immutable_deadline");
-    using var lifetime = new CancellationTokenSource(remaining);
+    using var lifetime = new CancellationTokenSource(
+        OwnedNativeDeadline.Remaining(p.DeadlineUtc, p.MaxExecutionSeconds, DateTimeOffset.UtcNow));
     Console.CancelKeyPress += (_, e) => { e.Cancel = true; lifetime.Cancel(); };
     async Task Verify(string path, string expected)
     {

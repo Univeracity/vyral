@@ -9,10 +9,16 @@ namespace Vyral.Providers.Local;
 /// <summary>Opt-in bounded native completion. No tools, process launch, downloads or source writes.</summary>
 public sealed class LocalLlamaCppProviderTarget : IProviderTarget
 {
+    public const int DefaultExecutionSeconds = 120;
+    public const int MaximumExecutionSeconds = 600;
     private readonly LlamaCppRuntimeSessionFactory _factory;
     private readonly LlamaCppRuntimeOptions _options;
-    public LocalLlamaCppProviderTarget(LlamaCppRuntimeOptions options)
+    public LocalLlamaCppProviderTarget(LlamaCppRuntimeOptions options) : this(options, DefaultExecutionSeconds) { }
+    public LocalLlamaCppProviderTarget(LlamaCppRuntimeOptions options, int maxExecutionSeconds)
     {
+        if (maxExecutionSeconds is < 1 or > MaximumExecutionSeconds)
+            throw new ArgumentOutOfRangeException(nameof(maxExecutionSeconds));
+        MaxExecutionSeconds = maxExecutionSeconds;
         _options = options; _factory = new(options);
         Profile = new() { Id = "local-llamacpp", DisplayName = "Local llama.cpp native completion", Family = "local",
             Local = true, RequiresNetwork = true, Auth = "none", ConfigHash = _factory.BindingId };
@@ -21,10 +27,11 @@ public sealed class LocalLlamaCppProviderTarget : IProviderTarget
             InputLimits = new() { ["maxContextTokens"] = options.ContextTokens, ["maxPayloadBytes"] = 70000 },
             OutputLimits = new() { ["maxOutputTokens"] = options.MaxOutputTokens, ["maxOutputBytes"] = 262144 },
             ModePolicies = new() { new() { Id = ProviderModes.Advisory, AllowNetwork = true,
-                AllowSourceWrites = false, MaxInputBytes = 70000, MaxOutputBytes = 262144, TimeoutSeconds = 120 } },
+                AllowSourceWrites = false, MaxInputBytes = 70000, MaxOutputBytes = 262144, TimeoutSeconds = maxExecutionSeconds } },
             UnsupportedFeatures = new() { "tools", "source_writes", "attachments", "multimodal", "internal_retries", "trusted_issuance" } } };
     }
     public ProviderProfile Profile { get; }
+    public int MaxExecutionSeconds { get; }
     public IReadOnlyList<ProviderCapabilityDescriptor> Capabilities { get; }
 
     public async Task<ProviderRunResult> RunAsync(ProviderRunRequest request, CancellationToken ct = default)
@@ -65,10 +72,12 @@ public sealed class LocalLlamaCppProviderTarget : IProviderTarget
             return Result(ProviderRunStatus.Unsupported, "unsupported_request", ProviderFailureClasses.Unsupported);
         if (request.TimeoutSeconds is <= 0 || request.MaxOutputBytes is <= 0)
             return Result(ProviderRunStatus.Rejected, "invalid_request_limits", ProviderFailureClasses.Policy);
+        if (request.TimeoutSeconds > MaxExecutionSeconds)
+            return Result(ProviderRunStatus.Rejected, "timeout_exceeds_policy", ProviderFailureClasses.Policy);
         if (Encoding.UTF8.GetByteCount(request.Payload.ToJsonString(ProviderJson.Options)) > 70000)
             return Result(ProviderRunStatus.Rejected, "input_limit", ProviderFailureClasses.Policy);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        deadline.CancelAfter(TimeSpan.FromSeconds(Math.Min(request.TimeoutSeconds ?? 120, 120)));
+        deadline.CancelAfter(TimeSpan.FromSeconds(Math.Min(request.TimeoutSeconds ?? DefaultExecutionSeconds, MaxExecutionSeconds)));
         try
         {
             deadline.Token.ThrowIfCancellationRequested();

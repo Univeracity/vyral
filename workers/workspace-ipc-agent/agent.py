@@ -7,6 +7,7 @@ The workspace host owns staging/validation/application; the gateway owns calls.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import http.client
 import json
@@ -60,6 +61,16 @@ def digest(value):
     return value
 
 
+def invocation_deadline(value):
+    if (not isinstance(value, str) or len(value) > 40 or
+            not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|\+00:00)", value)):
+        raise Held("invalid_invocation_deadline")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise Held("invalid_invocation_deadline") from None
+
+
 def private_read(path, maximum):
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     try:
@@ -86,6 +97,8 @@ def load_profile(path):
     version = p.get("schemaVersion")
     if version == "vyral.workspace-ipc-profile.v2":
         fields = fields - {"reservationOverheadTokens"} | {"reservationRule", "maxSourceBytes"}
+        if "invocationDeadlineUtc" in p:
+            fields |= {"invocationDeadlineUtc"}
     if set(p) != fields or version not in {"vyral.workspace-ipc-profile.v1", "vyral.workspace-ipc-profile.v2"}:
         raise Held("unsupported_profile")
     for name in ("sessionId", "operationId", "contextRef", "providerId", "modelId"):
@@ -97,8 +110,12 @@ def load_profile(path):
     for name in ("taskSha256", "grantSha256", "backendSha256"):
         digest(p[name])
     for name, ceiling in (("maxInputBytes", 65536), ("maxOutputTokens", 8192), ("maxReservationTokens", 1048576),
-                          ("maxExecutionSeconds", 120), ("maxResponseBytes", 1048576), ("maxEdits", 32), ("maxEditBytes", 65536)):
+                          ("maxExecutionSeconds", 600), ("maxResponseBytes", 1048576), ("maxEdits", 32), ("maxEditBytes", 65536)):
         integer(p[name], ceiling)
+    if "invocationDeadlineUtc" in p:
+        invocation_deadline(p["invocationDeadlineUtc"])
+    elif p["maxExecutionSeconds"] > 120:
+        raise Held("invocation_deadline_required")
     if version.endswith("v1"):
         if type(p["reservationOverheadTokens"]) is not int or not 0 <= p["reservationOverheadTokens"] <= 4096:
             raise Held("invalid_limit")
@@ -276,7 +293,10 @@ def input_request(profile, envelope, root):
     reservation = rule["context_tokens"] if rule["method"] == "native_context_window" else len(prompt.encode()) + rule["overhead_tokens"] + profile["maxOutputTokens"]
     if reservation > profile["maxReservationTokens"]:
         raise Held("reservation_limit")
-    return {"prompt": prompt, "max_output_tokens": profile["maxOutputTokens"], "kind": "main"}, reservation
+    request = {"prompt": prompt, "max_output_tokens": profile["maxOutputTokens"], "kind": "main"}
+    if "invocationDeadlineUtc" in profile:
+        request["deadline_utc"] = profile["invocationDeadlineUtc"]
+    return request, reservation
 
 
 def apply_edits(profile, envelope, response, root, deadline):
@@ -345,8 +365,12 @@ def apply_edits(profile, envelope, response, root, deadline):
 
 
 def run(profile, envelope, root, recover=False):
-    integer(envelope.get("remainingMilliseconds"), 120000)
-    deadline = time.monotonic() + min(profile["maxExecutionSeconds"], envelope["remainingMilliseconds"] / 1000)
+    integer(envelope.get("remainingMilliseconds"), 600000)
+    remaining = min(profile["maxExecutionSeconds"], envelope["remainingMilliseconds"] / 1000)
+    if "invocationDeadlineUtc" in profile:
+        remaining = min(remaining, (invocation_deadline(profile["invocationDeadlineUtc"]) - datetime.now(timezone.utc)).total_seconds())
+    if remaining <= 0: raise Held("deadline")
+    deadline = time.monotonic() + remaining
     request, reservation = input_request(profile, envelope, root)
     gateway = Gateway(profile, deadline)
     owner = gateway.request("GET")

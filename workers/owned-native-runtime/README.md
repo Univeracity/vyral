@@ -6,6 +6,12 @@ runtime until an immutable deadline. It does not admit work, call a model, retry
 requests, sign evidence or implement a second service controller. The private
 IPC coding worker remains a separate network-isolated profile.
 
+`maxExecutionSeconds` supports 1 through 600 seconds. The immutable UTC
+`deadlineUtc` must have positive remaining time no greater than that configured
+maximum; hashing, readiness and serving share its original remainder. This
+ceiling does not select a longer default or renew a retained attempt. Context,
+output, model and public factory binding checks are unchanged.
+
 Build the entry point, then launch its DLL directly as the owner's child:
 
 ```text

@@ -56,6 +56,15 @@ response return time or termination of an already sent provider invocation.
 Serialization is per runner, not a cross-process lock: multiple replicas need
 separate workspaces or an independently qualified coordinator.
 
+Worker profiles and stdin `remainingMilliseconds` support up to 600 seconds
+(600000 milliseconds). Existing example allocations remain unchanged. A v2
+profile may include `invocationDeadlineUtc`, and must include it when
+`maxExecutionSeconds` exceeds 120. This is an ISO UTC string ending in `Z` or
+`+00:00`, with optional 1–7 fractional digits, at most 40 characters. Freeze it once before the original job POST;
+include it in the profile digest and preserve the same bytes for recovery.
+The worker uses the minimum of that UTC remainder, the profile maximum and the
+host's remaining envelope. An expired deadline refuses before transport.
+
 Create the worker profile only after the owner admits a new immutable session
 and operation key. Populate the exact grant and backend digests, clean Git base,
 task UTF-8 digest, context reference, model/provider IDs, path scope and frozen
@@ -79,8 +88,11 @@ The versioned stdin envelope is:
 
 The worker revalidates these fields against the private profile, reads only the
 listed context files and verifies their digests. It sends their UTF-8 contents
-as data in the prompt. The request is exactly `prompt`, `max_output_tokens` and
-`kind=main`, over these authenticated HTTP-on-Unix routes:
+as data in the prompt. The request contains `prompt`, `max_output_tokens` and
+`kind=main`; a profile with `invocationDeadlineUtc` adds the exact original
+string as `deadline_utc`. That value is part of the immutable gateway request
+digest. Fresh remaining envelopes never reconstruct or renew it. The gateway
+must support this contract before admitting such a profile. The routes are:
 
 ```text
 GET  /v1/sessions/{sessionId}

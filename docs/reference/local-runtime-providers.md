@@ -71,6 +71,20 @@ registers local-llamacpp and local-logprob-judge; the latter uses mechanics mode
 WorkspaceAgent opt-in is also independent of remote CLI enablement and retains
 API-key authentication and its existing source-writing guards.
 
+Native chat accepts an explicit `Providers:LocalRuntime:MaxExecutionSeconds`
+integer from 1 through 600; omission preserves 120 seconds. The public
+`LocalLlamaCppProviderTarget(options, maxExecutionSeconds)` constructor exposes
+the same policy through its advisory descriptor `timeoutSeconds`. An explicit
+request above the configured target ceiling rejects before runtime access.
+An omitted request timeout still selects 120 seconds, attenuated by a smaller
+target ceiling or caller cancellation. The server's separate
+`Providers:MaxRunTimeoutSeconds` must also admit the requested duration (its
+default stays 300); `Providers:DefaultRunTimeoutSeconds` stays 120. Provider
+readiness exposes that server ceiling as `operationalLimits.maxTimeoutSeconds`.
+These metadata values describe policy, not successful model execution.
+The duration setting does not change the ten native runtime options or their
+factory binding. Local logprob judging retains its existing policy.
+
 For the optional backend gate, set VYRAL_LOCAL_RUNTIME_PROFILE to an ignored JSON
 file containing the equivalent camelCase runtime options, then run the provider
 tests filtered by LocalNativeRuntimeTests. The fixtures exercise token/byte
