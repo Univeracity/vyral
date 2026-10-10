@@ -27,6 +27,17 @@ with `SerializeRuns=true`, network disabled, a pinned model ID and
 `InputFormat=workspace-json-v1`. Source-writing registration still requires
 server authentication. No service is started by these examples.
 
+Set `AgentOutcomeFormat=workspace-ipc-v1` to require the worker's bounded
+acknowledgment. Public workspace result `agentDelivery` contains only fixed
+provenance/state fields and task, profile, request, result and stdout digests.
+The host verifies the task digest against exact stdin task bytes; the owner
+must compare profile/request/result pins with its immutable preparation and
+gateway inventory. Raw task, context, journal and stdout are never copied into
+this receipt. It acknowledges delivery, not model attention or independent
+metering. Missing/malformed/mismatched success output refuses application;
+failed agent execution claims no receipt. A valid acknowledgment is retained
+when subsequent host validation fails, without claiming changes were applied.
+
 Install and hash the worker, interpreter, runtime closure and Bubblewrap on the
 chosen host. Mount only the necessary read-only Python libraries and dynamic
 loader as `RuntimeReadOnlyPaths`. Mount the worker file and owner-private IPC

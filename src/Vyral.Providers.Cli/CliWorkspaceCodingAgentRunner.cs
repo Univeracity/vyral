@@ -65,6 +65,9 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         if (options.InputFormat is not ("prompt" or "workspace-json-v1") ||
             (options.InputFormat == "workspace-json-v1" && options.PromptTransport != CliPromptTransports.StandardInput))
             throw new ArgumentException("Workspace JSON input requires stdin transport and a supported input format.", nameof(options));
+        if (options.AgentOutcomeFormat is not ("none" or "workspace-ipc-v1") ||
+            (options.AgentOutcomeFormat == "workspace-ipc-v1" && options.InputFormat != "workspace-json-v1"))
+            throw new ArgumentException("Workspace IPC acknowledgment requires structured input.", nameof(options));
 
         if (options.RuntimeReadOnlyPaths.Concat(options.AgentReadOnlyPaths).Any(IsUnsafeRuntimePath))
         {
@@ -80,7 +83,8 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         _processRunner = processRunner ?? new SystemProviderProcessRunner();
         AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v2" +
             (options.InputFormat == "workspace-json-v1" ? ":workspace-json-v1" : string.Empty) +
-            (options.SerializeRuns ? ":serialized" : string.Empty);
+            (options.SerializeRuns ? ":serialized" : string.Empty) +
+            (options.AgentOutcomeFormat == "workspace-ipc-v1" ? ":delivery-v1" : string.Empty);
     }
 
     public string AdapterId { get; }
@@ -238,6 +242,17 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 };
             }
 
+            if (_options.AgentOutcomeFormat == "workspace-ipc-v1")
+            {
+                try { result.AgentDelivery = ReadAgentDelivery(agentResult.StandardOutput, request.Task); }
+                catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException)
+                {
+                    FillSkippedValidations(request, validations);
+                    return Failure("agent_delivery_mismatch", "The bounded agent acknowledgment did not bind the delivered task.",
+                        ProviderFailureClasses.Schema, ProviderRunStatus.Rejected, result);
+                }
+            }
+
             // The host later reads the staged paths directly. Reject links before
             // reconciling so a sandbox-created link cannot cause the host to read
             // a file outside the disposable staging tree after Bubblewrap exits.
@@ -343,6 +358,29 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             }
             if (serialAcquired) _serial.Release();
         }
+    }
+
+    private static WorkspaceAgentDelivery ReadAgentDelivery(string stdout, string task)
+    {
+        if (Encoding.UTF8.GetByteCount(stdout) > 64 * 1024) throw new InvalidOperationException();
+        using var document = System.Text.Json.JsonDocument.Parse(stdout, new() { MaxDepth = 16 });
+        var root = document.RootElement;
+        var keys = root.EnumerateObject().Select(p => p.Name).ToArray();
+        if (keys.Length != keys.Distinct(StringComparer.Ordinal).Count() ||
+            root.GetProperty("schemaVersion").GetString() != "vyral.workspace-ipc-outcome.v1" ||
+            root.GetProperty("state").GetString() != "staged_for_host_validation") throw new InvalidOperationException();
+        string Digest(string name)
+        {
+            var value = root.GetProperty(name).GetString();
+            if (value is null || value.Length != 71 || !value.StartsWith("sha256:", StringComparison.Ordinal) ||
+                value[7..].Any(c => c is not (>= '0' and <= '9') and not (>= 'a' and <= 'f'))) throw new InvalidOperationException();
+            return value;
+        }
+        var delivered = Digest("taskSha256");
+        if (delivered != "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(task))))
+            throw new InvalidOperationException();
+        return new() { TaskSha256 = delivered, ProfileSha256 = Digest("profileSha256"), RequestSha256 = Digest("requestSha256"),
+            ResultSha256 = Digest("resultSha256"), OutcomeSha256 = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(stdout))) };
     }
 
     private async Task<string> GetCleanWorkspaceRootAsync(string workspaceRoot, CancellationToken ct)

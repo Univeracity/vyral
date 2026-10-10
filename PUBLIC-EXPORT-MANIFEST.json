@@ -594,7 +594,7 @@
     {
       "mode": "644",
       "path": "deploy/workspace-ipc/example-host.json",
-      "sha256": "68533105b613e08d10e7ddd1fcc4dd27796e8cd89b37df52fbdeaba394d1d3b4"
+      "sha256": "d261245c3a31e79868d0b7ebc34df4f734ced3487b847bc2676230cc20c5a166"
     },
     {
       "mode": "644",
@@ -3844,7 +3844,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Abstractions/WorkspaceCodingAgentModels.cs",
-      "sha256": "7b5f3cdfcd0f58f9cb2dc9c482c90d950b52aa4fef3f171122e938a7a1285c17"
+      "sha256": "62f0142b44ccf6b470a8cb59f458dedbc043312c3c3b6173760190ae1275f062"
     },
     {
       "mode": "644",
@@ -3884,12 +3884,12 @@
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Cli/CliWorkspaceCodingAgentOptions.cs",
-      "sha256": "a6ed73f60998e340ce7fda0d734cecaaa4fb65e7db6292c5415862a7a903c8a0"
+      "sha256": "e6e9b881b916467dc21a9db89cb2e0e25d7ac668102342c753dcd41f5be685ca"
     },
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Cli/CliWorkspaceCodingAgentRunner.cs",
-      "sha256": "b4487c0b760bcaba5475d7e65ff745d7763a110ba406ec5bcb9e768a1dac9d2e"
+      "sha256": "f5d081296b59842713e2e83f06d7d56894174e1777cc89ad9c33994557619aa6"
     },
     {
       "mode": "644",
@@ -4154,7 +4154,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Server/Program.cs",
-      "sha256": "9dc5d10d4475418a7fff8cf21a6508b04d7d529dda87972f1196ff76b9ccc7f4"
+      "sha256": "2ead8d4ad7fa49e536e1164702a7073728e89f53b0d261e27743833632016769"
     },
     {
       "mode": "644",
@@ -4964,7 +4964,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Providers/CliWorkspaceCodingAgentRunnerTests.cs",
-      "sha256": "8f71ea000eb85bb62c2f8d3142e8af62c51d2f9c85dc0b09f1e0f9215e6e6ddf"
+      "sha256": "f4d19932628fe84f0765425301416b1df211b6e93543a4b81c45a8937eedbda7"
     },
     {
       "mode": "644",
@@ -5244,7 +5244,7 @@
     {
       "mode": "644",
       "path": "workers/workspace-ipc-agent/README.md",
-      "sha256": "ba79b427ebb9d7fae8d80b7ebd1821cdf156b4b53eb60e02f051d814461d0aa2"
+      "sha256": "361e4e91e8be103c181a7e0031d6e05a364d0bdb2cbec5b76f02fe4085df7d01"
     },
     {
       "mode": "644",
@@ -5259,5 +5259,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "819259428393caf394c8fddd767577e1b9ad5bfac18e39d8b75e31185ebcb4c1"
+  "treeSha256": "5fa6b343591025ee023a2a8d814633dedec7a1490b669b09725c557561c64bd8"
 }

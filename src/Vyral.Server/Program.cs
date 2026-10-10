@@ -4610,6 +4610,7 @@ static CliWorkspaceCodingAgentOptions GetCliWorkspaceCodingAgentOptions(IConfigu
             .ToList(),
         PromptTransport = configuration[$"{section}:PromptTransport"] ?? CliPromptTransports.StandardInput,
         InputFormat = configuration[$"{section}:InputFormat"] ?? "prompt",
+        AgentOutcomeFormat = configuration[$"{section}:AgentOutcomeFormat"] ?? "none",
         SerializeRuns = ParseOptionalBool(configuration[$"{section}:SerializeRuns"], $"{section}:SerializeRuns") ?? false,
         MaxExecutionSeconds = ParseOptionalInt(configuration[$"{section}:MaxExecutionSeconds"], $"{section}:MaxExecutionSeconds"),
         MaxInputBytes = ParseOptionalInt(configuration[$"{section}:MaxInputBytes"], $"{section}:MaxInputBytes") ?? 96 * 1024,

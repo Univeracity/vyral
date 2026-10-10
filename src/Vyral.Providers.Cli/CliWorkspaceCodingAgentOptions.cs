@@ -18,6 +18,8 @@ public sealed class CliWorkspaceCodingAgentOptions
     public string PromptTransport { get; set; } = CliPromptTransports.StandardInput;
     /// <summary>Opt in to the versioned stdin envelope instead of a composed text prompt.</summary>
     public string InputFormat { get; set; } = "prompt";
+    /// <summary>Optional bounded digest acknowledgment; raw stdout is never a public result.</summary>
+    public string AgentOutcomeFormat { get; set; } = "none";
     /// <summary>Serialize staging, execution, validation and application for a dedicated host.</summary>
     public bool SerializeRuns { get; set; }
     /// <summary>Optional operator ceiling, including time spent waiting for the serialized host.</summary>

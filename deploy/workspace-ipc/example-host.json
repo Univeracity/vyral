@@ -9,6 +9,7 @@
       "AgentArguments": ["-I", "/opt/vyral/workspace-ipc-agent/agent.py", "run", "--profile", "/run/vyral-worker-ipc/profile.json"],
       "PromptTransport": "stdin",
       "InputFormat": "workspace-json-v1",
+      "AgentOutcomeFormat": "workspace-ipc-v1",
       "SerializeRuns": true,
       "MaxExecutionSeconds": 60,
       "MaxInputBytes": 16384,

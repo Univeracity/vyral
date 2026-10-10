@@ -207,6 +207,64 @@ public class CliWorkspaceCodingAgentRunnerTests
     }
 
     [BubblewrapFact]
+    public async Task Runner_ExportsOnlyBoundedDeliveryDigestsAndRetainsThemOnValidationFailure()
+    {
+        foreach (var validation in new[] { "verify", "false" })
+        {
+            await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+            await File.WriteAllTextAsync(fixture.AgentScript, """
+                #!/usr/bin/python3
+                import hashlib, json, sys
+                data = json.load(sys.stdin)
+                open('/workspace/src/generated.txt','w').write('generated')
+                print(json.dumps({'schemaVersion':'vyral.workspace-ipc-outcome.v1','state':'staged_for_host_validation',
+                    'taskSha256':'sha256:'+hashlib.sha256(data['task'].encode()).hexdigest(),
+                    'profileSha256':'sha256:'+'a'*64,'requestSha256':'sha256:'+'b'*64,'resultSha256':'sha256:'+'c'*64,
+                    'privateContent':'do not return raw task or context'}))
+                """);
+            var target = fixture.CreateTarget(inputFormat: "workspace-json-v1", promptTransport: CliPromptTransports.StandardInput,
+                agentOutcomeFormat: "workspace-ipc-v1");
+            var result = await target.RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest(validationCommand: validation)));
+            Assert.Equal(validation == "verify" ? ProviderRunStatus.Succeeded : ProviderRunStatus.Failed, result.Status);
+            var delivery = System.Text.Json.JsonSerializer.Deserialize<WorkspaceCodingAgentResult>(result.Output.ToJsonString(), ProviderJson.Options)!.AgentDelivery;
+            Assert.NotNull(delivery);
+            Assert.True(delivery.TaskBindingVerified);
+            Assert.Equal("agent_stdout", delivery.Source);
+            Assert.Equal("sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("delayed-write"))), delivery.TaskSha256);
+            Assert.DoesNotContain("privateContent", result.Output.ToJsonString());
+            Assert.DoesNotContain("do not return", result.Output.ToJsonString());
+            Assert.Equal(validation == "verify", File.Exists(Path.Combine(fixture.Workspace,"src/generated.txt")));
+        }
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_MismatchedOrMalformedDeliveryRefusesBeforeApplying()
+    {
+        foreach (var output in new[] { "{}", "{'schemaVersion':'vyral.workspace-ipc-outcome.v1','state':'staged_for_host_validation','taskSha256':'sha256:'+'0'*64}", "{'schemaVersion':'unknown'}" })
+        {
+            await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+            await File.WriteAllTextAsync(fixture.AgentScript, "#!/usr/bin/python3\nimport json\nopen('/workspace/src/generated.txt','w').write('blocked')\nprint(json.dumps(" + output + "))\n");
+            var result = await fixture.CreateTarget(inputFormat: "workspace-json-v1", promptTransport: CliPromptTransports.StandardInput,
+                agentOutcomeFormat: "workspace-ipc-v1").RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest()));
+            Assert.Equal(ProviderRunStatus.Rejected, result.Status);
+            Assert.Equal("agent_delivery_mismatch", result.ProviderStatus);
+            Assert.False(result.Output.ContainsKey("agentDelivery"));
+            Assert.False(File.Exists(Path.Combine(fixture.Workspace,"src/generated.txt")));
+        }
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_FailedAgentDoesNotClaimAcknowledgedDelivery()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+        await File.WriteAllTextAsync(fixture.AgentScript, "#!/usr/bin/python3\nraise SystemExit(20)\n");
+        var result = await fixture.CreateTarget(inputFormat: "workspace-json-v1", promptTransport: CliPromptTransports.StandardInput,
+            agentOutcomeFormat: "workspace-ipc-v1").RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest()));
+        Assert.Equal(ProviderRunStatus.Failed, result.Status);
+        Assert.False(result.Output.ContainsKey("agentDelivery"));
+    }
+
+    [BubblewrapFact]
     public async Task Runner_JsonInputKeepsPrivateMountsOutOfValidationAndBlocksNetwork()
     {
         if (!OperatingSystem.IsLinux()) throw new InvalidOperationException("The Bubblewrap precondition changed.");
@@ -366,7 +424,7 @@ public class CliWorkspaceCodingAgentRunnerTests
         }
 
         public WorkspaceCodingAgentProviderTarget CreateTarget(string? agentCommand = null, List<string>? agentArguments = null, string? promptTransport = null, IProviderProcessRunner? processRunner = null,
-            string inputFormat = "prompt", List<string>? agentReadOnlyPaths = null, bool serializeRuns = false, int? maxExecutionSeconds = null, int maxInputBytes = 96 * 1024)
+            string inputFormat = "prompt", List<string>? agentReadOnlyPaths = null, bool serializeRuns = false, int? maxExecutionSeconds = null, int maxInputBytes = 96 * 1024, string agentOutcomeFormat = "none")
         {
             var runnerOptions = new CliWorkspaceCodingAgentOptions
             {
@@ -376,6 +434,7 @@ public class CliWorkspaceCodingAgentRunnerTests
                 AgentArguments = agentArguments ?? new List<string> { "{prompt}" },
                 PromptTransport = promptTransport ?? CliPromptTransports.Argument,
                 InputFormat = inputFormat,
+                AgentOutcomeFormat = agentOutcomeFormat,
                 AgentReadOnlyPaths = agentReadOnlyPaths ?? new(),
                 SerializeRuns = serializeRuns,
                 MaxExecutionSeconds = maxExecutionSeconds,

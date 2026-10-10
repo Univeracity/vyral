@@ -134,6 +134,24 @@ public sealed class WorkspaceCodingAgentResult
     /// <summary>Short, token-redacted runner summary. It is not a substitute for the change set.</summary>
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
+
+    /// <summary>Bounded agent acknowledgment of exact stdin task delivery; not model attention or independent metering.</summary>
+    [JsonPropertyName("agentDelivery")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WorkspaceAgentDelivery? AgentDelivery { get; set; }
+}
+
+public sealed class WorkspaceAgentDelivery
+{
+    public string SchemaVersion { get; set; } = "vyral.workspace-agent-delivery.v1";
+    public string Source { get; set; } = "agent_stdout";
+    public string State { get; set; } = "acknowledged";
+    public bool TaskBindingVerified { get; set; } = true;
+    public string TaskSha256 { get; set; } = string.Empty;
+    public string ProfileSha256 { get; set; } = string.Empty;
+    public string RequestSha256 { get; set; } = string.Empty;
+    public string ResultSha256 { get; set; } = string.Empty;
+    public string OutcomeSha256 { get; set; } = string.Empty;
 }
 
 public sealed class WorkspaceChangedPath
@@ -257,6 +275,17 @@ public static class WorkspaceCodingAgentContract
         if (!IsGitCommit(result.BaseCommit))
         {
             throw new ArgumentException("Workspace coding-agent result must contain the captured Git baseCommit.", nameof(result));
+        }
+
+        if (result.AgentDelivery is { } delivery)
+        {
+            bool Digest(string value) => value is not null && value.Length == 71 && value.StartsWith("sha256:", StringComparison.Ordinal)
+                && value[7..].All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
+            var taskHash = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.Task)));
+            if (delivery.SchemaVersion != "vyral.workspace-agent-delivery.v1" || delivery.Source != "agent_stdout" ||
+                delivery.State != "acknowledged" || !delivery.TaskBindingVerified || delivery.TaskSha256 != taskHash ||
+                !new[] { delivery.TaskSha256, delivery.ProfileSha256, delivery.RequestSha256, delivery.ResultSha256, delivery.OutcomeSha256 }.All(Digest))
+                throw new ArgumentException("Workspace delivery acknowledgment is invalid or differs from the task.", nameof(result));
         }
 
         if (!result.ChangeSetReconciled)
