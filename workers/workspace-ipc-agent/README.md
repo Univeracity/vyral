@@ -107,9 +107,28 @@ successful assistant message, and include nonnegative input/output token
 counters. Unknown usage, mismatched bindings and exceeded limits hold the
 result without applying edits.
 
-The assistant message must contain exactly one raw JSON object, with optional
-surrounding whitespace. Markdown fences, prose, multiple objects and duplicate
-keys are refused; no fence decoder or framing profile option is supported.
+By default, the assistant message must contain exactly one raw JSON object,
+with optional surrounding whitespace. V2 profiles may explicitly set
+`responseFraming` to `raw-json` (the default when omitted) or
+`raw-json-or-single-json-fence`. Other values and types refuse; the closed v1
+profile does not accept this field.
+
+The opt-in mode also accepts exactly one complete lowercase `json` fence:
+an opening line of three backticks followed immediately by `json`, an LF or
+CRLF newline, the JSON object, another LF or CRLF newline and a closing line of
+three backticks. Only ASCII spaces, tabs, CR and LF may surround that fence.
+No triple-backtick sequence may occur inside its body. Prose, extra tags,
+malformed, multiple or nested fences, multiple JSON values, duplicate keys,
+nonfinite values and unknown fields refuse. The original UTF-8 response,
+including all framing and surrounding whitespace, must fit `maxResponseBytes`
+before decoding. Raw JSON remains accepted in either mode.
+
+Freeze the selected mode in the profile before the original invocation. It is
+part of the profile digest and is advertised in the prompt, binding the request
+digest. Recovery retains those original bytes; it does not infer a mode from
+the response or switch modes to accept a refused result. A newly selected mode
+requires a new admitted operation. Framing does not establish that an anchor
+exists or that a proposal meets the task.
 For full-file context, the existing v1 whole-content response remains supported:
 
 ```json
@@ -132,7 +151,8 @@ context file); `newText` replaces only that anchor. Crossing a window boundary,
 guessing an anchor outside the supplied context, creating/deleting files,
 overlapping replacements or a stale context/window digest refuses the entire
 proposal before writing. All other original bytes, including line endings and
-UTF-8 encoding, are preserved. The profile and stdin schemas are unchanged.
+UTF-8 encoding, are preserved. These guards apply after either permitted
+framing form. The stdin schema is unchanged.
 
 ## Reservation and evidence limits
 
@@ -197,6 +217,15 @@ Run the no-model transport/binding/recovery tests on Linux with:
 
 ```text
 python3 -m unittest discover -s workers/workspace-ipc-agent -p test_agent.py -v
+```
+
+The framing, window and original-deadline controls use only synthetic files and
+in-memory recovery doubles, with no services or model calls:
+
+```text
+python3 -m unittest discover -s workers/workspace-ipc-agent -p test_response_framing.py -v
+python3 -m unittest discover -s workers/workspace-ipc-agent -p test_windowed_protocol.py -v
+python3 -m unittest discover -s workers/workspace-ipc-agent -p test_deadlines.py -v
 ```
 
 The provider tests additionally exercise real Bubblewrap isolation, private
