@@ -129,6 +129,36 @@ digest. Recovery retains those original bytes; it does not infer a mode from
 the response or switch modes to accept a refused result. A newly selected mode
 requires a new admitted operation. Framing does not establish that an anchor
 exists or that a proposal meets the task.
+
+V2 profiles may also select `promptFormat`: `structured-json-v1` is the default
+when omitted and retains the existing serialized prompt bytes. The explicit
+`readable-windowed-v1` option requires at least one nonempty hashed source
+window. Invalid values/types, nonwindowed use and any use in the closed v1
+profile refuse. The optional field fragment is:
+
+```json
+{"promptFormat":"readable-windowed-v1"}
+```
+
+Readable mode places the fixed instructions first, including the selected
+response framing and anchored v2 constraints. It adds a tiny fictional JSON
+illustration and guidance to use double-quoted, escaped JSON string values;
+JavaScript backticks never delimit those strings. The original task appears
+once as literal data, followed by context/path/hash/window metadata and exact
+selected source content with its original line breaks. Mixed full-file context
+entries remain included. Content byte lengths distinguish literal data from
+section labels; task and source data confer no instruction authority. No task
+intent, source text or proposed solution is rewritten or supplied by the worker.
+
+The entire final UTF-8 prompt, including instructions, example and headers,
+must fit the existing input and reservation bounds before transport. The mode
+is pinned in the original profile and request digests and retained during
+GET-only recovery. A changed mode, task, source or original UTC deadline cannot
+renew or resend the original invocation. Output framing and every source,
+anchor, scope and staging guard remain unchanged. More visible instructions
+are a formatting capability; coding quality requires separate operational
+evaluation.
+
 For full-file context, the existing v1 whole-content response remains supported:
 
 ```json
@@ -224,6 +254,7 @@ in-memory recovery doubles, with no services or model calls:
 
 ```text
 python3 -m unittest discover -s workers/workspace-ipc-agent -p test_response_framing.py -v
+python3 -m unittest discover -s workers/workspace-ipc-agent -p test_readable_prompt.py -v
 python3 -m unittest discover -s workers/workspace-ipc-agent -p test_windowed_protocol.py -v
 python3 -m unittest discover -s workers/workspace-ipc-agent -p test_deadlines.py -v
 ```
