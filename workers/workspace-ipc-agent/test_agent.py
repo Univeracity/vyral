@@ -149,6 +149,7 @@ class AgentTests(unittest.TestCase):
         for fault in ("stale", "missing", "ambiguous", "overlap", "scope", "symlink"):
             with self.subTest(fault=fault), Fixture() as f:
                 before = self.large_source(f)
+                f.profile["contextFiles"].append({"path": "src/seed.txt", "sha256": agent.sha(b"seed\n")})
                 edit = f.output["edits"][0]
                 if fault == "stale": edit["previousSha256"] = "sha256:" + "0" * 64
                 if fault == "missing": edit["replacements"][0]["oldText"] = "not present"

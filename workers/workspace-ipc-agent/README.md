@@ -107,7 +107,10 @@ successful assistant message, and include nonnegative input/output token
 counters. Unknown usage, mismatched bindings and exceeded limits hold the
 result without applying edits.
 
-The assistant message must contain only JSON:
+The assistant message must contain exactly one raw JSON object, with optional
+surrounding whitespace. Markdown fences, prose, multiple objects and duplicate
+keys are refused; no fence decoder or framing profile option is supported.
+For full-file context, the existing v1 whole-content response remains supported:
 
 ```json
 {"schemaVersion":"vyral.workspace-edits.v1","edits":[{"path":"src/new.txt","previousSha256":null,"content":"new content\n"}]}
@@ -119,6 +122,17 @@ the staged copy. Paths outside scope, avoided paths, `.git`, symlinks, duplicate
 or overlapping paths and oversized batches are refused. The host reconciles
 the Git change set, runs declared validators without IPC credentials and applies
 only a successfully validated change set. Model output is never executed.
+
+If any supplied context file has `windows`, the prompt selects only
+`vyral.workspace-edits.v2` and the worker refuses v1, including empty v1 edits.
+Each edit must address an existing supplied context file and carry its exact
+whole-file prior digest. Each nonempty `oldText` must match uniquely in the whole
+source and fit entirely inside one supplied, hashed window (or a supplied full
+context file); `newText` replaces only that anchor. Crossing a window boundary,
+guessing an anchor outside the supplied context, creating/deleting files,
+overlapping replacements or a stale context/window digest refuses the entire
+proposal before writing. All other original bytes, including line endings and
+UTF-8 encoding, are preserved. The profile and stdin schemas are unchanged.
 
 ## Reservation and evidence limits
 
