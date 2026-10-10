@@ -1,0 +1,28 @@
+{
+  "Providers": {
+    "WorkspaceAgent": {
+      "Enabled": false,
+      "ProviderId": "workspace-cli",
+      "DisplayName": "Private IPC workspace agent",
+      "AgentProfile": "private-ipc-v1",
+      "AgentCommand": "/usr/bin/python3",
+      "AgentArguments": ["-I", "/opt/vyral/workspace-ipc-agent/agent.py", "run", "--profile", "/run/vyral-worker-ipc/profile.json"],
+      "PromptTransport": "stdin",
+      "InputFormat": "workspace-json-v1",
+      "SerializeRuns": true,
+      "MaxExecutionSeconds": 60,
+      "MaxInputBytes": 16384,
+      "MaxOutputBytes": 65536,
+      "ModelId": "pinned-local-coding-model",
+      "Environment": {},
+      "AllowedWorkspaceRoots": ["/srv/vyral/worktrees"],
+      "StagingRoot": "/var/lib/vyral/workspace-staging",
+      "BubblewrapCommand": "/usr/bin/bwrap",
+      "GitCommand": "/usr/bin/git",
+      "RuntimeReadOnlyPaths": ["/lib", "/lib64", "/usr/lib/python3.12"],
+      "AgentReadOnlyPaths": ["/opt/vyral/workspace-ipc-agent/agent.py", "/run/vyral-worker-ipc"],
+      "ToolSearchPaths": ["/usr/bin", "/bin"],
+      "RequiresNetwork": false
+    }
+  }
+}

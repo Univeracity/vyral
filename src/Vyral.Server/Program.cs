@@ -4609,6 +4609,10 @@ static CliWorkspaceCodingAgentOptions GetCliWorkspaceCodingAgentOptions(IConfigu
             .Select(value => value!)
             .ToList(),
         PromptTransport = configuration[$"{section}:PromptTransport"] ?? CliPromptTransports.StandardInput,
+        InputFormat = configuration[$"{section}:InputFormat"] ?? "prompt",
+        SerializeRuns = ParseOptionalBool(configuration[$"{section}:SerializeRuns"], $"{section}:SerializeRuns") ?? false,
+        MaxExecutionSeconds = ParseOptionalInt(configuration[$"{section}:MaxExecutionSeconds"], $"{section}:MaxExecutionSeconds"),
+        MaxInputBytes = ParseOptionalInt(configuration[$"{section}:MaxInputBytes"], $"{section}:MaxInputBytes") ?? 96 * 1024,
         ModelId = configuration[$"{section}:ModelId"],
         Environment = configuration.GetSection($"{section}:Environment")
             .GetChildren()
@@ -4624,6 +4628,12 @@ static CliWorkspaceCodingAgentOptions GetCliWorkspaceCodingAgentOptions(IConfigu
         BubblewrapCommand = configuration[$"{section}:BubblewrapCommand"] ?? "bwrap",
         GitCommand = configuration[$"{section}:GitCommand"] ?? "git",
         RuntimeReadOnlyPaths = configuration.GetSection($"{section}:RuntimeReadOnlyPaths")
+            .GetChildren()
+            .Select(child => child.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToList(),
+        AgentReadOnlyPaths = configuration.GetSection($"{section}:AgentReadOnlyPaths")
             .GetChildren()
             .Select(child => child.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))

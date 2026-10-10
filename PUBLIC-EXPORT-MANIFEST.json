@@ -1,5 +1,5 @@
 {
-  "fileCount": 1041,
+  "fileCount": 1047,
   "files": [
     {
       "mode": "644",
@@ -590,6 +590,21 @@
       "mode": "755",
       "path": "deploy/test-preflight-google-execution.sh",
       "sha256": "972f85e4be75266a37994402a3fc66e1ae130cfcb4dc22235d1c384a561c1fbd"
+    },
+    {
+      "mode": "644",
+      "path": "deploy/workspace-ipc/example-host.json",
+      "sha256": "68533105b613e08d10e7ddd1fcc4dd27796e8cd89b37df52fbdeaba394d1d3b4"
+    },
+    {
+      "mode": "644",
+      "path": "deploy/workspace-ipc/example-worker-v2.json",
+      "sha256": "473e20cf7aae5f604aa0474c6c99241267e204fd8ae3d55af1e2d89af35ca39a"
+    },
+    {
+      "mode": "644",
+      "path": "deploy/workspace-ipc/example-worker.json",
+      "sha256": "cc7c89ee7bc063c2c029a50620a20a666f08a193c22e1e86a0857cf29e53ac84"
     },
     {
       "mode": "644",
@@ -3864,17 +3879,17 @@
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Cli/CliProviderTargets.cs",
-      "sha256": "73669b028887bbf2535861c2336ada7b12643f75fda9a8054d4516f9b9c970c7"
+      "sha256": "6f21c2471c2d581f92a726e2ada3a6ad0fefbfb916955c1424633b65d50db648"
     },
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Cli/CliWorkspaceCodingAgentOptions.cs",
-      "sha256": "6682ea34bb72cee1c1e27414bfc720c589ec52486186c4b40e4523a6216228b6"
+      "sha256": "a6ed73f60998e340ce7fda0d734cecaaa4fb65e7db6292c5415862a7a903c8a0"
     },
     {
       "mode": "644",
       "path": "src/Vyral.Providers.Cli/CliWorkspaceCodingAgentRunner.cs",
-      "sha256": "622e10f461ab6f918f4c3f2e1e1b01078452dd8a714f1e80def7fbd17efd7a07"
+      "sha256": "b4487c0b760bcaba5475d7e65ff745d7763a110ba406ec5bcb9e768a1dac9d2e"
     },
     {
       "mode": "644",
@@ -4139,7 +4154,7 @@
     {
       "mode": "644",
       "path": "src/Vyral.Server/Program.cs",
-      "sha256": "247e8157f87ec1074a0f17de5a633d9c2852e6ee1d15f6ba04be43e632d93a73"
+      "sha256": "9dc5d10d4475418a7fff8cf21a6508b04d7d529dda87972f1196ff76b9ccc7f4"
     },
     {
       "mode": "644",
@@ -4949,7 +4964,7 @@
     {
       "mode": "644",
       "path": "tests/Vyral.Tests.Providers/CliWorkspaceCodingAgentRunnerTests.cs",
-      "sha256": "73c0d46958af9694b10734bd0515191a60a1912067cd558a6859ce600f8d0c8a"
+      "sha256": "8f71ea000eb85bb62c2f8d3142e8af62c51d2f9c85dc0b09f1e0f9215e6e6ddf"
     },
     {
       "mode": "644",
@@ -5205,9 +5220,24 @@
       "mode": "644",
       "path": "workers/execution-smoke-go/main.go",
       "sha256": "fe4bc5cbea40540093a3e5e5aba872796a77e946aeb69c4ef44fdc0fd320a472"
+    },
+    {
+      "mode": "644",
+      "path": "workers/workspace-ipc-agent/README.md",
+      "sha256": "58bdcbe2816738e021fea00c0b598693c7d3af13866b3772e0c80e83a4ad2253"
+    },
+    {
+      "mode": "644",
+      "path": "workers/workspace-ipc-agent/agent.py",
+      "sha256": "59cd212b417f6a44288ea71af46f5744a0b64ad4fd5deacd232a5f7d14007bc3"
+    },
+    {
+      "mode": "644",
+      "path": "workers/workspace-ipc-agent/test_agent.py",
+      "sha256": "60b208c761dcddae8c5663c6852e44087fd410ee0ec381d2337a005e61255c10"
     }
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "eb4ace52b475676ddf43e8d56c8faf6ba130e64926eb4b87ad8289f95a436096"
+  "treeSha256": "9be172de28cdcc437d15f5f499c1df4e0d5180b58cb9a273d2bc9b3d00109cb1"
 }

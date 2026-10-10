@@ -16,6 +16,13 @@ public sealed class CliWorkspaceCodingAgentOptions
     public string AgentCommand { get; set; } = string.Empty;
     public List<string> AgentArguments { get; set; } = new();
     public string PromptTransport { get; set; } = CliPromptTransports.StandardInput;
+    /// <summary>Opt in to the versioned stdin envelope instead of a composed text prompt.</summary>
+    public string InputFormat { get; set; } = "prompt";
+    /// <summary>Serialize staging, execution, validation and application for a dedicated host.</summary>
+    public bool SerializeRuns { get; set; }
+    /// <summary>Optional operator ceiling, including time spent waiting for the serialized host.</summary>
+    public int? MaxExecutionSeconds { get; set; }
+    public int MaxInputBytes { get; set; } = 96 * 1024;
     public string? ModelId { get; set; }
     public Dictionary<string, string?> Environment { get; set; } = new();
     public List<string> AllowedWorkspaceRoots { get; set; } = new();
@@ -29,6 +36,12 @@ public sealed class CliWorkspaceCodingAgentOptions
     /// agent and allowed tool executables are mounted separately.
     /// </summary>
     public List<string> RuntimeReadOnlyPaths { get; set; } = new();
+
+    /// <summary>
+    /// Read-only files/directories visible only to the agent, never to validation
+    /// commands. Use this for a private IPC socket, scoped credential and profile.
+    /// </summary>
+    public List<string> AgentReadOnlyPaths { get; set; } = new();
 
     /// <summary>Host directories searched for bare tool names declared by a request.</summary>
     public List<string> ToolSearchPaths { get; set; } = new();

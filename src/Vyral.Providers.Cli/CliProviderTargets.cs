@@ -46,14 +46,14 @@ public static class CliProviderTargets
                 {
                     Id = ProviderModes.Autonomous,
                     AllowedOutputKinds = new List<string> { ProviderOutputKinds.Action, ProviderOutputKinds.Patch, ProviderOutputKinds.Artifact, ProviderOutputKinds.Evidence },
-                    MaxInputBytes = 96 * 1024,
+                    MaxInputBytes = options.MaxInputBytes,
                     MaxOutputBytes = options.MaxOutputBytes,
                     ToolPolicy = ProviderToolPolicies.HostEnforced,
                     AllowNetwork = options.RequiresNetwork,
                     AllowSourceWrites = true,
                     ReviewRequired = true,
                     TraceRequired = true,
-                    TimeoutSeconds = 300
+                    TimeoutSeconds = options.MaxExecutionSeconds ?? 300
                 }
             }
         }, runner);

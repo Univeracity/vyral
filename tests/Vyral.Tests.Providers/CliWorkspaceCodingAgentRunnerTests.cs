@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using Vyral.Providers.Abstractions;
 using Vyral.Providers.Cli;
 
@@ -204,6 +206,109 @@ public class CliWorkspaceCodingAgentRunnerTests
         Assert.False(File.Exists(Path.Combine(outputFixture.Workspace, "src", "generated.txt")));
     }
 
+    [BubblewrapFact]
+    public async Task Runner_JsonInputKeepsPrivateMountsOutOfValidationAndBlocksNetwork()
+    {
+        if (!OperatingSystem.IsLinux()) throw new InvalidOperationException("The Bubblewrap precondition changed.");
+        await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+        var ipc = Path.Combine(fixture.Root, "private-ipc");
+        Directory.CreateDirectory(ipc);
+        var credential = Path.Combine(ipc, "worker-token");
+        await File.WriteAllTextAsync(credential, "synthetic-scoped-credential");
+        File.SetUnixFileMode(credential, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            await File.WriteAllTextAsync(fixture.AgentScript, $$"""
+                #!/usr/bin/python3
+                import json, os, socket, sys
+                data = json.load(sys.stdin)
+                assert data['schemaVersion'] == 'vyral.workspace-agent-input.v1'
+                assert data['task'] == 'Exact governed task π'
+                assert data['baseCommit'] == '{{fixture.BaseCommit}}'
+                assert data['modelId'] == 'fixture-pinned-model'
+                assert data['allowedPaths'] == ['src']
+                assert data['remainingMilliseconds'] > 0
+                assert open('{{credential}}').read() == 'synthetic-scoped-credential'
+                try:
+                    open('{{credential}}', 'w').write('replacement')
+                    raise AssertionError('private mount was writable')
+                except OSError: pass
+                assert all(key not in os.environ for key in ['NPM_ACCESS_TOKEN', 'AWS_ACCESS_KEY_ID', 'VYRAL_API_KEY'])
+                s = socket.socket(); s.settimeout(0.1)
+                assert s.connect_ex(('127.0.0.1', {{port}})) != 0
+                s.close()
+                open('/workspace/src/generated.txt', 'w').write(data['task'])
+                """);
+            var request = fixture.CreateRequest();
+            request.Task = "Exact governed task π";
+            request.ValidationCommands[0].Arguments = new() { "-c", $"test ! -e '{credential}' && test -s src/generated.txt" };
+            request.ToolPolicy.AllowedCommands = request.ValidationCommands.ToList();
+            var run = ProviderRunRequests.ForWorkspaceCodingAgent(request);
+            run.ModelId = "fixture-pinned-model";
+            var target = fixture.CreateTarget(promptTransport: CliPromptTransports.StandardInput,
+                inputFormat: "workspace-json-v1", agentReadOnlyPaths: new() { ipc });
+            var result = await target.RunAsync(run);
+            Assert.Equal(ProviderRunStatus.Succeeded, result.Status);
+            Assert.Equal("Exact governed task π", await File.ReadAllTextAsync(Path.Combine(fixture.Workspace, "src/generated.txt")));
+            Assert.Equal("synthetic-scoped-credential", await File.ReadAllTextAsync(credential));
+        }
+        finally { listener.Stop(); }
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_SerializedQueueUsesTheOriginalExecutionDeadline()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("delayed-write");
+        var processes = new AgentStartObserver();
+        var target = fixture.CreateTarget(processRunner: processes, serializeRuns: true, maxExecutionSeconds: 3);
+        var first = target.RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest(validationCommand: "delay"), timeoutSeconds: 3));
+        await processes.Started.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var second = await target.RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest(), timeoutSeconds: 1));
+        Assert.Equal(ProviderRunStatus.TimedOut, second.Status);
+        Assert.Equal(ProviderRunStatus.Succeeded, (await first).Status);
+        Assert.Equal(2, processes.SandboxStarts); // agent + validation, with no second run
+    }
+
+    private sealed class AgentStartObserver : IProviderProcessRunner
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int SandboxStarts;
+        public Task<ProviderProcessRunResult> RunAsync(ProviderProcessRunRequest request, CancellationToken ct = default)
+        {
+            if (request.Command == BubblewrapTestEnvironment.Command)
+            {
+                Interlocked.Increment(ref SandboxStarts);
+                Started.TrySetResult();
+            }
+            return new SystemProviderProcessRunner().RunAsync(request, ct);
+        }
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_RejectsAnOperatorExecutionCeilingBeforeStartingWork()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("write-untracked");
+        var result = await fixture.CreateTarget(maxExecutionSeconds: 1).RunAsync(
+            ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest(), timeoutSeconds: 2));
+        Assert.Equal(ProviderRunStatus.Rejected, result.Status);
+        Assert.Equal("execution_limit", result.ProviderStatus);
+        Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src/generated.txt")));
+    }
+
+    [BubblewrapFact]
+    public async Task Runner_BoundsItsStructuredInputAndRejectsArgumentTransport()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("write-untracked");
+        Assert.Throws<ArgumentException>(() => fixture.CreateTarget(inputFormat: "workspace-json-v1"));
+        var result = await fixture.CreateTarget(inputFormat: "workspace-json-v1", promptTransport: CliPromptTransports.StandardInput,
+            maxInputBytes: 8).RunAsync(ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest()));
+        Assert.Equal("input_limit", result.ProviderStatus);
+        Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src/generated.txt")));
+    }
+
     private sealed class WorkspaceFixture : IAsyncDisposable
     {
         private WorkspaceFixture(string root, string workspace, string agentScript, string baseCommit, string behavior)
@@ -260,7 +365,8 @@ public class CliWorkspaceCodingAgentRunnerTests
             return new WorkspaceFixture(root, workspace, agentScript, baseCommit.Trim(), behavior);
         }
 
-        public WorkspaceCodingAgentProviderTarget CreateTarget(string? agentCommand = null, List<string>? agentArguments = null, string? promptTransport = null, IProviderProcessRunner? processRunner = null)
+        public WorkspaceCodingAgentProviderTarget CreateTarget(string? agentCommand = null, List<string>? agentArguments = null, string? promptTransport = null, IProviderProcessRunner? processRunner = null,
+            string inputFormat = "prompt", List<string>? agentReadOnlyPaths = null, bool serializeRuns = false, int? maxExecutionSeconds = null, int maxInputBytes = 96 * 1024)
         {
             var runnerOptions = new CliWorkspaceCodingAgentOptions
             {
@@ -269,6 +375,11 @@ public class CliWorkspaceCodingAgentRunnerTests
                 AgentCommand = agentCommand ?? AgentScript,
                 AgentArguments = agentArguments ?? new List<string> { "{prompt}" },
                 PromptTransport = promptTransport ?? CliPromptTransports.Argument,
+                InputFormat = inputFormat,
+                AgentReadOnlyPaths = agentReadOnlyPaths ?? new(),
+                SerializeRuns = serializeRuns,
+                MaxExecutionSeconds = maxExecutionSeconds,
+                MaxInputBytes = maxInputBytes,
                 AllowedWorkspaceRoots = new List<string> { Root },
                 StagingRoot = Path.Combine(Root, "staging"),
                 BubblewrapCommand = BubblewrapTestEnvironment.Command,

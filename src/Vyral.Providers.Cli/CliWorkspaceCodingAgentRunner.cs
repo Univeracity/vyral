@@ -27,6 +27,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
     private readonly CliWorkspaceCodingAgentOptions _options;
     private readonly IProviderProcessRunner _processRunner;
+    private readonly SemaphoreSlim _serial = new(1, 1);
 
     public CliWorkspaceCodingAgentRunner(CliWorkspaceCodingAgentOptions options, IProviderProcessRunner? processRunner = null)
     {
@@ -56,12 +57,16 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             throw new ArgumentException("Workspace coding-agent requires configured absolute ToolSearchPaths.", nameof(options));
         }
 
-        if (options.MaxOutputBytes <= 0 || options.PreparationTimeoutSeconds <= 0)
+        if (options.MaxOutputBytes <= 0 || options.PreparationTimeoutSeconds <= 0 || options.MaxInputBytes <= 0 || options.MaxExecutionSeconds is <= 0)
         {
             throw new ArgumentException("Workspace coding-agent output and preparation limits must be positive.", nameof(options));
         }
 
-        if (options.RuntimeReadOnlyPaths.Any(IsUnsafeRuntimePath))
+        if (options.InputFormat is not ("prompt" or "workspace-json-v1") ||
+            (options.InputFormat == "workspace-json-v1" && options.PromptTransport != CliPromptTransports.StandardInput))
+            throw new ArgumentException("Workspace JSON input requires stdin transport and a supported input format.", nameof(options));
+
+        if (options.RuntimeReadOnlyPaths.Concat(options.AgentReadOnlyPaths).Any(IsUnsafeRuntimePath))
         {
             throw new ArgumentException("Workspace coding-agent runtime paths must not expose host roots, homes, configuration roots, or executable directories.", nameof(options));
         }
@@ -73,7 +78,9 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
         _options = options;
         _processRunner = processRunner ?? new SystemProviderProcessRunner();
-        AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v2";
+        AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v2" +
+            (options.InputFormat == "workspace-json-v1" ? ":workspace-json-v1" : string.Empty) +
+            (options.SerializeRuns ? ":serialized" : string.Empty);
     }
 
     public string AdapterId { get; }
@@ -81,6 +88,9 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
     public async Task<WorkspaceCodingAgentExecution> RunAsync(WorkspaceCodingAgentExecutionRequest executionRequest, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(executionRequest);
+        if (executionRequest.Timeout <= TimeSpan.Zero ||
+            (_options.MaxExecutionSeconds is int ceiling && executionRequest.Timeout > TimeSpan.FromSeconds(ceiling)))
+            return Failure("execution_limit", "Workspace execution exceeds the configured host limit.", ProviderFailureClasses.Policy, ProviderRunStatus.Rejected);
         var callerToken = ct;
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(callerToken);
         lifetime.CancelAfter(executionRequest.Timeout);
@@ -89,6 +99,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         var request = executionRequest.Request;
         string? staging = null;
         WorkspaceCodingAgentResult? evidence = null;
+        var serialAcquired = false;
         TimeSpan Remaining()
         {
             ct.ThrowIfCancellationRequested();
@@ -110,6 +121,11 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         try
         {
             _ = Remaining();
+            if (_options.SerializeRuns)
+            {
+                await _serial.WaitAsync(ct);
+                serialAcquired = true;
+            }
             var sourceRoot = await GetCleanWorkspaceRootAsync(request.WorkspaceRoot, ct);
             if (!IsUnderConfiguredRoot(sourceRoot))
             {
@@ -136,7 +152,21 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
             evidence = CreateEvidence(baseCommit, Array.Empty<WorkspaceChangedPath>(), new(), new());
             evidence.ChangeSetReconciled = false;
-            var agentPrompt = ComposeAgentPrompt(request);
+            var agentPrompt = _options.InputFormat == "workspace-json-v1"
+                ? System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    schemaVersion = "vyral.workspace-agent-input.v1",
+                    task = request.Task,
+                    taskSha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Task))).ToLowerInvariant(),
+                    baseCommit,
+                    allowedPaths = request.AllowedPaths,
+                    avoidedPaths = request.AvoidedPaths,
+                    modelId = executionRequest.ModelId ?? _options.ModelId,
+                    remainingMilliseconds = (long)Remaining().TotalMilliseconds
+                }, ProviderJson.Options)
+                : ComposeAgentPrompt(request);
+            if (Encoding.UTF8.GetByteCount(agentPrompt) > _options.MaxInputBytes)
+                throw new WorkspaceHostException("input_limit", "Workspace agent input exceeds the configured byte bound.", ProviderFailureClasses.Policy);
             var agentResult = await RunSandboxedAsync(
                 staging,
                 request,
@@ -311,6 +341,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             {
                 TryDeleteDirectory(staging);
             }
+            if (serialAcquired) _serial.Release();
         }
     }
 
@@ -386,7 +417,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         }
 
         var mounts = new List<(string Source, string Destination, bool Writable)>();
-        foreach (var runtimePath in _options.RuntimeReadOnlyPaths)
+        foreach (var runtimePath in _options.RuntimeReadOnlyPaths.Concat(includeDeclaredTools ? Array.Empty<string>() : _options.AgentReadOnlyPaths))
         {
             var source = ResolveExistingPath(runtimePath);
             mounts.Add((source, Path.GetFullPath(runtimePath), false));
