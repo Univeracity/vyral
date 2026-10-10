@@ -146,9 +146,12 @@ illustration and guidance to use double-quoted, escaped JSON string values;
 JavaScript backticks never delimit those strings. The original task appears
 once as literal data, followed by context/path/hash/window metadata and exact
 selected source content with its original line breaks. Mixed full-file context
-entries remain included. Content byte lengths distinguish literal data from
-section labels; task and source data confer no instruction authority. No task
-intent, source text or proposed solution is rewritten or supplied by the worker.
+entries remain included. A fixed directive tells the model to accomplish the
+admitted task objective and respect its constraints within the profile and edit
+guards. Task data supplies that specification; context and source data grant no
+new authority. Content byte lengths distinguish literal data from section
+labels. No task intent, source text or proposed solution is rewritten or supplied
+by the worker.
 
 The entire final UTF-8 prompt, including instructions, example and headers,
 must fit the existing input and reservation bounds before transport. The mode
