@@ -81,7 +81,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
         _options = options;
         _processRunner = processRunner ?? new SystemProviderProcessRunner();
-        AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v2" +
+        AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v3" +
             (options.InputFormat == "workspace-json-v1" ? ":workspace-json-v1" : string.Empty) +
             (options.SerializeRuns ? ":serialized" : string.Empty) +
             (options.AgentOutcomeFormat == "workspace-ipc-v1" ? ":delivery-v1" : string.Empty);

@@ -71,6 +71,13 @@ filesystem cleanup. A response-return wall bound is not promised. Abrupt death
 can leave an isolated staged directory for owner cleanup. A directly launched
 child is required: a detached launcher changes the owning-parent boundary.
 
+The workspace host's `lifetime-v3` process runner keeps the thread that starts
+each child alive through execution and cleanup. Linux parent-death signals
+track that creating thread; retiring an asynchronous caller thread must not
+terminate a child while the owner process is alive. This changes the host
+adapter identity and requires consumers to requalify their exact source/build
+profile. Historical `lifetime-v2` acceptance is unchanged.
+
 The first JSON line says `starting`, with exact profile/native digests and
 deadline. A `ready` line follows only after the public
 `LlamaCppRuntimeSessionFactory.OpenAsync` validates model bytes, live properties,
@@ -80,6 +87,15 @@ provider descriptor before dispatch. The final line says `stopped`; normal lease
 `Cancelled`. An unexpected native exit is failure. Owner death may yield no
 final line. Preserve the original gateway invocation and inspect it by the same
 key; process termination does not authorize resending or invent unknown usage.
+
+Native completion failures retain a safe diagnostic in the public result's
+`rejection.category`, including `native_transport_failed`, `native_io_failed`,
+`native_json_invalid` and `native_response_shape_invalid`. Its fixed message
+identifies the failing stage without exposing exception, prompt or response
+text. `native_effect_unresolved` remains the provider status after an uncertain
+dispatch, and the diagnostic says `do_not_retry`. Invalid completion response
+shapes do not produce token measurements. A lost completion response does not
+prove that generation did or did not occur.
 
 This provides a reusable development lifetime boundary. Production custody,
 multi-host containment, independent task evaluation and metering remain separate

@@ -38,7 +38,17 @@ public interface IProviderProcessRunner
 
 public sealed class SystemProviderProcessRunner : IProviderProcessRunner
 {
-    public async Task<ProviderProcessRunResult> RunAsync(ProviderProcessRunRequest request, CancellationToken ct = default)
+    public Task<ProviderProcessRunResult> RunAsync(ProviderProcessRunRequest request, CancellationToken ct = default)
+    {
+        // Linux parent-death signals (including Bubblewrap --die-with-parent)
+        // track the thread that created the child, not just its process. Keep
+        // that thread alive through execution and bounded teardown; an async
+        // caller or a retiring thread-pool thread must not kill a live child.
+        return Task.Factory.StartNew(() => RunOwnedAsync(request, ct).GetAwaiter().GetResult(),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+    }
+
+    private static async Task<ProviderProcessRunResult> RunOwnedAsync(ProviderProcessRunRequest request, CancellationToken ct)
     {
         // Admission through stdin, exit and pipe draining share one timeout.
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);

@@ -7,6 +7,41 @@ namespace Vyral.Tests.Providers;
 public class ProviderProcessRunnerTests
 {
     [Fact]
+    public async Task SystemRunner_ParentDeathChildSurvivesCallingThreadExitUntilRunCompletes()
+    {
+        if (!OperatingSystem.IsLinux() || !File.Exists("/usr/bin/python3"))
+            throw Xunit.Sdk.SkipException.ForSkip("Parent-thread regression requires Linux and Python3.");
+        var marker = Path.Combine(Path.GetTempPath(), "vyral-parent-thread-" + Guid.NewGuid().ToString("N"));
+        Task<ProviderProcessRunResult>? run = null; Exception? launchError = null;
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var launcher = new Thread(() =>
+        {
+            try
+            {
+                run = new SystemProviderProcessRunner().RunAsync(new ProviderProcessRunRequest {
+                    Command = "/usr/bin/python3", Arguments = new[] { "-c",
+                        "import ctypes,pathlib,time,sys; assert ctypes.CDLL(None).prctl(1,9,0,0,0)==0; " +
+                        "pathlib.Path(sys.argv[1]).write_text('ready'); time.sleep(0.3); print('completed')", marker },
+                    Timeout = TimeSpan.FromSeconds(3) }, cancellation.Token);
+                // Let the child install its parent-thread death signal before
+                // this caller thread exits; the owner process remains alive.
+                while (!File.Exists(marker) && !run.IsCompleted && !cancellation.IsCancellationRequested) Thread.Sleep(5);
+            }
+            catch (Exception e) { launchError = e; }
+        });
+        try
+        {
+            launcher.Start(); Assert.True(launcher.Join(TimeSpan.FromSeconds(2)));
+            Assert.Null(launchError); Assert.NotNull(run);
+            var result = await run!.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("completed", result.StandardOutput.Trim());
+            Assert.False(result.Cancelled); Assert.False(result.TimedOut);
+        }
+        finally { cancellation.Cancel(); if (launcher.IsAlive) launcher.Join(TimeSpan.FromSeconds(1)); File.Delete(marker); }
+    }
+
+    [Fact]
     public async Task SystemRunner_PreCancelledRequestDoesNotStartAProcess()
     {
         using var cancellation = new CancellationTokenSource();

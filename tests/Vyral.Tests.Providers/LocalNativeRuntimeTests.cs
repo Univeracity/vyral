@@ -58,8 +58,34 @@ public class LocalNativeRuntimeTests
         {
             Assert.DoesNotContain(result.MeteringMeasurements, m => m.Name == AiMeteringMeasurementNames.InputTokens);
             Assert.DoesNotContain(result.MeteringMeasurements, m => m.Name == AiMeteringMeasurementNames.TotalTokens);
-            Assert.Single(result.MeteringMeasurements);
+            Assert.Empty(result.MeteringMeasurements);
         }
+    }
+
+    [Theory]
+    [InlineData("disconnect", "native_io_failed")]
+    [InlineData("invalidJson", "native_json_invalid")]
+    [InlineData("arrayResponse", "invalid_runtime_response")]
+    [InlineData("duplicateKey", "native_response_shape_invalid")]
+    [InlineData("badFlag", "invalid_native_truncation")]
+    [InlineData("badStop", "invalid_native_stop_reason")]
+    [InlineData("httpFailure", "runtime_unavailable")]
+    [InlineData("responseLimit", "runtime_response_limit")]
+    public async Task CompletionFailuresExposeOnlySafeReasonsKeepUnknownUsageAndNeverRetry(string fault, string diagnostic)
+    {
+        await using var server = new NativeFixture { Fault = fault };
+        var result = await new LocalLlamaCppProviderTarget(server.Options).RunAsync(Request(server.Options));
+        Assert.Equal(ProviderRunStatus.Failed, result.Status);
+        if (fault is not ("badFlag" or "badStop")) Assert.Equal("native_effect_unresolved", result.ProviderStatus);
+        Assert.Equal(diagnostic, result.Rejection!.Category);
+        Assert.False(result.Rejection.Retryable);
+        Assert.Equal(ProviderRetryRecommendations.DoNotRetry, result.Rejection.RetryRecommendation);
+        Assert.Empty(result.Output); Assert.Empty(result.MeteringMeasurements);
+        Assert.Single(server.Paths, path => path == "/completion");
+        var publicJson = ProviderJson.ToJsonObject(result).ToJsonString();
+        Assert.DoesNotContain("PRIVATE-NATIVE-SENTINEL", publicJson);
+        Assert.DoesNotContain(server.Options.Endpoint.ToString(), publicJson);
+        Assert.Contains("completion_", result.Rejection.Message);
     }
 
     [Fact]
@@ -195,8 +221,23 @@ public class LocalNativeRuntimeTests
                             if (Fault == "truncated") response["truncated"] = true;
                             if (Fault == "overflow") response["tokens_predicted"] = 3;
                             if (Fault == "missingContent") response.Remove("content");
+                            if (Fault == "badFlag") response["truncated"] = "PRIVATE-NATIVE-SENTINEL";
+                            if (Fault == "badStop") response["stop_type"] = new JsonObject { ["raw"] = "PRIVATE-NATIVE-SENTINEL" };
+                            if (Fault == "disconnect")
+                            {
+                                context.Response.ContentLength64 = 100;
+                                await context.Response.OutputStream.WriteAsync(new byte[] { (byte)'{' });
+                                context.Response.Abort(); continue;
+                            }
+                            if (Fault == "httpFailure") context.Response.StatusCode = 503;
                         }
                         var bytes = Encoding.UTF8.GetBytes(response.ToJsonString());
+                        if (path == "/completion") bytes = Fault switch {
+                            "invalidJson" => Encoding.UTF8.GetBytes("{PRIVATE-NATIVE-SENTINEL"),
+                            "arrayResponse" => Encoding.UTF8.GetBytes("[\"PRIVATE-NATIVE-SENTINEL\"]"),
+                            "duplicateKey" => Encoding.UTF8.GetBytes("{\"tokens_evaluated\":3,\"tokens_evaluated\":3,\"raw\":\"PRIVATE-NATIVE-SENTINEL\"}"),
+                            "responseLimit" => Encoding.UTF8.GetBytes(new string('x', serverResponseLimit)),
+                            _ => bytes };
                         context.Response.ContentType = "application/json"; context.Response.ContentLength64 = bytes.Length;
                         await context.Response.OutputStream.WriteAsync(bytes); context.Response.Close();
                     }
@@ -204,6 +245,7 @@ public class LocalNativeRuntimeTests
                 catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException or OperationCanceledException) { }
             });
         }
+        private const int serverResponseLimit = 1048577;
         public async ValueTask DisposeAsync() { _shutdown.Cancel(); _listener.Close(); await _loop.WaitAsync(TimeSpan.FromSeconds(2)); _shutdown.Dispose(); File.Delete(_file); }
     }
 }

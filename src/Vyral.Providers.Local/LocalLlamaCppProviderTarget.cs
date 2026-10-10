@@ -30,17 +30,30 @@ public sealed class LocalLlamaCppProviderTarget : IProviderTarget
     public async Task<ProviderRunResult> RunAsync(ProviderRunRequest request, CancellationToken ct = default)
     {
         var clock = Stopwatch.StartNew(); int? input = null, generated = null; bool effectStarted = false;
+        var stage = "request_validation"; var responseReceived = false;
         var trace = new ProviderTraceEvent { Provider = Profile.Id, Capability = request.Capability,
             Operation = request.Operation, Mode = request.Mode, ModelId = _options.ModelId,
-            AdapterId = "local-llamacpp-native-v1", ConfigHash = Profile.ConfigHash,
+            AdapterId = "local-llamacpp-native-v2", ConfigHash = Profile.ConfigHash,
             InputHash = ProviderHash.Sha256(request.Payload.ToJsonString(ProviderJson.Options)) };
-        ProviderRunResult Result(ProviderRunStatus status, string reason, string? failure = null, JsonObject? output = null)
+        ProviderRunResult Result(ProviderRunStatus status, string reason, string? failure = null, JsonObject? output = null,
+            string? diagnostic = null)
         {
             trace.DurationMs = clock.Elapsed.TotalMilliseconds; trace.FailureClass = failure;
             trace.OutputHash = output is null ? null : ProviderHash.Sha256(output.ToJsonString(ProviderJson.Options));
             var result = new ProviderRunResult { Provider = Profile.Id, Capability = request.Capability,
                 Operation = request.Operation, Mode = request.Mode, Status = status, ProviderStatus = reason,
                 FailureClass = failure, Output = output ?? new(), Trace = trace };
+            if (status != ProviderRunStatus.Succeeded)
+                result.Rejection = new() { Source = ProviderRejectionSources.ProviderRuntime,
+                    Category = diagnostic ?? reason, Message = $"Native request stopped during {stage}; completion effects " +
+                        (effectStarted ? "may remain unresolved." : "were not dispatched."),
+                    ParsedOutputPresent = responseReceived, StructuredOutputAccepted = false,
+                    StructuredOutputValidationStatus = diagnostic ?? reason,
+                    ParsedOutputDisposition = ProviderParsedOutputDispositions.None,
+                    DecisionAuthority = ProviderRejectionDecisionAuthorities.ProviderResponseStatus,
+                    ProcessOutcome = responseReceived ? ProviderProcessOutcomes.HttpSuccess : ProviderProcessOutcomes.Unknown,
+                    Retryable = false, RetryRecommendation = ProviderRetryRecommendations.DoNotRetry,
+                    OperatorReviewRecommended = effectStarted };
             var usage = new JsonObject();
             if (input is not null) usage["input_tokens"] = input;
             if (generated is not null) usage["output_tokens"] = generated;
@@ -69,30 +82,42 @@ public sealed class LocalLlamaCppProviderTarget : IProviderTarget
             if (chat.MaxOutputTokens is not int ceiling || ceiling < 1 || ceiling > _options.MaxOutputTokens
                 || chat.MaxOutputChars is <= 0)
                 throw new LocalScoringException("explicit_token_ceiling_required", ProviderFailureClasses.Policy);
+            stage = "runtime_binding";
             await using var session = (LlamaCppRuntimeSession)await _factory.OpenAsync(deadline.Token);
+            stage = "prompt_preparation";
             var prompt = await session.PrepareChatAsync(chat.Messages, deadline.Token);
             if (prompt.TokenIds.Length > session.ContextTokens - ceiling)
                 throw new LocalScoringException("context_limit_exceeded", ProviderFailureClasses.Policy);
             deadline.Token.ThrowIfCancellationRequested();
             effectStarted = true;
+            stage = "completion_response";
             var response = await session.CompleteAsync(prompt, ceiling, false, deadline.Token);
-            input = Counter(response, "tokens_evaluated"); generated = Counter(response, "tokens_predicted");
-            if (input is null || generated is null)
+            responseReceived = true; stage = "completion_validation";
+            var evaluated = Counter(response, "tokens_evaluated"); var predicted = Counter(response, "tokens_predicted");
+            if (evaluated is null || predicted is null)
                 return Result(ProviderRunStatus.Failed, "invalid_native_usage", ProviderFailureClasses.Schema);
-            if (input != prompt.TokenIds.Length || generated > ceiling || response["truncated"]?.GetValue<bool>() != false)
+            if (response["truncated"] is not JsonValue flag || !flag.TryGetValue<bool>(out var truncated))
+                return Result(ProviderRunStatus.Failed, "invalid_native_truncation", ProviderFailureClasses.Schema);
+            if (evaluated != prompt.TokenIds.Length || predicted > ceiling || truncated)
                 return Result(ProviderRunStatus.Failed, "native_bound_violated", ProviderFailureClasses.Policy);
             if (response["content"] is not JsonValue value || !value.TryGetValue<string>(out var text))
                 return Result(ProviderRunStatus.Failed, "invalid_native_content", ProviderFailureClasses.Schema);
+            string? stopReason = null;
+            if (response["stop_type"] is not null &&
+                (response["stop_type"] is not JsonValue stop || !stop.TryGetValue<string>(out stopReason)))
+                return Result(ProviderRunStatus.Failed, "invalid_native_stop_reason", ProviderFailureClasses.Schema);
+            input = evaluated; generated = predicted;
             if (chat.MaxOutputChars is int charLimit && text.Length > charLimit)
                 return Result(ProviderRunStatus.Failed, "output_character_limit", ProviderFailureClasses.Policy);
             var output = ProviderJson.ToJsonObject(new AiChatResult { Message = new() { Role = AiRoles.Assistant, Content = text },
-                StopReason = response["stop_type"]?.GetValue<string>() ?? "unknown" });
+                StopReason = stopReason ?? "unknown" });
             if (Encoding.UTF8.GetByteCount(output.ToJsonString(ProviderJson.Options)) > Math.Min(request.MaxOutputBytes ?? 262144, 262144))
                 return Result(ProviderRunStatus.Failed, "output_limit", ProviderFailureClasses.Policy);
             deadline.Token.ThrowIfCancellationRequested();
             return Result(ProviderRunStatus.Succeeded, "native_completion", output: output);
         }
-        catch (LocalScoringException ex) { return Result(ProviderRunStatus.Rejected, ex.Reason, ex.FailureClass); }
+        catch (LocalScoringException ex) { return Result(effectStarted ? ProviderRunStatus.Failed : ProviderRunStatus.Rejected,
+            effectStarted ? "native_effect_unresolved" : ex.Reason, ex.FailureClass, diagnostic: ex.Reason); }
         catch (OperationCanceledException)
         {
             return Result(ct.IsCancellationRequested ? ProviderRunStatus.Cancelled : ProviderRunStatus.TimedOut,
@@ -100,7 +125,15 @@ public sealed class LocalLlamaCppProviderTarget : IProviderTarget
                 ct.IsCancellationRequested ? ProviderFailureClasses.Cancelled : ProviderFailureClasses.Timeout);
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or JsonException or ArgumentException)
-        { return Result(ProviderRunStatus.Failed, effectStarted ? "native_effect_unresolved" : "native_preflight_failed", ProviderFailureClasses.Schema); }
+        {
+            // Only fixed vocabulary crosses the public boundary. Never expose an
+            // exception message, URL, response bytes, model content or request.
+            var diagnostic = ex switch { HttpRequestException => "native_transport_failed", IOException => "native_io_failed",
+                JsonException => "native_json_invalid", _ => "native_response_shape_invalid" };
+            return Result(ProviderRunStatus.Failed, effectStarted ? "native_effect_unresolved" : "native_preflight_failed",
+                ex is HttpRequestException or IOException ? ProviderFailureClasses.ProviderUnavailable : ProviderFailureClasses.Schema,
+                diagnostic: diagnostic);
+        }
     }
     private static int? Counter(JsonObject response, string name) =>
         response[name] is JsonValue v && v.TryGetValue<int>(out var value) && value >= 0 ? value : null;
