@@ -112,6 +112,10 @@ supported route. Input/output counts are provider-reported, and their sum is
 explicitly derived. Unknown values never become zero. Scope remains `partial`
 and `independentlyIssued=false`: provider-internal attempts, remote effects,
 independent metering, signing and cross-service trust need separate evidence.
+For a per-attempt native lifetime, the owner can use the supported
+[owned runtime entry point](../owned-native-runtime/README.md) around this
+separate worker profile. An externally owned native HTTP service alone does
+not inherit a workspace job's cancellation or deadline.
 Synthetic gateway tests do not establish coding quality, a live native bound,
 zero provider charge or production readiness. Electricity and host resources
 are outside any provider-charge claim.

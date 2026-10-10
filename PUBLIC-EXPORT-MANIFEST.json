@@ -1,5 +1,5 @@
 {
-  "fileCount": 1047,
+  "fileCount": 1051,
   "files": [
     {
       "mode": "644",
@@ -5223,8 +5223,28 @@
     },
     {
       "mode": "644",
+      "path": "workers/owned-native-runtime/Program.cs",
+      "sha256": "9f9c2c1e9df7c8e96b0a18e1126c1ea9059875119e3dd44eefa38686a2d6a2ed"
+    },
+    {
+      "mode": "644",
+      "path": "workers/owned-native-runtime/README.md",
+      "sha256": "a34d5845d9f3fe033cb1223ef78f66608d66502b58022cf7de287e6365929309"
+    },
+    {
+      "mode": "644",
+      "path": "workers/owned-native-runtime/owned-native-runtime.csproj",
+      "sha256": "95e6be73bd57733b0c24d4a8ce29f2a6249a2d2da70b78942df77d9a8013c02e"
+    },
+    {
+      "mode": "644",
+      "path": "workers/owned-native-runtime/packages.lock.json",
+      "sha256": "97ba0d026fb3336f4ba358f008271b475b23d4b5453a56343dd71a5044e08798"
+    },
+    {
+      "mode": "644",
       "path": "workers/workspace-ipc-agent/README.md",
-      "sha256": "58bdcbe2816738e021fea00c0b598693c7d3af13866b3772e0c80e83a4ad2253"
+      "sha256": "ba79b427ebb9d7fae8d80b7ebd1821cdf156b4b53eb60e02f051d814461d0aa2"
     },
     {
       "mode": "644",
@@ -5239,5 +5259,5 @@
   ],
   "schemaVersion": 1,
   "sourceDirty": false,
-  "treeSha256": "9be172de28cdcc437d15f5f499c1df4e0d5180b58cb9a273d2bc9b3d00109cb1"
+  "treeSha256": "819259428393caf394c8fddd767577e1b9ad5bfac18e39d8b75e31185ebcb4c1"
 }

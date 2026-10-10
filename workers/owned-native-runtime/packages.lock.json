@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "vyral.primitives": {
+        "type": "Project"
+      },
+      "vyral.providers.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Primitives": "[0.2.0, )"
+        }
+      },
+      "vyral.providers.cli": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Providers.Abstractions": "[0.3.0, )"
+        }
+      },
+      "vyral.providers.local": {
+        "type": "Project",
+        "dependencies": {
+          "Vyral.Providers.Abstractions": "[0.3.0, )"
+        }
+      }
+    }
+  }
+}
