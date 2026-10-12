@@ -76,7 +76,7 @@ jobs:
           python scripts/write-python-runtime-platform-receipt.py artifacts/python-runtime --clean-install-evidence artifacts/qualification/clean-install.json --output artifacts/qualification/platform.json
 
       - name: Upload platform qualification evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-runtime-${{ matrix.python }}-${{ matrix.os }}-${{ github.sha }}
           path: artifacts
@@ -100,7 +100,7 @@ jobs:
             runtimes/python/pyproject.toml
 
       - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.x
           cache: npm
@@ -208,7 +208,7 @@ jobs:
 
       - name: Upload qualification evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-runtime-qualification-${{ github.sha }}
           path: artifacts
@@ -229,7 +229,7 @@ jobs:
           python-version: "3.12"
 
       - name: Download platform receipts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: python-runtime-*-${{ github.sha }}
           path: artifacts/platform-receipts
@@ -242,7 +242,7 @@ jobs:
             --output artifacts/qualification/python-runtime-platform-matrix.json
 
       - name: Upload aggregate platform evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-runtime-platform-matrix-${{ github.sha }}
           path: artifacts/qualification/python-runtime-platform-matrix.json
