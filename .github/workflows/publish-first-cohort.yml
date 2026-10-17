@@ -3,6 +3,10 @@ name: Publish package release
 on:
   workflow_dispatch:
     inputs:
+      npm_stage_only:
+        description: Stage only vyral-client 0.3.4 for separate npm 2FA approval
+        type: boolean
+        default: false
       release_tag:
         description: Signed annotated tag for the authorized package release
         required: true
@@ -22,6 +26,7 @@ concurrency:
 
 jobs:
   validate:
+    if: ${{ !inputs.npm_stage_only }}
     name: Validate package release authority
     runs-on: ubuntu-22.04
     permissions:
@@ -62,6 +67,59 @@ jobs:
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/release-integrity.yml/runs?head_sha=$source_sha&event=push&status=success&per_page=20" \
             | jq -e '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == "main")] | length > 0' >/dev/null
           printf 'source_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+
+  stage-npm:
+    name: Stage JavaScript client for npm review
+    if: ${{ inputs.npm_stage_only }}
+    runs-on: ubuntu-22.04
+    environment:
+      name: publish-npm
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require main, explicit confirmation and canonical release evidence
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONFIRM" = "true"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release-integrity.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == "main")] | length' \
+            | grep -Eq '^[1-9][0-9]*$'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.15.0'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Pin npm with staged publishing support
+        run: npm install --global npm@12.2.0 --ignore-scripts
+      - name: Validate and pack the exact client
+        working-directory: clients/javascript
+        run: |
+          set -euo pipefail
+          node --input-type=module -e 'import p from "./package.json" with {type:"json"}; if(p.name !== "vyral-client" || p.version !== "0.3.4" || p.private) process.exit(1)'
+          npm ci --ignore-scripts
+          npm run check
+          npm run typecheck
+          npm test
+          npm pack --ignore-scripts --json > pack.json
+          jq -e -f ../../scripts/validate-npm-pack-layout.jq pack.json >/dev/null
+          test -s vyral-client-0.3.4.tgz
+          sha256sum vyral-client-0.3.4.tgz >> "$GITHUB_STEP_SUMMARY"
+      - name: Stage tested bytes using npm OIDC
+        working-directory: clients/javascript
+        run: npm stage publish ./vyral-client-0.3.4.tgz --access public --tag latest
+      - name: Explain the remaining approval
+        run: |
+          printf '%s\n' 'Staged vyral-client@0.3.4. Review the staged tarball in npm, then approve its stage ID with npm 2FA. This workflow never approves or directly publishes it.' >> "$GITHUB_STEP_SUMMARY"
 
   build:
     name: Build authorized package artifacts
