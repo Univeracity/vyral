@@ -141,8 +141,34 @@ container workflow uses only the repository-scoped `GITHUB_TOKEN` with
 `packages: write`. npm remains outside this registry patch. Before its deferred
 publication, configure a trusted publisher for `vyral-client` using
 `Univeracity/vyral`, workflow filename `publish-first-cohort.yml`, environment
-`publish-npm`, and direct publishing permission. This tuple is a setup requirement,
+`publish-npm`, with staging permission. This tuple is a setup requirement,
 not a claim that npm currently accepts this repository as a publisher.
+
+### Staging the JavaScript client
+
+After configuring the `vyral-client` npm trusted publisher for
+`Univeracity/vyral`, workflow `publish-first-cohort.yml`, environment
+`publish-npm`, manually dispatch that workflow from `main` with
+`npm_stage_only=true` and confirmation enabled. The existing `release_tag`
+input applies only to the NuGet/PyPI path and is not used for staging.
+Staging requires a successful canonical Release Integrity push run for the
+exact current main commit. It validates and packs `vyral-client@0.3.4`, records
+the tarball digest and stages those bytes using OIDC. The other registries are
+skipped. It never approves the stage or directly publishes an npm version.
+
+Review the staged package in npm or with `npm stage view <stage-id>` and
+`npm stage download <stage-id>`. Approve with `npm stage approve <stage-id>`
+or the npm website; npm requires interactive 2FA. Prefer stage-only trust and
+disallow traditional publishing tokens. npm staging requires npm >=11.15.0
+and Node >=22.14.0; the workflow pins compatible versions. New trusted
+publisher configurations require a successful first publish within two days;
+recreate expired trust if necessary. See the official
+[staging guide](https://docs.npmjs.com/staged-publishing/) and
+[trusted publishing guide](https://docs.npmjs.com/trusted-publishers/).
+
+This staging path leaves the existing package cohort unchanged. Its npm
+registry-publication exclusion still prevents that cohort from directly
+publishing npm; separate interactive approval is the release decision.
 This source authorization is not a claim that any package is
 already available: absent registry trust or an environment approval, the manual
 job fails closed and publishes nothing.

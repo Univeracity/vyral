@@ -85,7 +85,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.2"
           cache: false
 
       - name: Restore
@@ -118,7 +118,7 @@ jobs:
           dotnet pack src/Vyral.Execution.WorkerClient/Vyral.Execution.WorkerClient.csproj --no-restore -o artifacts/packages
 
       - name: Upload execution packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-runtime-packages
           path: artifacts/packages/*.nupkg

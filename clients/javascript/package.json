@@ -34,7 +34,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/univeracity/vyral.git",
+    "url": "git+https://github.com/Univeracity/vyral.git",
     "directory": "clients/javascript"
   },
   "bugs": {
