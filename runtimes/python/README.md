@@ -140,6 +140,23 @@ hashes, and the golden receipt are shared with the .NET implementation through
 `conformance/ai-decision/v1`; see the
 [decision contract guide](../../docs/concepts/ai-decisions.md).
 
+Append the privacy-minimized receipt to an explicit local SQLite ledger when
+the application needs inspectable history:
+
+```bash
+vyral decide --policy policy.json --result provider-result.json \
+  --ledger ./.vyral/decisions.sqlite
+vyral decisions list --ledger ./.vyral/decisions.sqlite
+vyral decisions verify --ledger ./.vyral/decisions.sqlite
+```
+
+The ledger stores receipts and hash links, not policy/result bodies or prompts.
+Replay therefore takes those source files explicitly. Use `--expect-head` and
+`--expect-count` with an independently retained checkpoint when database
+truncation or wholesale replacement must be detected. The entry contract and
+hashes have a shared Python/.NET fixture under
+`conformance/ai-decision-ledger/v1`.
+
 ### Reproducible server deployment profile
 
 The published REST/MCP host has a separate hash-verified profile for the

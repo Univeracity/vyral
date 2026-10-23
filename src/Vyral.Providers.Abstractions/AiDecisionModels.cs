@@ -12,6 +12,7 @@ public static class AiDecisionSchemas
 {
     public const string PolicyV1 = "vyral.ai-decision-policy.v1";
     public const string ReceiptV1 = "vyral.ai-decision-receipt.v1";
+    public const string LedgerEntryV1 = "vyral.ai-decision-ledger-entry.v1";
 }
 
 public static class AiDecisionAnswerKinds
@@ -171,6 +172,9 @@ public sealed class AiDecisionProviderEvidence
 
     [JsonPropertyName("answerHash")]
     public string? AnswerHash { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
 }
 
 /// <summary>
@@ -179,36 +183,46 @@ public sealed class AiDecisionProviderEvidence
 /// </summary>
 public sealed class AiDecisionReceipt
 {
+    [JsonRequired]
     [JsonPropertyName("schema")]
     public string Schema { get; set; } = AiDecisionSchemas.ReceiptV1;
 
+    [JsonRequired]
     [JsonPropertyName("policyId")]
     public string PolicyId { get; set; } = string.Empty;
 
+    [JsonRequired]
     [JsonPropertyName("policyVersion")]
     public string PolicyVersion { get; set; } = string.Empty;
 
+    [JsonRequired]
     [JsonPropertyName("policyHash")]
     public string PolicyHash { get; set; } = string.Empty;
 
+    [JsonRequired]
     [JsonPropertyName("questionId")]
     public string QuestionId { get; set; } = string.Empty;
 
+    [JsonRequired]
     [JsonPropertyName("answerKind")]
     public string AnswerKind { get; set; } = string.Empty;
 
+    [JsonRequired]
     [JsonPropertyName("outcome")]
     public string Outcome { get; set; } = AiDecisionOutcomes.Escalate;
 
+    [JsonRequired]
     [JsonPropertyName("reason")]
     public string Reason { get; set; } = string.Empty;
 
     [JsonPropertyName("escalationRoute")]
     public string? EscalationRoute { get; set; }
 
+    [JsonRequired]
     [JsonPropertyName("provider")]
     public string Provider { get; set; } = string.Empty;
 
+    [JsonRequired]
     [JsonPropertyName("providerRunStatus")]
     public ProviderRunStatus ProviderRunStatus { get; set; }
 
@@ -239,11 +253,332 @@ public sealed class AiDecisionReceipt
     [JsonPropertyName("rotationAgreement")]
     public double? RotationAgreement { get; set; }
 
+    [JsonRequired]
     [JsonPropertyName("evidence")]
     public AiDecisionProviderEvidence Evidence { get; set; } = new();
 
+    [JsonRequired]
     [JsonPropertyName("evaluatedAtUtc")]
     public DateTimeOffset EvaluatedAtUtc { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
+}
+
+/// <summary>
+/// One privacy-minimized, hash-linked decision receipt. The link is tamper-evident only relative
+/// to a trusted head checkpoint; it is not a signature, independent attestation, or authorization.
+/// </summary>
+public sealed class AiDecisionLedgerEntry
+{
+    [JsonRequired]
+    [JsonPropertyName("schema")]
+    public string Schema { get; set; } = AiDecisionSchemas.LedgerEntryV1;
+
+    [JsonRequired]
+    [JsonPropertyName("sequence")]
+    public long Sequence { get; set; }
+
+    /// <summary>Canonical UTC RFC 3339 timestamp with exactly microsecond precision.</summary>
+    [JsonRequired]
+    [JsonPropertyName("recordedAtUtc")]
+    public string RecordedAtUtc { get; set; } = string.Empty;
+
+    [JsonRequired]
+    [JsonPropertyName("receipt")]
+    public AiDecisionReceipt Receipt { get; set; } = new();
+
+    [JsonRequired]
+    [JsonPropertyName("receiptHash")]
+    public string ReceiptHash { get; set; } = string.Empty;
+
+    [JsonRequired]
+    [JsonPropertyName("previousEntryHash")]
+    public string? PreviousEntryHash { get; set; }
+
+    [JsonRequired]
+    [JsonPropertyName("entryHash")]
+    public string EntryHash { get; set; } = string.Empty;
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
+}
+
+/// <summary>Validates, hashes, creates, and verifies portable decision-ledger entries.</summary>
+public static class AiDecisionLedger
+{
+    public const long MaxSafeSequence = 9_007_199_254_740_991;
+    private const int MaxIdentifierLength = 256;
+    private const string TimestampFormat = "yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'";
+    private static readonly HashSet<string> Reasons = new(StringComparer.Ordinal)
+    {
+        AiDecisionReasons.Accepted,
+        AiDecisionReasons.Rejected,
+        AiDecisionReasons.NoRuleMatch,
+        AiDecisionReasons.ProviderNotSucceeded,
+        AiDecisionReasons.InvalidProviderEvidence,
+        AiDecisionReasons.InvalidProviderOutput,
+        AiDecisionReasons.AnswerMissing,
+        AiDecisionReasons.AnswerAmbiguous,
+        AiDecisionReasons.AnswerShapeMismatch,
+        AiDecisionReasons.Uncalibrated,
+        AiDecisionReasons.ConfidenceUnavailable,
+        AiDecisionReasons.ConfidenceBelowMinimum,
+        AiDecisionReasons.LabelMassCoverageUnavailable,
+        AiDecisionReasons.LabelMassCoverageBelowMinimum,
+        AiDecisionReasons.RotationAgreementUnavailable,
+        AiDecisionReasons.RotationAgreementBelowMinimum,
+        AiDecisionReasons.ValidationStatusNotAllowed
+    };
+
+    public static IReadOnlyList<string> ValidateReceipt(AiDecisionReceipt? receipt)
+    {
+        var errors = new List<string>();
+        if (receipt is null)
+        {
+            errors.Add("receipt is required");
+            return errors;
+        }
+        if (!string.Equals(receipt.Schema, AiDecisionSchemas.ReceiptV1, StringComparison.Ordinal))
+            errors.Add($"schema must be {AiDecisionSchemas.ReceiptV1}");
+        RequireText(receipt.PolicyId, "policyId", errors);
+        RequireText(receipt.PolicyVersion, "policyVersion", errors);
+        RequireText(receipt.QuestionId, "questionId", errors);
+        if (receipt.Provider is null || receipt.Provider.EnumerateRunes().Count() > MaxIdentifierLength)
+            errors.Add($"provider must be a string no longer than {MaxIdentifierLength} characters");
+        if (!IsRequiredHash(receipt.PolicyHash))
+            errors.Add("policyHash must be a canonical sha256 digest");
+        if (receipt.AnswerKind is not (AiDecisionAnswerKinds.Choice or AiDecisionAnswerKinds.Probability or AiDecisionAnswerKinds.Score))
+            errors.Add("answerKind must be choice, probability, or score");
+        if (receipt.Outcome is not (AiDecisionOutcomes.Accept or AiDecisionOutcomes.Reject or AiDecisionOutcomes.Escalate))
+            errors.Add("outcome must be accept, reject, or escalate");
+        if (!Reasons.Contains(receipt.Reason))
+            errors.Add("reason is not recognized");
+        if (!Enum.IsDefined(receipt.ProviderRunStatus))
+            errors.Add("providerRunStatus is invalid");
+        ValidateOptionalText(receipt.EscalationRoute, "escalationRoute", errors);
+        ValidateOptionalText(receipt.ProviderStatus, "providerStatus", errors);
+        ValidateOptionalText(receipt.ModelId, "modelId", errors);
+        ValidateOptionalText(receipt.ValidationStatus, "validationStatus", errors);
+        ValidateOptionalText(receipt.Choice, "choice", errors);
+
+        if (receipt.Outcome == AiDecisionOutcomes.Accept)
+        {
+            if (receipt.Reason != AiDecisionReasons.Accepted)
+                errors.Add("accept outcome requires reason accepted");
+            if (receipt.EscalationRoute is not null)
+                errors.Add("accept outcome cannot include escalationRoute");
+        }
+        else if (receipt.Outcome == AiDecisionOutcomes.Reject)
+        {
+            if (receipt.Reason != AiDecisionReasons.Rejected)
+                errors.Add("reject outcome requires reason rejected");
+            if (receipt.EscalationRoute is not null)
+                errors.Add("reject outcome cannot include escalationRoute");
+        }
+        else if (receipt.Outcome == AiDecisionOutcomes.Escalate)
+        {
+            if (receipt.Reason is AiDecisionReasons.Accepted or AiDecisionReasons.Rejected)
+                errors.Add("escalate outcome cannot use a terminal branch reason");
+            if (!IsBoundedText(receipt.EscalationRoute))
+                errors.Add("escalate outcome requires escalationRoute");
+        }
+
+        if (receipt.AnswerKind == AiDecisionAnswerKinds.Choice)
+        {
+            if (receipt.Value.HasValue) errors.Add("choice receipt value must be null");
+            if (receipt.Outcome is AiDecisionOutcomes.Accept or AiDecisionOutcomes.Reject && !IsBoundedText(receipt.Choice))
+                errors.Add("terminal choice receipt requires choice");
+        }
+        else if (receipt.AnswerKind is AiDecisionAnswerKinds.Probability or AiDecisionAnswerKinds.Score)
+        {
+            if (receipt.Choice is not null) errors.Add("numeric receipt choice must be null");
+            if (receipt.Value.HasValue && !double.IsFinite(receipt.Value.Value))
+                errors.Add("numeric receipt value must be null or finite");
+            else if (receipt.AnswerKind == AiDecisionAnswerKinds.Probability && receipt.Value is < 0 or > 1)
+                errors.Add("probability receipt value must be in [0, 1]");
+            else if (receipt.AnswerKind == AiDecisionAnswerKinds.Score && receipt.Value < 0)
+                errors.Add("score receipt value must be non-negative");
+            if (receipt.Outcome is AiDecisionOutcomes.Accept or AiDecisionOutcomes.Reject && !receipt.Value.HasValue)
+                errors.Add("terminal numeric receipt requires value");
+        }
+
+        ValidateUnit(receipt.Confidence, "confidence", errors);
+        ValidateUnit(receipt.LabelMassCoverage, "labelMassCoverage", errors);
+        ValidateUnit(receipt.RotationAgreement, "rotationAgreement", errors);
+        if (receipt.Evidence is null)
+            errors.Add("evidence is required");
+        else
+        {
+            ValidateOptionalText(receipt.Evidence.TraceId, "evidence.traceId", errors);
+            ValidateOptionalText(receipt.Evidence.AdapterId, "evidence.adapterId", errors);
+            ValidateOptionalHash(receipt.Evidence.ConfigHash, "evidence.configHash", errors);
+            ValidateOptionalHash(receipt.Evidence.InputHash, "evidence.inputHash", errors);
+            ValidateOptionalHash(receipt.Evidence.OutputHash, "evidence.outputHash", errors);
+            ValidateOptionalHash(receipt.Evidence.AnswerHash, "evidence.answerHash", errors);
+            if (receipt.Evidence.AdditionalProperties?.Count > 0)
+                errors.Add("evidence contains unknown properties");
+        }
+        if (receipt.EvaluatedAtUtc == default || receipt.EvaluatedAtUtc.Offset != TimeSpan.Zero)
+            errors.Add("evaluatedAtUtc must be a UTC timestamp");
+        else if (receipt.EvaluatedAtUtc.Ticks % 10 != 0)
+            errors.Add("evaluatedAtUtc cannot be more precise than one microsecond");
+        if (receipt.AdditionalProperties?.Count > 0)
+            errors.Add("receipt contains unknown properties");
+        return errors;
+    }
+
+    public static string ComputeReceiptHash(AiDecisionReceipt receipt)
+    {
+        var errors = ValidateReceipt(receipt).ToList();
+        if (errors.Count != 0) throw new ArgumentException(string.Join("; ", errors), nameof(receipt));
+        return AiDecisionCanonicalJson.ComputeHash(NormalizeReceipt(receipt));
+    }
+
+    public static AiDecisionLedgerEntry CreateEntry(
+        AiDecisionReceipt receipt,
+        long sequence,
+        string? previousEntryHash,
+        DateTimeOffset? recordedAtUtc = null)
+    {
+        ArgumentNullException.ThrowIfNull(receipt);
+        var errors = ValidateReceipt(receipt).ToList();
+        ValidateSequenceAndPrevious(sequence, previousEntryHash, errors);
+        if (errors.Count != 0) throw new ArgumentException(string.Join("; ", errors), nameof(receipt));
+        var recorded = TruncateToMicrosecond((recordedAtUtc ?? DateTimeOffset.UtcNow).ToUniversalTime());
+        var entry = new AiDecisionLedgerEntry
+        {
+            Sequence = sequence,
+            RecordedAtUtc = FormatTimestamp(recorded),
+            Receipt = receipt,
+            ReceiptHash = ComputeReceiptHash(receipt),
+            PreviousEntryHash = previousEntryHash
+        };
+        entry.EntryHash = AiDecisionCanonicalJson.ComputeHash(CreateEntryMaterial(entry));
+        return entry;
+    }
+
+    public static IReadOnlyList<string> ValidateEntry(AiDecisionLedgerEntry? entry)
+    {
+        var errors = new List<string>();
+        if (entry is null)
+        {
+            errors.Add("entry is required");
+            return errors;
+        }
+        if (!string.Equals(entry.Schema, AiDecisionSchemas.LedgerEntryV1, StringComparison.Ordinal))
+            errors.Add($"schema must be {AiDecisionSchemas.LedgerEntryV1}");
+        ValidateSequenceAndPrevious(entry.Sequence, entry.PreviousEntryHash, errors);
+        if (!TryParseCanonicalTimestamp(entry.RecordedAtUtc, out _))
+            errors.Add("recordedAtUtc must use canonical UTC form");
+        errors.AddRange(ValidateReceipt(entry.Receipt).Select(error => "receipt." + error));
+        if (!IsRequiredHash(entry.ReceiptHash))
+            errors.Add("receiptHash must be a canonical sha256 digest");
+        if (!IsRequiredHash(entry.EntryHash))
+            errors.Add("entryHash must be a canonical sha256 digest");
+        if (entry.AdditionalProperties?.Count > 0)
+            errors.Add("entry contains unknown properties");
+        if (errors.Count != 0) return errors;
+        if (!string.Equals(entry.ReceiptHash, ComputeReceiptHash(entry.Receipt), StringComparison.Ordinal))
+            errors.Add("receiptHash does not match receipt");
+        var expected = AiDecisionCanonicalJson.ComputeHash(CreateEntryMaterial(entry));
+        if (!string.Equals(entry.EntryHash, expected, StringComparison.Ordinal))
+            errors.Add("entryHash does not match entry");
+        return errors;
+    }
+
+    public static IReadOnlyList<string> VerifyChain(IReadOnlyList<AiDecisionLedgerEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        var errors = new List<string>();
+        string? previous = null;
+        for (var index = 0; index < entries.Count; index++)
+        {
+            var entry = entries[index];
+            if (entry is null)
+            {
+                errors.Add($"entry[{index}] is required");
+                previous = null;
+                continue;
+            }
+            errors.AddRange(ValidateEntry(entry).Select(error => $"entry[{index}].{error}"));
+            if (entry.Sequence != index) errors.Add($"entry[{index}].sequence is not contiguous");
+            if (!string.Equals(entry.PreviousEntryHash, previous, StringComparison.Ordinal))
+                errors.Add($"entry[{index}].previousEntryHash does not match");
+            previous = entry.EntryHash;
+        }
+        return errors;
+    }
+
+    internal static DateTimeOffset TruncateToMicrosecond(DateTimeOffset value) =>
+        new(value.Ticks - value.Ticks % 10, value.Offset);
+
+    private static JsonObject NormalizeReceipt(AiDecisionReceipt receipt)
+    {
+        var node = JsonSerializer.SerializeToNode(receipt, ProviderJson.Options) as JsonObject
+            ?? throw new InvalidOperationException("Decision receipt cannot be serialized.");
+        node["evaluatedAtUtc"] = FormatTimestamp(receipt.EvaluatedAtUtc);
+        return node;
+    }
+
+    private static JsonObject CreateEntryMaterial(AiDecisionLedgerEntry entry) => new()
+    {
+        ["schema"] = AiDecisionSchemas.LedgerEntryV1,
+        ["sequence"] = entry.Sequence,
+        ["recordedAtUtc"] = entry.RecordedAtUtc,
+        ["receipt"] = NormalizeReceipt(entry.Receipt),
+        ["receiptHash"] = entry.ReceiptHash,
+        ["previousEntryHash"] = entry.PreviousEntryHash
+    };
+
+    private static void ValidateSequenceAndPrevious(long sequence, string? previous, List<string> errors)
+    {
+        if (sequence < 0 || sequence > MaxSafeSequence)
+            errors.Add($"sequence must be an integer in [0, {MaxSafeSequence}]");
+        if (sequence == 0 && previous is not null)
+            errors.Add("genesis entry previousEntryHash must be null");
+        else if (sequence > 0 && !IsRequiredHash(previous))
+            errors.Add("non-genesis entry previousEntryHash must be a canonical sha256 digest");
+    }
+
+    private static bool TryParseCanonicalTimestamp(string? value, out DateTimeOffset timestamp) =>
+        DateTimeOffset.TryParseExact(value, TimestampFormat, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out timestamp) &&
+        timestamp.Offset == TimeSpan.Zero;
+
+    private static string FormatTimestamp(DateTimeOffset value) =>
+        value.ToUniversalTime().ToString(TimestampFormat, CultureInfo.InvariantCulture);
+
+    private static void RequireText(string? value, string path, List<string> errors)
+    {
+        if (!IsBoundedText(value))
+            errors.Add($"{path} must be non-empty and no longer than {MaxIdentifierLength} characters");
+    }
+
+    private static void ValidateOptionalText(string? value, string path, List<string> errors)
+    {
+        if (value is not null && !IsBoundedText(value))
+            errors.Add($"{path} must be null or a non-empty string no longer than {MaxIdentifierLength} characters");
+    }
+
+    private static bool IsBoundedText(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.EnumerateRunes().Count() <= MaxIdentifierLength;
+
+    private static void ValidateUnit(double? value, string path, List<string> errors)
+    {
+        if (value.HasValue && (!double.IsFinite(value.Value) || value.Value is < 0 or > 1))
+            errors.Add($"{path} must be null or in [0, 1]");
+    }
+
+    private static void ValidateOptionalHash(string? value, string path, List<string> errors)
+    {
+        if (value is not null && !IsRequiredHash(value))
+            errors.Add($"{path} must be null or a canonical sha256 digest");
+    }
+
+    private static bool IsRequiredHash(string? value) => value is not null &&
+        value.Length == 71 && value.StartsWith("sha256:", StringComparison.Ordinal) &&
+        value.AsSpan(7).IndexOfAnyExcept("0123456789abcdef") < 0;
 }
 
 /// <summary>Validates and deterministically evaluates application-owned decision policies.</summary>
@@ -319,7 +654,7 @@ public static class AiDecisionPolicyEvaluator
     {
         var errors = Validate(policy);
         if (errors.Count != 0) throw new ArgumentException(string.Join("; ", errors), nameof(policy));
-        return CanonicalHash(policy);
+        return AiDecisionCanonicalJson.ComputeHash(policy);
     }
 
     public static AiDecisionReceipt Evaluate(
@@ -339,14 +674,15 @@ public static class AiDecisionPolicyEvaluator
         {
             PolicyId = policy.Id,
             PolicyVersion = policy.Version,
-            PolicyHash = CanonicalHash(policy),
+            PolicyHash = AiDecisionCanonicalJson.ComputeHash(policy),
             QuestionId = policy.QuestionId,
             AnswerKind = policy.AnswerKind,
             Provider = result.Provider,
             ProviderRunStatus = result.Status,
             ProviderStatus = result.ProviderStatus,
             ModelId = result.Trace?.ModelId,
-            EvaluatedAtUtc = evaluatedAtUtc ?? DateTimeOffset.UtcNow,
+            EvaluatedAtUtc = AiDecisionLedger.TruncateToMicrosecond(
+                (evaluatedAtUtc ?? DateTimeOffset.UtcNow).ToUniversalTime()),
             Evidence = new AiDecisionProviderEvidence
             {
                 TraceId = result.Trace?.TraceId,
@@ -383,7 +719,7 @@ public static class AiDecisionPolicyEvaluator
         if (matches.Count != 1) return Escalate(receipt, policy, AiDecisionReasons.AnswerAmbiguous);
 
         var answer = matches[0];
-        receipt.Evidence.AnswerHash = CanonicalHash(answer);
+        receipt.Evidence.AnswerHash = AiDecisionCanonicalJson.ComputeHash(answer);
         receipt.Calibrated = answer.Calibrated;
         receipt.Confidence = answer.Confidence;
         receipt.LabelMassCoverage = answer.LabelMassCoverage;
@@ -527,10 +863,19 @@ public static class AiDecisionPolicyEvaluator
     private static bool IsBoundedText(string? value) =>
         !string.IsNullOrWhiteSpace(value) && value.EnumerateRunes().Count() <= MaxIdentifierLength;
 
-    private static string CanonicalHash<T>(T value)
+}
+
+internal static class AiDecisionCanonicalJson
+{
+    internal static string ComputeHash<T>(T value)
     {
         var node = JsonSerializer.SerializeToNode(value, ProviderJson.Options)
             ?? throw new InvalidOperationException("Decision evidence cannot be serialized.");
+        return ComputeHash(node);
+    }
+
+    internal static string ComputeHash(JsonNode node)
+    {
         var canonical = new StringBuilder();
         AppendCanonical(node, canonical);
         return "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString()))).ToLowerInvariant();

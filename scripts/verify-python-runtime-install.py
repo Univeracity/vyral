@@ -19,7 +19,14 @@ import venv
 FIRST_CITATION_BUDGET_MS = 5 * 60 * 1_000
 
 SMOKE = r"""
+from datetime import datetime
+from importlib.resources import files
+import json
+from pathlib import Path
+import tempfile
+
 from vyral_runtime import (
+    DecisionLedger,
     VyralRuntime,
     run_bundled_canonical_scenario,
     run_bundled_external_worker_scenario,
@@ -36,7 +43,7 @@ assert readiness.full_local_ready is False
 assert readiness.contract is not None
 assert readiness.contract.operation_count == 130
 assert readiness.contract.rest_operation_count == 134
-assert readiness.contract.schema_count == 287
+assert readiness.contract.schema_count == 288
 assert len(run_bundled_goldens()) == 13
 assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17
@@ -44,6 +51,30 @@ assert len(run_bundled_external_worker_scenario()) == 3
 assert len(run_bundled_canonical_scenario()) == 6
 assert len(run_bundled_native_execution_scenario()) == 7
 assert all(profile.available for profile in readiness.profiles)
+
+ledger_fixture = json.loads(
+    files("vyral_runtime")
+    .joinpath("_conformance/ai-decision-ledger/v1/entry.json")
+    .read_text(encoding="utf-8")
+)
+recorded_at = datetime.fromisoformat(
+    ledger_fixture["recordedAtUtc"].replace("Z", "+00:00")
+)
+with tempfile.TemporaryDirectory(prefix="vyral-decision-ledger-") as temporary:
+    ledger_path = Path(temporary) / "decisions.sqlite3"
+    with DecisionLedger(ledger_path) as ledger:
+        appended = ledger.append(
+            ledger_fixture["receipt"],
+            recorded_at=recorded_at,
+        )
+        assert appended == ledger_fixture
+        verification = ledger.verify(
+            expected_head=ledger_fixture["entryHash"],
+            expected_count=1,
+        )
+        assert verification["valid"] is True
+    with DecisionLedger(ledger_path, create=False) as ledger:
+        assert ledger.get(sequence=0) == ledger_fixture
 """
 
 

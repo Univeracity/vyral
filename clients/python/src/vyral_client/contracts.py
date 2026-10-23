@@ -3385,3 +3385,15 @@ class AiDecisionReceipt(_AiDecisionReceiptRequired, total=False):
     confidence: float | None
     labelMassCoverage: float | None
     rotationAgreement: float | None
+
+class _AiDecisionLedgerEntryRequired(TypedDict):
+    schema: str
+    sequence: int
+    recordedAtUtc: str
+    receipt: AiDecisionReceipt
+    receiptHash: str
+    previousEntryHash: str | None
+    entryHash: str
+
+class AiDecisionLedgerEntry(_AiDecisionLedgerEntryRequired, total=False):
+    """One privacy-minimized hash-linked decision receipt. Hash links are tamper-evident only relative to a separately trusted head; they are not signatures, independent attestations, or execution authorization."""

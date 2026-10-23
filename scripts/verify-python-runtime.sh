@@ -96,6 +96,8 @@ required_package_files = {
     "vyral_runtime/_conformance/ai-decision/v1/policy.json",
     "vyral_runtime/_conformance/ai-decision/v1/provider-result.json",
     "vyral_runtime/_conformance/ai-decision/v1/receipt.json",
+    "vyral_runtime/_conformance/ai-decision-ledger/v1/manifest.json",
+    "vyral_runtime/_conformance/ai-decision-ledger/v1/entry.json",
     "vyral_runtime/py.typed",
 }
 with zipfile.ZipFile(wheel_path) as archive:
@@ -150,6 +152,8 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "src/vyral_runtime/_conformance/ai-decision/v1/policy.json",
         "src/vyral_runtime/_conformance/ai-decision/v1/provider-result.json",
         "src/vyral_runtime/_conformance/ai-decision/v1/receipt.json",
+        "src/vyral_runtime/_conformance/ai-decision-ledger/v1/manifest.json",
+        "src/vyral_runtime/_conformance/ai-decision-ledger/v1/entry.json",
     }
     missing = sorted(required_sdist_files - names)
     if missing:
@@ -180,7 +184,7 @@ assert readiness.full_local_ready is False
 assert readiness.contract is not None
 assert readiness.contract.operation_count == 130
 assert readiness.contract.rest_operation_count == 134
-assert readiness.contract.schema_count == 287
+assert readiness.contract.schema_count == 288
 assert len(run_bundled_goldens()) == 13
 assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17

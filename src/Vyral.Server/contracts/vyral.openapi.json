@@ -20238,10 +20238,87 @@
           },
           "evaluatedAtUtc": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.(?:\\d{1,6}|\\d{6}0))?(?:Z|\\+00:00|-00:00)$",
+            "description": "UTC RFC 3339 timestamp with no more than microsecond precision."
           }
         },
         "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiDecisionReceipt"
+      },
+      "AiDecisionLedgerEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One privacy-minimized hash-linked decision receipt. Hash links are tamper-evident only relative to a separately trusted head; they are not signatures, independent attestations, or execution authorization.",
+        "required": [
+          "schema",
+          "sequence",
+          "recordedAtUtc",
+          "receipt",
+          "receiptHash",
+          "previousEntryHash",
+          "entryHash"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "vyral.ai-decision-ledger-entry.v1"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$",
+            "description": "Canonical UTC RFC 3339 timestamp with exactly microsecond precision."
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/AiDecisionReceipt"
+          },
+          "receiptHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "previousEntryHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "entryHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "sequence": {
+                  "const": 0
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "previousEntryHash": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "previousEntryHash": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/AiDecisionLedgerEntry"
       }
     }
   },

@@ -1,0 +1,8 @@
+{
+  "schema": "vyral.ai-decision-ledger-conformance.v1",
+  "version": "1.0.0",
+  "entry": "entry.json",
+  "receiptHash": "sha256:c81d52f5d155f625ec95de8102c269f75a46262aa55fce9a35ab4593d1fe8475",
+  "entryHash": "sha256:525ad7cd752613a18f92538367f2af1a77b78fc1390bfbd69f0c0fca03080827",
+  "claim": "The entry retains only a normalized privacy-minimized decision receipt. Hash links detect edits relative to a separately trusted head; they are not signatures or independent attestations."
+}

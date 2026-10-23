@@ -93,6 +93,13 @@ fixture, without starting a server or downloading a model:
   --evaluated-at 2026-10-23T05:30:00Z
 ```
 
+Add `--ledger ./.vyral/decisions.sqlite` to retain only the resulting
+privacy-minimized receipt in a hash-linked local ledger. Inspect it with
+`./scripts/vyral decisions list` and verify it with
+`./scripts/vyral decisions verify`; see the
+[decision contract guide](docs/concepts/ai-decisions.md) for replay and trusted
+head checkpoints.
+
 | You need… | Start here |
 | --- | --- |
 | Try Vyral locally | [Quick start](#quick-start) |

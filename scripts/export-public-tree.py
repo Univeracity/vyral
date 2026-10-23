@@ -199,6 +199,8 @@ REQUIRED_FILES = {
     "conformance/ai-decision/v1/policy.json",
     "conformance/ai-decision/v1/provider-result.json",
     "conformance/ai-decision/v1/receipt.json",
+    "conformance/ai-decision-ledger/v1/manifest.json",
+    "conformance/ai-decision-ledger/v1/entry.json",
     "conformance/runtime/v1/scenarios/goldens/admission-receipts.json",
     "design/admission-contract.md",
     "design/developer-adoption-and-evidence-growth.md",

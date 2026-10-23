@@ -17,7 +17,12 @@ from .._local_experience import (
     reset_local_quickstart,
     run_local_quickstart_sync,
 )
-from ..decisions import DecisionPolicyError, evaluate_decision_policy
+from ..decision_ledger import DecisionLedger, DecisionLedgerError
+from ..decisions import (
+    DecisionPolicyError,
+    evaluate_decision_policy,
+    replay_decision_receipt,
+)
 from .application import create_host_application
 from ._http_authority import validate_allowed_hosts
 from .mcp import McpApplicationConfig
@@ -45,6 +50,8 @@ def main(
         return _inspect_main(selected[1:], display_name)
     if selected and selected[0] == "decide":
         return _decide_main(selected[1:], display_name)
+    if selected and selected[0] == "decisions":
+        return _decisions_main(selected[1:], display_name)
     if selected and selected[0] == "serve":
         selected = selected[1:]
     return _serve_main(selected, display_name)
@@ -65,6 +72,7 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
             f"  {display_name} init\n"
             f"  {display_name} run ./vyral_app.py\n"
             f"  {display_name} decide --policy policy.json --result result.json\n"
+            f"  {display_name} decisions verify --ledger decisions.sqlite\n"
             f"  {display_name} serve --root ./.vyral\n\n"
             "The explicit 'serve' command is also accepted before the "
             "server options."
@@ -277,7 +285,24 @@ def _decide_main(argv: Sequence[str], display_name: str) -> int:
             "replay; current UTC time is used when omitted."
         ),
     )
+    parser.add_argument(
+        "--ledger",
+        help=(
+            "Optional explicit SQLite ledger path. When supplied, the "
+            "privacy-minimized receipt is appended and the ledger entry is "
+            "emitted. Policy and provider-result bodies are not retained."
+        ),
+    )
+    parser.add_argument(
+        "--recorded-at",
+        help=(
+            "Optional timezone-aware ISO-8601 ledger timestamp for "
+            "deterministic fixtures. Valid only with --ledger."
+        ),
+    )
     arguments = parser.parse_args(argv)
+    if arguments.recorded_at and not arguments.ledger:
+        parser.error("--recorded-at requires --ledger")
     try:
         policy = _read_bounded_json(arguments.policy)
         result = _read_bounded_json(arguments.result)
@@ -287,18 +312,205 @@ def _decide_main(argv: Sequence[str], display_name: str) -> int:
             )
         evaluated_at = None
         if arguments.evaluated_at:
-            evaluated_at = datetime.fromisoformat(
-                arguments.evaluated_at.replace("Z", "+00:00")
-            )
+            evaluated_at = _parse_cli_timestamp(arguments.evaluated_at)
         receipt = evaluate_decision_policy(
             policy,
             result,
             evaluated_at=evaluated_at,
         )
-    except (DecisionPolicyError, OSError, ValueError) as error:
+        output: object = receipt
+        if arguments.ledger:
+            recorded_at = (
+                _parse_cli_timestamp(arguments.recorded_at)
+                if arguments.recorded_at
+                else None
+            )
+            with DecisionLedger(arguments.ledger) as ledger:
+                output = ledger.append(receipt, recorded_at=recorded_at)
+    except (
+        DecisionLedgerError,
+        DecisionPolicyError,
+        OSError,
+        ValueError,
+    ) as error:
         parser.error(str(error))
-    print(json.dumps(receipt, indent=2, sort_keys=True, ensure_ascii=False))
+    print(json.dumps(output, indent=2, sort_keys=True, ensure_ascii=False))
     return 0
+
+
+def _decisions_main(argv: Sequence[str], display_name: str) -> int:
+    parser = argparse.ArgumentParser(
+        prog=f"{display_name} decisions",
+        description=(
+            "Append, inspect, verify, and replay privacy-minimized decision "
+            "receipts in an explicit local SQLite ledger. No command invokes "
+            "a selected branch or escalation route."
+        ),
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    append = commands.add_parser(
+        "append",
+        help="Append one existing vyral.ai-decision-receipt.v1 object.",
+    )
+    _add_ledger_argument(append)
+    append.add_argument("--receipt", required=True, help="Receipt JSON file.")
+    append.add_argument(
+        "--recorded-at",
+        help="Optional timezone-aware ISO-8601 timestamp.",
+    )
+
+    listing = commands.add_parser(
+        "list",
+        help="List newest receipt summaries after verifying the chain.",
+    )
+    _add_ledger_argument(listing)
+    listing.add_argument("--limit", type=int, default=20)
+    listing.add_argument("--policy-id")
+    listing.add_argument(
+        "--outcome", choices=("accept", "reject", "escalate")
+    )
+
+    show = commands.add_parser(
+        "show",
+        help="Show one complete privacy-minimized ledger entry.",
+    )
+    _add_ledger_argument(show)
+    selection = show.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--sequence", type=int)
+    selection.add_argument("--entry-hash")
+
+    verify = commands.add_parser(
+        "verify",
+        help=(
+            "Verify SQLite columns, entry hashes, chain links, and an optional "
+            "independently retained head checkpoint."
+        ),
+    )
+    _add_ledger_argument(verify)
+    verify.add_argument("--expect-head")
+    verify.add_argument("--expect-count", type=int)
+
+    replay = commands.add_parser(
+        "replay",
+        help=(
+            "Re-evaluate caller-supplied policy/result evidence at the "
+            "receipt timestamp and compare the exact normalized receipt."
+        ),
+    )
+    _add_ledger_argument(replay)
+    replay_selection = replay.add_mutually_exclusive_group(required=True)
+    replay_selection.add_argument("--sequence", type=int)
+    replay_selection.add_argument("--entry-hash")
+    replay.add_argument("--policy", required=True)
+    replay.add_argument("--result", required=True)
+
+    arguments = parser.parse_args(argv)
+    output: object
+    try:
+        with DecisionLedger(
+            arguments.ledger,
+            create=arguments.command == "append",
+        ) as ledger:
+            if arguments.command == "append":
+                receipt = _read_bounded_json(arguments.receipt)
+                if not isinstance(receipt, dict):
+                    raise DecisionPolicyError(
+                        "receipt file must contain one JSON object"
+                    )
+                recorded_at = (
+                    _parse_cli_timestamp(arguments.recorded_at)
+                    if arguments.recorded_at
+                    else None
+                )
+                output = ledger.append(receipt, recorded_at=recorded_at)
+            elif arguments.command == "list":
+                entries = ledger.list_entries(
+                    limit=arguments.limit,
+                    policy_id=arguments.policy_id,
+                    outcome=arguments.outcome,
+                )
+                output = {
+                    "schema": "vyral.local-ai-decision-ledger-list.v1",
+                    "entries": entries,
+                }
+            elif arguments.command == "show":
+                found = ledger.get(
+                    sequence=arguments.sequence,
+                    entry_hash=arguments.entry_hash,
+                )
+                if found is None:
+                    raise DecisionLedgerError("ledger entry was not found")
+                output = found
+            elif arguments.command == "verify":
+                verification = ledger.verify(
+                    expected_head=arguments.expect_head,
+                    expected_count=arguments.expect_count,
+                )
+                print(
+                    json.dumps(
+                        verification,
+                        indent=2,
+                        sort_keys=True,
+                        ensure_ascii=False,
+                    )
+                )
+                return 0 if verification["valid"] else 1
+            else:
+                entry = ledger.get(
+                    sequence=arguments.sequence,
+                    entry_hash=arguments.entry_hash,
+                )
+                if entry is None:
+                    raise DecisionLedgerError("ledger entry was not found")
+                policy = _read_bounded_json(arguments.policy)
+                result = _read_bounded_json(arguments.result)
+                if not isinstance(policy, dict) or not isinstance(result, dict):
+                    raise DecisionPolicyError(
+                        "policy and result files must each contain one JSON object"
+                    )
+                comparison = replay_decision_receipt(
+                    entry["receipt"], policy, result
+                )
+                output = {
+                    "schema": "vyral.local-ai-decision-replay.v1",
+                    "sequence": entry["sequence"],
+                    "entryHash": entry["entryHash"],
+                    **comparison,
+                }
+                print(
+                    json.dumps(
+                        output,
+                        indent=2,
+                        sort_keys=True,
+                        ensure_ascii=False,
+                    )
+                )
+                return 0 if comparison["matches"] else 1
+    except (
+        DecisionLedgerError,
+        DecisionPolicyError,
+        OSError,
+        ValueError,
+    ) as error:
+        parser.error(str(error))
+    print(json.dumps(output, indent=2, sort_keys=True, ensure_ascii=False))
+    return 0
+
+
+def _add_ledger_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--ledger",
+        required=True,
+        help="Explicit local SQLite ledger path.",
+    )
+
+
+def _parse_cli_timestamp(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp must include a timezone")
+    return parsed
 
 
 def _read_bounded_json(path: str, max_bytes: int = 1024 * 1024) -> object:

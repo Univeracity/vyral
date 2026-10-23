@@ -17,7 +17,8 @@ here so each document has a clear audience and owner.
   observations, per-measurement provenance, receipt chains, and independent
   review boundaries.
 - [Application-owned AI decisions](concepts/ai-decisions.md) — local policy
-  evaluation, explicit abstention, portable receipts, and escalation boundaries.
+  evaluation, explicit abstention, portable receipts, privacy-minimized ledger
+  storage, integrity verification, replay, and escalation boundaries.
 - [Execution runtime limitations](reference/execution-runtime-limitations.md) —
   portable guarantees and adapter-specific boundaries.
 - [Extropic execution](guides/extropic-execution.md) — experimental,
