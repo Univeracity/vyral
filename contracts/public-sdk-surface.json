@@ -495,6 +495,37 @@
       "evidenceProfile": "public-sdk"
     },
     {
+      "id": "purgeCanonicalTenant",
+      "group": "canonical",
+      "restOperationIds": [
+        "purgeCanonicalTenant"
+      ],
+      "stability": "public",
+      "authorizationClass": "canonical-policy",
+      "mutation": "write",
+      "completionBoundary": "atomic",
+      "idempotency": "required",
+      "sdk": {
+        "python": "purge_canonical_tenant",
+        "javascript": "purgeCanonicalTenant"
+      },
+      "contractRefs": [
+        "openapi:purgeCanonicalTenant"
+      ],
+      "schemaRefs": [
+        "#/components/parameters/IdempotencyKey",
+        "#/components/schemas/CanonicalTenantPurgeReceipt",
+        "#/components/schemas/CanonicalTenantPurgeRequest"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
+    },
+    {
       "id": "getHealth",
       "group": "server",
       "restOperationIds": [

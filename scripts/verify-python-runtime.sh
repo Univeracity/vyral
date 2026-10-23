@@ -182,9 +182,9 @@ readiness = runtime.readiness()
 assert readiness.status == "ok"
 assert readiness.full_local_ready is False
 assert readiness.contract is not None
-assert readiness.contract.operation_count == 130
-assert readiness.contract.rest_operation_count == 134
-assert readiness.contract.schema_count == 288
+assert readiness.contract.operation_count == 131
+assert readiness.contract.rest_operation_count == 135
+assert readiness.contract.schema_count == 290
 assert len(run_bundled_goldens()) == 13
 assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17
@@ -286,7 +286,7 @@ runtime = VyralRuntime()
 readiness = runtime.readiness()
 assert readiness.status == "ok"
 assert readiness.contract is not None
-assert readiness.contract.operation_count == 130
+assert readiness.contract.operation_count == 131
 assert len(run_bundled_goldens()) == 13
 assert len(run_bundled_projection_generation_scenario()) == 15
 assert len(run_bundled_record_store_scenario()) == 17

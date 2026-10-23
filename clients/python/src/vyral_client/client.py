@@ -1979,6 +1979,17 @@ class VyralClient:
     def export_canonical_tenant(self, tenant_id: str) -> dict[str, Any]:
         return self._json("GET", f"/canonical/tenants/{quote(tenant_id, safe='')}/export")
 
+    def purge_canonical_tenant(self, tenant_id: str, request: Mapping[str, Any]) -> dict[str, Any]:
+        idempotency_key = request.get("idempotencyKey")
+        if not isinstance(idempotency_key, str) or not idempotency_key.strip():
+            raise ValueError("request.idempotencyKey is required")
+        return self._json(
+            "POST",
+            f"/canonical/tenants/{quote(tenant_id, safe='')}/purge",
+            dict(request),
+            headers={"Idempotency-Key": idempotency_key},
+        )
+
     def restore_canonical_tenant(
         self,
         tenant_id: str,

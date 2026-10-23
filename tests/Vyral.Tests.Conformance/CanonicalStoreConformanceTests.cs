@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Vyral.Abstractions.Interfaces;
 using Vyral.Abstractions.Models;
@@ -216,6 +217,104 @@ public abstract class CanonicalStoreConformanceTests
 
             archive.Chunks[0].Content[0] ^= 0x01;
             await Assert.ThrowsAsync<InvalidOperationException>(() => store.RestoreTenantArchiveAsync(new CanonicalArchiveRestoreRequest { Archive = archive, ExpectedContentHash = archive.ContentHash }));
+        });
+    }
+
+    protected async Task RunCanonicalStore_PurgesWithSnapshotFenceLeaseRejectionAndLifecycleGeneration()
+    {
+        await WithStoreAsync(async store =>
+        {
+            await store.CommitAsync(CreateUpsert("tenant-a", "purge-source", "entity", "e-1", "Before", "before@example.test", includeOutbox: true));
+            var snapshot = await store.ExportTenantAsync("tenant-a");
+            Assert.Equal(1, snapshot.Generation);
+
+            var wrongHash = new CanonicalTenantPurgeRequest
+            {
+                TenantId = "tenant-a", IdempotencyKey = "purge-wrong", ExpectedGeneration = snapshot.Generation,
+                ExpectedContentHash = "sha256:" + new string('0', 64)
+            };
+            await Assert.ThrowsAsync<InvalidOperationException>(() => store.PurgeTenantAsync(wrongHash));
+            Assert.NotNull(await store.GetDocumentAsync("tenant-a", "entity", "e-1"));
+
+            var lease = Assert.Single(await store.LeaseOutboxAsync(new CanonicalOutboxLeaseRequest
+            {
+                TenantId = "tenant-a", ConsumerId = "purge-test", LeaseSeconds = 60
+            }));
+            var request = new CanonicalTenantPurgeRequest
+            {
+                TenantId = "tenant-a", IdempotencyKey = "purge-1", ExpectedGeneration = snapshot.Generation,
+                ExpectedContentHash = snapshot.ContentHash
+            };
+            await Assert.ThrowsAsync<InvalidOperationException>(() => store.PurgeTenantAsync(request));
+            await store.NackOutboxAsync(new CanonicalOutboxNackRequest
+            {
+                TenantId = "tenant-a", EventId = lease.Event.Id, LeaseToken = lease.LeaseToken,
+                NotBeforeUtc = DateTime.UtcNow.AddMinutes(1)
+            });
+
+            var purgeSnapshot = await store.ExportTenantAsync("tenant-a");
+            request.ExpectedContentHash = purgeSnapshot.ContentHash;
+
+            var receipt = await store.PurgeTenantAsync(request);
+            Assert.Equal(CanonicalTenantPurgeReceipt.ProfileV1, receipt.Profile);
+            Assert.Equal("tenant-a", receipt.TenantId);
+            Assert.Equal("purge-1", receipt.IdempotencyKey);
+            Assert.Equal(snapshot.Generation, receipt.PurgedGeneration);
+            Assert.Equal(snapshot.Generation + 1, receipt.Generation);
+            Assert.Equal(purgeSnapshot.ContentHash, receipt.PurgedContentHash);
+            Assert.False(receipt.Replayed);
+            var receiptJson = JsonSerializer.Serialize(receipt);
+            Assert.DoesNotContain("documents", receiptJson, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("revisions", receiptJson, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("fences", receiptJson, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("outbox", receiptJson, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("transactions", receiptJson, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("leaseToken", receiptJson, StringComparison.OrdinalIgnoreCase);
+            Assert.Null(await store.GetDocumentAsync("tenant-a", "entity", "e-1", includeDeleted: true));
+
+            var empty = await store.ExportTenantAsync("tenant-a");
+            Assert.Equal(receipt.Generation, empty.Generation);
+            Assert.Empty(empty.Documents);
+            Assert.Empty(empty.Revisions);
+            Assert.Empty(empty.Fences);
+            Assert.Empty(empty.Outbox);
+            Assert.Empty(empty.Transactions);
+
+            var replay = await store.PurgeTenantAsync(request);
+            Assert.True(replay.Replayed);
+            Assert.Equal(receipt.PurgedAtUtc, replay.PurgedAtUtc);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => store.PurgeTenantAsync(new CanonicalTenantPurgeRequest
+            {
+                TenantId = "tenant-a", IdempotencyKey = request.IdempotencyKey,
+                ExpectedGeneration = empty.Generation, ExpectedContentHash = empty.ContentHash
+            }));
+
+            await store.RestoreTenantAsync(new CanonicalRestoreRequest { Snapshot = snapshot, ExpectedContentHash = snapshot.ContentHash });
+            var restored = await store.ExportTenantAsync("tenant-a");
+            Assert.Equal(receipt.Generation + 1, restored.Generation);
+            Assert.Equal(snapshot.ContentHash, restored.ContentHash);
+            Assert.NotNull(await store.GetDocumentAsync("tenant-a", "entity", "e-1"));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => store.PurgeTenantAsync(new CanonicalTenantPurgeRequest
+            {
+                TenantId = "tenant-a", IdempotencyKey = "stale-generation",
+                ExpectedGeneration = snapshot.Generation, ExpectedContentHash = snapshot.ContentHash
+            }));
+
+            var emptySnapshot = await store.ExportTenantAsync("tenant-empty");
+            var emptyReceipt = await store.PurgeTenantAsync(new CanonicalTenantPurgeRequest
+            {
+                TenantId = "tenant-empty", IdempotencyKey = "purge-empty",
+                ExpectedGeneration = emptySnapshot.Generation, ExpectedContentHash = emptySnapshot.ContentHash
+            });
+            Assert.Equal(emptySnapshot.Generation, emptyReceipt.PurgedGeneration);
+            Assert.Equal(emptySnapshot.Generation + 1, emptyReceipt.Generation);
+            var emptyAfterPurge = await store.ExportTenantAsync("tenant-empty");
+            Assert.Equal(emptyReceipt.Generation, emptyAfterPurge.Generation);
+            Assert.Empty(emptyAfterPurge.Documents);
+            Assert.Empty(emptyAfterPurge.Revisions);
+            Assert.Empty(emptyAfterPurge.Fences);
+            Assert.Empty(emptyAfterPurge.Outbox);
+            Assert.Empty(emptyAfterPurge.Transactions);
         });
     }
 

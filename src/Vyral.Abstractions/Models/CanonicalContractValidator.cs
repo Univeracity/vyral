@@ -160,6 +160,7 @@ public static class CanonicalContractValidator
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ValidateTenantId(snapshot.TenantId);
+        if (snapshot.Generation <= 0) throw new InvalidOperationException("Canonical snapshot generation must be greater than zero.");
         var documentKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var document in snapshot.Documents)
         {
@@ -197,6 +198,16 @@ public static class CanonicalContractValidator
         if (enforcePortableSize) ValidateSnapshotSize(snapshot);
     }
 
+    public static void ValidateTenantPurge(CanonicalTenantPurgeRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateTenantId(request.TenantId);
+        ValidateRequiredId(request.IdempotencyKey, "Canonical tenant purge idempotency key");
+        if (request.ExpectedGeneration <= 0)
+            throw new InvalidOperationException("Canonical tenant purge expectedGeneration must be greater than zero.");
+        ValidateSha256(request.ExpectedContentHash, "Canonical tenant purge expectedContentHash");
+    }
+
     public static void ValidateSnapshotSize(CanonicalTenantSnapshot snapshot)
     {
         if (CanonicalSnapshotHasher.GetCanonicalByteCount(snapshot) > MaxSnapshotBytes)
@@ -208,6 +219,16 @@ public static class CanonicalContractValidator
     /// path segment. Document identities remain opaque and have body-form HTTP operations.
     /// </summary>
     public static void ValidateTenantId(string value) => ValidatePathSegmentId(value, "Canonical tenant id");
+
+    private static void ValidateSha256(string value, string name)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length != 71 ||
+            !value.StartsWith("sha256:", StringComparison.Ordinal) ||
+            !value.AsSpan(7).ToString().All(Uri.IsHexDigit))
+            throw new InvalidOperationException($"{name} must be a lowercase sha256 content hash.");
+        if (!string.Equals(value, value.ToLowerInvariant(), StringComparison.Ordinal))
+            throw new InvalidOperationException($"{name} must be a lowercase sha256 content hash.");
+    }
 
     public static void ValidateDocumentIdentity(string tenantId, string documentType, string id)
     {

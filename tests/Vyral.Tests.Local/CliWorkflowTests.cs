@@ -341,6 +341,20 @@ public class CliWorkflowTests
         Assert.Equal(0, restore.ExitCode);
         Assert.NotNull(await store.GetDocumentAsync("tenant-a", "claim", "claim-1"));
         Assert.Null(await store.GetDocumentAsync("tenant-a", "claim", "claim-2"));
+
+        var restoredSnapshot = await store.ExportTenantAsync("tenant-a");
+        var purge = await InvokeCliAsync(
+            "canonical-purge",
+            "--db", dbPath,
+            "--canonical-db", canonicalPath,
+            "--tenant", "tenant-a",
+            "--idempotency-key", "cli-purge-1",
+            "--expected-generation", restoredSnapshot.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "--expected-content-hash", restoredSnapshot.ContentHash);
+        Assert.Equal(0, purge.ExitCode);
+        var purgeReceipt = JsonSerializer.Deserialize<CanonicalTenantPurgeReceipt>(purge.Output.Trim(), JsonOptions)!;
+        Assert.Equal(restoredSnapshot.Generation + 1, purgeReceipt.Generation);
+        Assert.Null(await store.GetDocumentAsync("tenant-a", "claim", "claim-1"));
     }
 
     [Fact]

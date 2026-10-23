@@ -599,6 +599,14 @@ public sealed class CanonicalTenantSnapshot
     [JsonPropertyName("tenantId")]
     public string TenantId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Monotonic lifecycle epoch for this tenant. Content hashes deliberately exclude this value,
+    /// so a verified archive retains the same content identity when restored into a newer epoch.
+    /// Purge fences bind both generation and content hash to prevent ABA deletion.
+    /// </summary>
+    [JsonPropertyName("generation")]
+    public long Generation { get; set; } = 1;
+
     [JsonPropertyName("documents")]
     public List<CanonicalDocument> Documents { get; set; } = new();
 
@@ -619,6 +627,58 @@ public sealed class CanonicalTenantSnapshot
 
     [JsonPropertyName("contentHash")]
     public string ContentHash { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Destructive tenant lifecycle request. The caller must bind the operation to a snapshot's
+/// generation and content hash and provide a durable idempotency key.
+/// </summary>
+public sealed class CanonicalTenantPurgeRequest
+{
+    [JsonPropertyName("tenantId")]
+    public string TenantId { get; set; } = string.Empty;
+
+    [JsonPropertyName("idempotencyKey")]
+    public string IdempotencyKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("expectedGeneration")]
+    public long ExpectedGeneration { get; set; }
+
+    [JsonPropertyName("expectedContentHash")]
+    public string ExpectedContentHash { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Content-free durable proof of a completed purge. This receipt contains lifecycle metadata and
+/// the caller's already-known hash, but no tenant documents, payloads, indexes, or lease tokens.
+/// </summary>
+public sealed class CanonicalTenantPurgeReceipt
+{
+    public const string ProfileV1 = "vyral.canonical.tenant-purge.v1";
+
+    [JsonPropertyName("profile")]
+    public string Profile { get; set; } = ProfileV1;
+
+    [JsonPropertyName("tenantId")]
+    public string TenantId { get; set; } = string.Empty;
+
+    [JsonPropertyName("idempotencyKey")]
+    public string IdempotencyKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("purgedGeneration")]
+    public long PurgedGeneration { get; set; }
+
+    [JsonPropertyName("generation")]
+    public long Generation { get; set; }
+
+    [JsonPropertyName("purgedContentHash")]
+    public string PurgedContentHash { get; set; } = string.Empty;
+
+    [JsonPropertyName("purgedAtUtc")]
+    public DateTime PurgedAtUtc { get; set; }
+
+    [JsonPropertyName("replayed")]
+    public bool Replayed { get; set; }
 }
 
 public sealed class CanonicalTransactionReceipt
@@ -887,6 +947,18 @@ public static class CanonicalTransactionHasher
             item.NotBeforeUtc = item.NotBeforeUtc?.ToUniversalTime();
         }
         return normalized;
+    }
+}
+
+public static class CanonicalTenantPurgeHasher
+{
+    public static string ComputeRequestHash(CanonicalTenantPurgeRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var material = string.Join("\n", request.TenantId.Trim(), request.IdempotencyKey.Trim(),
+            request.ExpectedGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            request.ExpectedContentHash.Trim());
+        return "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
     }
 }
 

@@ -124,7 +124,7 @@ public sealed class VyralCanonicalAccessOptions
             }
             foreach (var operation in policy.AllowedOperations)
             {
-                if (operation is not (CanonicalAccessOperations.Read or CanonicalAccessOperations.Write or CanonicalAccessOperations.Dispatch or CanonicalAccessOperations.Export or CanonicalAccessOperations.Restore or CanonicalAccessOperations.Admin))
+                if (operation is not (CanonicalAccessOperations.Read or CanonicalAccessOperations.Write or CanonicalAccessOperations.Dispatch or CanonicalAccessOperations.Export or CanonicalAccessOperations.Restore or CanonicalAccessOperations.Purge or CanonicalAccessOperations.Admin))
                     throw new InvalidOperationException($"Canonical identity policy '{policy.Principal}' has an unsupported operation '{operation}'.");
             }
             if (policy.AllowedOperations.Contains(CanonicalAccessOperations.Admin) && !policy.AllowedTenantIds.Contains("*"))
@@ -150,6 +150,7 @@ public static class CanonicalAccessOperations
     public const string Dispatch = "dispatch";
     public const string Export = "export";
     public const string Restore = "restore";
+    public const string Purge = "purge";
     public const string Admin = "admin";
 }
 

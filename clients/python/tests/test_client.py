@@ -530,7 +530,8 @@ class VyralClientTests(unittest.TestCase):
             None,
             None,
             None,
-            {"tenantId": "tenant-a", "contentHash": "sha256:snapshot"},
+            {"tenantId": "tenant-a", "generation": 1, "contentHash": "sha256:snapshot"},
+            {"profile": "vyral.canonical.tenant-purge.v1", "tenantId": "tenant-a", "generation": 2, "replayed": False},
             None,
         ]
         seen: list[dict[str, object]] = []
@@ -543,6 +544,10 @@ class VyralClientTests(unittest.TestCase):
                 "method": getattr(request, "method"),
                 "url": getattr(request, "full_url"),
                 "body": json.loads(data.decode("utf-8")) if data else None,
+                "headers": {
+                    name.lower(): value
+                    for name, value in getattr(request, "header_items")()
+                },
             })
             response = responses.pop(0)
             return FakeResponse(b"" if response is None else json.dumps(response).encode("utf-8"))
@@ -564,6 +569,8 @@ class VyralClientTests(unittest.TestCase):
             self.assertIsNone(client.replay_canonical_outbox("tenant-a", "evt-1", {"tenantId": "tenant-a", "eventId": "evt-1"}))
             snapshot = client.export_canonical_tenant("tenant-a")
             self.assertEqual("sha256:snapshot", snapshot["contentHash"])
+            purge_request = {"tenantId": "tenant-a", "idempotencyKey": "purge-1", "expectedGeneration": snapshot["generation"], "expectedContentHash": snapshot["contentHash"]}
+            self.assertEqual(2, client.purge_canonical_tenant("tenant-a", purge_request)["generation"])
             self.assertIsNone(client.restore_canonical_tenant("tenant-a", snapshot, expected_content_hash=snapshot["contentHash"]))
         finally:
             client_module.urlopen = original_urlopen
@@ -583,12 +590,15 @@ class VyralClientTests(unittest.TestCase):
             ("POST", "http://vyral.local/canonical/tenants/tenant-a/outbox/evt-1/nack"),
             ("POST", "http://vyral.local/canonical/tenants/tenant-a/outbox/evt-1/replay"),
             ("GET", "http://vyral.local/canonical/tenants/tenant-a/export"),
+            ("POST", "http://vyral.local/canonical/tenants/tenant-a/purge"),
             ("POST", "http://vyral.local/canonical/tenants/tenant-a/restore"),
         ], [(item["method"], item["url"]) for item in seen])
         self.assertEqual({"tenantId": "tenant-a", "documentType": "claim/type", "id": "claim/1", "includeDeleted": True}, seen[3]["body"])
         self.assertEqual({"tenantId": "tenant-a", "documentType": "claim/type", "id": "claim/1", "limit": 2}, seen[6]["body"])
         self.assertEqual({"leaseToken": "opaque-token"}, seen[10]["body"])
-        self.assertEqual({"snapshot": {"tenantId": "tenant-a", "contentHash": "sha256:snapshot"}, "expectedContentHash": "sha256:snapshot"}, seen[14]["body"])
+        self.assertEqual("purge-1", seen[14]["body"]["idempotencyKey"])
+        self.assertEqual("purge-1", seen[14]["headers"]["idempotency-key"])
+        self.assertEqual({"snapshot": {"tenantId": "tenant-a", "generation": 1, "contentHash": "sha256:snapshot"}, "expectedContentHash": "sha256:snapshot"}, seen[15]["body"])
 
     def test_execution_runtime_helpers_use_execution_routes(self) -> None:
         responses = [

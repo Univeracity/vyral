@@ -379,7 +379,8 @@ test("canonical store helpers use tenant-scoped routes and keep lease tokens in 
     null,
     null,
     null,
-    { tenantId: "tenant-a", contentHash: "sha256:snapshot" },
+    { tenantId: "tenant-a", generation: 1, contentHash: "sha256:snapshot" },
+    { profile: "vyral.canonical.tenant-purge.v1", tenantId: "tenant-a", generation: 2, replayed: false },
     null
   ];
   const requests = [];
@@ -388,7 +389,8 @@ test("canonical store helpers use tenant-scoped routes and keep lease tokens in 
       requests.push({
         method: init.method ?? "GET",
         url,
-        body: init.body ? JSON.parse(init.body) : null
+        body: init.body ? JSON.parse(init.body) : null,
+        headers: Object.fromEntries(new Headers(init.headers))
       });
       const response = responses.shift();
       return new Response(response === null ? "" : JSON.stringify(response), { status: 200 });
@@ -409,6 +411,12 @@ test("canonical store helpers use tenant-scoped routes and keep lease tokens in 
   assert.equal(await client.replayCanonicalOutbox("tenant-a", "evt-1", { tenantId: "tenant-a", eventId: "evt-1" }), null);
   const snapshot = await client.exportCanonicalTenant("tenant-a");
   assert.equal(snapshot.contentHash, "sha256:snapshot");
+  assert.equal((await client.purgeCanonicalTenant("tenant-a", {
+    tenantId: "tenant-a",
+    idempotencyKey: "purge-1",
+    expectedGeneration: snapshot.generation,
+    expectedContentHash: snapshot.contentHash
+  })).generation, 2);
   assert.equal(await client.restoreCanonicalTenant("tenant-a", snapshot, snapshot.contentHash), null);
 
   assert.deepEqual(requests.map(request => ({ method: request.method, url: request.url })), [
@@ -426,12 +434,15 @@ test("canonical store helpers use tenant-scoped routes and keep lease tokens in 
     { method: "POST", url: "http://vyral.local/canonical/tenants/tenant-a/outbox/evt-1/nack" },
     { method: "POST", url: "http://vyral.local/canonical/tenants/tenant-a/outbox/evt-1/replay" },
     { method: "GET", url: "http://vyral.local/canonical/tenants/tenant-a/export" },
+    { method: "POST", url: "http://vyral.local/canonical/tenants/tenant-a/purge" },
     { method: "POST", url: "http://vyral.local/canonical/tenants/tenant-a/restore" }
   ]);
   assert.deepEqual(requests[3].body, { tenantId: "tenant-a", documentType: "claim/type", id: "claim/1", includeDeleted: true });
   assert.deepEqual(requests[6].body, { tenantId: "tenant-a", documentType: "claim/type", id: "claim/1", limit: 2 });
   assert.deepEqual(requests[10].body, { leaseToken: "opaque-token" });
-  assert.deepEqual(requests[14].body, { snapshot, expectedContentHash: "sha256:snapshot" });
+  assert.equal(requests[14].body.idempotencyKey, "purge-1");
+  assert.equal(requests[14].headers["idempotency-key"], "purge-1");
+  assert.deepEqual(requests[15].body, { snapshot, expectedContentHash: "sha256:snapshot" });
 });
 
 test("execution runtime helpers use execution routes", async () => {

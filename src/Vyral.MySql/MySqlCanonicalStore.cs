@@ -325,17 +325,86 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
     private async Task<CanonicalTenantSnapshot> ExportTenantSnapshotAsync(string tenantId, CancellationToken ct)
     {
         CanonicalContractValidator.ValidateTenantId(tenantId);
-        var state = await ReadTenantAsync(tenantId.Trim(), ct);
-        var snapshot = new CanonicalTenantSnapshot
+        await EnsureInitializedAsync(ct);
+        var tenant = tenantId.Trim();
+        await using var connection = await OpenAsync(ct);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+        try
         {
-            TenantId = tenantId.Trim(), Documents = state.Documents.OrderBy(item => item.DocumentType, StringComparer.Ordinal).ThenBy(item => item.Id, StringComparer.Ordinal).Select(Clone).ToList(),
-            Revisions = state.Revisions.OrderBy(item => item.DocumentType, StringComparer.Ordinal).ThenBy(item => item.Id, StringComparer.Ordinal).ThenBy(item => item.Revision).Select(Clone).ToList(),
-            Fences = state.Fences.OrderBy(item => item.Name, StringComparer.Ordinal).ThenBy(item => item.Value, StringComparer.Ordinal).Select(Clone).ToList(),
-            Outbox = state.Outbox.OrderBy(item => item.Id, StringComparer.Ordinal).Select(Clone).ToList(),
-            Transactions = state.Transactions.OrderBy(item => item.TransactionId, StringComparer.Ordinal).Select(Clone).ToList(), ExportedAtUtc = DateTime.UtcNow
-        };
-        snapshot.ContentHash = CanonicalSnapshotHasher.Compute(snapshot);
-        return snapshot;
+            var state = await LoadTenantAsync(connection, transaction, tenant, lockForWrite: false, ct);
+            var snapshot = CreateSnapshot(tenant, await ReadTenantGenerationAsync(connection, transaction, tenant, ct), state);
+            await transaction.CommitAsync(ct);
+            return snapshot;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<CanonicalTenantPurgeReceipt> PurgeTenantAsync(CanonicalTenantPurgeRequest request, CancellationToken ct = default)
+    {
+        CanonicalContractValidator.ValidateTenantPurge(request);
+        await EnsureInitializedAsync(ct);
+        var tenantId = request.TenantId.Trim();
+        var idempotencyKey = request.IdempotencyKey.Trim();
+        var requestHash = CanonicalTenantPurgeHasher.ComputeRequestHash(request);
+        await using var connection = await OpenAsync(ct);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+        try
+        {
+            var state = await LoadTenantAsync(connection, transaction, tenantId, lockForWrite: true, ct);
+            var existing = await ReadPurgeReceiptAsync(connection, transaction, tenantId, idempotencyKey, ct);
+            if (existing is not null)
+            {
+                if (!string.Equals(existing.Value.RequestHash, requestHash, StringComparison.Ordinal))
+                    throw new InvalidOperationException($"Canonical tenant purge idempotency key '{idempotencyKey}' already belongs to a different request.");
+                var replay = existing.Value.Receipt;
+                replay.Replayed = true;
+                await transaction.CommitAsync(ct);
+                return replay;
+            }
+
+            await EnsureTenantLifecycleAsync(connection, transaction, tenantId, ct);
+            var generation = await ReadTenantGenerationAsync(connection, transaction, tenantId, ct, lockForWrite: true);
+            if (generation != request.ExpectedGeneration)
+                throw new InvalidOperationException($"Canonical tenant purge generation mismatch. Expected {request.ExpectedGeneration}, actual {generation}.");
+            if (state.Outbox.Any(item => item.DeliveredAtUtc is null && item.LeaseExpiresAtUtc > DateTime.UtcNow))
+                throw new InvalidOperationException("Canonical tenant purge is blocked while an outbox lease is active.");
+            var snapshot = CreateSnapshot(tenantId, generation, state);
+            if (!string.Equals(snapshot.ContentHash, request.ExpectedContentHash.Trim(), StringComparison.Ordinal))
+                throw new InvalidOperationException("Canonical tenant purge content hash does not match current tenant state.");
+
+            var nextGeneration = checked(generation + 1);
+            await SaveTenantAsync(connection, transaction, tenantId, new TenantState(), ct);
+            await ExecuteAsync(connection, transaction,
+                "UPDATE vyral_mysql_canonical_tenant_lifecycle SET generation = @generation, updated_at_utc = UTC_TIMESTAMP(6) WHERE tenant_id = @tenant_id", ct,
+                ("@generation", nextGeneration), ("@tenant_id", tenantId));
+            var receipt = new CanonicalTenantPurgeReceipt
+            {
+                TenantId = tenantId,
+                IdempotencyKey = idempotencyKey,
+                PurgedGeneration = generation,
+                Generation = nextGeneration,
+                PurgedContentHash = snapshot.ContentHash,
+                PurgedAtUtc = DateTime.UtcNow
+            };
+            await ExecuteAsync(connection, transaction, """
+                INSERT INTO vyral_mysql_canonical_tenant_purges
+                    (tenant_id, idempotency_key, request_hash, receipt_json, purged_at_utc)
+                VALUES (@tenant_id, @idempotency_key, @request_hash, @receipt_json, @purged_at_utc)
+                """, ct,
+                ("@tenant_id", tenantId), ("@idempotency_key", idempotencyKey), ("@request_hash", requestHash),
+                ("@receipt_json", Serialize(receipt)), ("@purged_at_utc", receipt.PurgedAtUtc));
+            await transaction.CommitAsync(ct);
+            return receipt;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     private async Task RestoreTenantSnapshotAsync(CanonicalRestoreRequest request, bool enforcePortableSize, CancellationToken ct)
@@ -347,8 +416,12 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
         if (string.IsNullOrWhiteSpace(expected) || !string.Equals(expected, hash, StringComparison.Ordinal))
             throw new InvalidOperationException("Canonical snapshot content hash does not match the requested restore.");
         var tenantId = request.Snapshot.TenantId.Trim();
-        await MutateTenantAsync(tenantId, state =>
+        await EnsureInitializedAsync(ct);
+        await using var connection = await OpenAsync(ct);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+        try
         {
+            var state = await LoadTenantAsync(connection, transaction, tenantId, lockForWrite: true, ct);
             state.Documents = request.Snapshot.Documents.Select(Clone).ToList();
             state.Revisions = request.Snapshot.Revisions.Select(Clone).ToList();
             state.Fences = request.Snapshot.Fences.Select(Clone).ToList();
@@ -356,8 +429,37 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
             foreach (var item in state.Outbox) { item.LeaseOwner = null; item.LeaseExpiresAtUtc = null; }
             state.Transactions = request.Snapshot.Transactions.Select(Clone).ToList();
             state.LeaseTokenHashes.Clear();
-            return 0;
-        }, ct);
+            await SaveTenantAsync(connection, transaction, tenantId, state, ct);
+            await EnsureTenantLifecycleAsync(connection, transaction, tenantId, ct);
+            var currentGeneration = await ReadTenantGenerationAsync(connection, transaction, tenantId, ct, lockForWrite: true);
+            var nextGeneration = checked(Math.Max(currentGeneration, request.Snapshot.Generation) + 1);
+            await ExecuteAsync(connection, transaction,
+                "UPDATE vyral_mysql_canonical_tenant_lifecycle SET generation = @generation, updated_at_utc = UTC_TIMESTAMP(6) WHERE tenant_id = @tenant_id", ct,
+                ("@generation", nextGeneration), ("@tenant_id", tenantId));
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    private static CanonicalTenantSnapshot CreateSnapshot(string tenantId, long generation, TenantState state)
+    {
+        var snapshot = new CanonicalTenantSnapshot
+        {
+            TenantId = tenantId,
+            Generation = generation,
+            Documents = state.Documents.OrderBy(item => item.DocumentType, StringComparer.Ordinal).ThenBy(item => item.Id, StringComparer.Ordinal).Select(Clone).ToList(),
+            Revisions = state.Revisions.OrderBy(item => item.DocumentType, StringComparer.Ordinal).ThenBy(item => item.Id, StringComparer.Ordinal).ThenBy(item => item.Revision).Select(Clone).ToList(),
+            Fences = state.Fences.OrderBy(item => item.Name, StringComparer.Ordinal).ThenBy(item => item.Value, StringComparer.Ordinal).Select(Clone).ToList(),
+            Outbox = state.Outbox.OrderBy(item => item.Id, StringComparer.Ordinal).Select(Clone).ToList(),
+            Transactions = state.Transactions.OrderBy(item => item.TransactionId, StringComparer.Ordinal).Select(Clone).ToList(),
+            ExportedAtUtc = DateTime.UtcNow
+        };
+        snapshot.ContentHash = CanonicalSnapshotHasher.Compute(snapshot);
+        return snapshot;
     }
 
     private static CanonicalDocument ApplyMutation(TenantState state, string tenantId, string transactionId, CanonicalMutation mutation, DateTime now)
@@ -613,6 +715,24 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
                     PRIMARY KEY (migration_namespace, migration_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
                 """, ct);
+            await ExecuteAsync(connection, null, """
+                CREATE TABLE IF NOT EXISTS vyral_mysql_canonical_tenant_lifecycle (
+                    tenant_id VARCHAR(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+                    generation BIGINT NOT NULL,
+                    updated_at_utc DATETIME(6) NOT NULL,
+                    PRIMARY KEY (tenant_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+                """, ct);
+            await ExecuteAsync(connection, null, """
+                CREATE TABLE IF NOT EXISTS vyral_mysql_canonical_tenant_purges (
+                    tenant_id VARCHAR(160) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+                    idempotency_key VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+                    request_hash VARCHAR(71) NOT NULL,
+                    receipt_json JSON NOT NULL,
+                    purged_at_utc DATETIME(6) NOT NULL,
+                    PRIMARY KEY (tenant_id, idempotency_key)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+                """, ct);
             _initialized = true;
         }
         finally { _initializationGate.Release(); }
@@ -626,6 +746,36 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
         Add(command, "@namespace", @namespace); Add(command, "@id", id);
         await using var reader = await command.ExecuteReaderAsync(ct);
         return await reader.ReadAsync(ct) ? new CanonicalMigrationReceipt { Namespace = @namespace, Id = id, Checksum = reader.GetString(0), Description = reader.IsDBNull(1) ? null : reader.GetString(1), AppliedAtUtc = reader.GetDateTime(2).ToUniversalTime() } : null;
+    }
+
+    private static Task EnsureTenantLifecycleAsync(MySqlConnection connection, MySqlTransaction transaction, string tenantId, CancellationToken ct) =>
+        ExecuteAsync(connection, transaction, """
+            INSERT INTO vyral_mysql_canonical_tenant_lifecycle (tenant_id, generation, updated_at_utc)
+            VALUES (@tenant_id, 1, UTC_TIMESTAMP(6))
+            ON DUPLICATE KEY UPDATE tenant_id = VALUES(tenant_id)
+            """, ct, ("@tenant_id", tenantId));
+
+    private static async Task<long> ReadTenantGenerationAsync(MySqlConnection connection, MySqlTransaction transaction, string tenantId, CancellationToken ct, bool lockForWrite = false)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"SELECT generation FROM vyral_mysql_canonical_tenant_lifecycle WHERE tenant_id = @tenant_id{(lockForWrite ? " FOR UPDATE" : string.Empty)}";
+        Add(command, "@tenant_id", tenantId);
+        return await command.ExecuteScalarAsync(ct) is { } value ? Convert.ToInt64(value) : 1;
+    }
+
+    private static async Task<(string RequestHash, CanonicalTenantPurgeReceipt Receipt)?> ReadPurgeReceiptAsync(
+        MySqlConnection connection, MySqlTransaction transaction, string tenantId, string idempotencyKey, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT request_hash, receipt_json FROM vyral_mysql_canonical_tenant_purges WHERE tenant_id = @tenant_id AND idempotency_key = @idempotency_key FOR UPDATE";
+        Add(command, "@tenant_id", tenantId);
+        Add(command, "@idempotency_key", idempotencyKey);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        return await reader.ReadAsync(ct)
+            ? (reader.GetString(0), Deserialize<CanonicalTenantPurgeReceipt>(reader.GetString(1)))
+            : null;
     }
 
     private async Task<MySqlConnection> OpenAsync(CancellationToken ct)

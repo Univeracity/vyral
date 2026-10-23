@@ -25,6 +25,7 @@ from ..canonical import (
     CanonicalOutboxQuery,
     CanonicalOutboxReplayRequest,
     CanonicalRestoreRequest,
+    CanonicalTenantPurgeRequest,
     CanonicalTransactionRequest,
 )
 from ..contracts import JSONValue
@@ -204,7 +205,7 @@ class RestOperationDispatcher:
             return await self._server(operation_id)
         if family is RestOperationFamily.CANONICAL:
             return await self._canonical(
-                operation_id, path, query, body
+                operation_id, path, query, headers, body
             )
         if family is RestOperationFamily.RECORDS:
             return await self._records(operation_id, path, query, body)
@@ -355,6 +356,7 @@ class RestOperationDispatcher:
         operation: str,
         path: Mapping[str, str],
         query: Mapping[str, str],
+        headers: Mapping[str, str],
         body: object | None,
     ) -> RestOperationResult:
         store = self.runtime.async_canonical
@@ -482,6 +484,58 @@ class RestOperationDispatcher:
                     CanonicalOutboxQuery.from_value(request)
                 )
             )
+        if operation == "exportCanonicalTenant":
+            return _json_result(await store.export_tenant(tenant))
+        if operation == "purgeCanonicalTenant":
+            request = dict(_mapping(body, "canonical tenant purge"))
+            _same(request, "tenantId", tenant)
+            header_key = _idempotency_key(headers)
+            body_key = request.get("idempotencyKey")
+            if body_key is not None and not isinstance(body_key, str):
+                raise TypeError("idempotencyKey must be a string.")
+            if (
+                header_key is not None
+                and body_key is not None
+                and header_key != body_key.strip()
+            ):
+                raise ValueError(
+                    "Idempotency-Key must match request.idempotencyKey "
+                    "when both are supplied."
+                )
+            return _json_result(
+                await store.purge_tenant(
+                    CanonicalTenantPurgeRequest.from_value(request)
+                )
+            )
+        if operation == "restoreCanonicalTenant":
+            restore_request = _mapping(body, "canonical restore")
+            if "archive" in restore_request:
+                _same(
+                    _mapping(
+                        restore_request.get("archive"),
+                        "restore.archive",
+                    ),
+                    "tenantId",
+                    tenant,
+                )
+                await store.restore_tenant_archive(
+                    CanonicalArchiveRestoreRequest.from_value(
+                        restore_request
+                    )
+                )
+            else:
+                _same(
+                    _mapping(
+                        restore_request.get("snapshot"),
+                        "restore.snapshot",
+                    ),
+                    "tenantId",
+                    tenant,
+                )
+                await store.restore_tenant(
+                    CanonicalRestoreRequest.from_value(restore_request)
+                )
+            return RestOperationResult(204)
         event_id = _required(path, "eventId")
         if operation == "renewCanonicalOutboxLease":
             request = _with(
@@ -525,21 +579,6 @@ class RestOperationDispatcher:
             await store.replay_outbox(
                 CanonicalOutboxReplayRequest.from_value(request)
             )
-            return RestOperationResult(204)
-        if operation == "exportCanonicalTenant":
-            return _json_result(await store.export_tenant(tenant))
-        if operation == "restoreCanonicalTenant":
-            request = _with(
-                _mapping(body, "canonical restore"), tenantId=tenant
-            )
-            if "archive" in request:
-                await store.restore_tenant_archive(
-                    CanonicalArchiveRestoreRequest.from_value(request)
-                )
-            else:
-                await store.restore_tenant(
-                    CanonicalRestoreRequest.from_value(request)
-                )
             return RestOperationResult(204)
         raise RestOperationUnavailableError(operation)
 

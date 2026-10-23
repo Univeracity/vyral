@@ -297,6 +297,7 @@ class CanonicalTransactionReceipt(_CanonicalTransactionReceiptRequired, total=Fa
 
 class _CanonicalTenantSnapshotRequired(TypedDict):
     tenantId: str
+    generation: int
     documents: list[CanonicalDocument]
     revisions: list[CanonicalDocumentRevision]
     fences: list[CanonicalFence]
@@ -313,6 +314,28 @@ class _CanonicalRestoreRequestRequired(TypedDict):
 
 class CanonicalRestoreRequest(_CanonicalRestoreRequestRequired, total=False):
     expectedContentHash: str | None
+
+class _CanonicalTenantPurgeRequestRequired(TypedDict):
+    tenantId: str
+    idempotencyKey: str
+    expectedGeneration: int
+    expectedContentHash: str
+
+class CanonicalTenantPurgeRequest(_CanonicalTenantPurgeRequestRequired, total=False):
+    pass
+
+class _CanonicalTenantPurgeReceiptRequired(TypedDict):
+    profile: Literal['vyral.canonical.tenant-purge.v1']
+    tenantId: str
+    idempotencyKey: str
+    purgedGeneration: int
+    generation: int
+    purgedContentHash: str
+    purgedAtUtc: str
+    replayed: bool
+
+class CanonicalTenantPurgeReceipt(_CanonicalTenantPurgeReceiptRequired, total=False):
+    pass
 
 class _RecordCollectionPolicyRequired(TypedDict):
     name: str

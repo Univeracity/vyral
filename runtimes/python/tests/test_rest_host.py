@@ -175,7 +175,7 @@ class RestHostTests(unittest.IsolatedAsyncioTestCase):
             for method, operation in path.items()
             if method in {"get", "post", "put", "patch", "delete"}
         }
-        self.assertEqual(134, len(expected))
+        self.assertEqual(135, len(expected))
         self.assertEqual(expected, set(self.app.operation_ids))
 
     async def test_operation_registry_has_one_owner_for_every_route(
@@ -606,6 +606,77 @@ class RestHostTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(200, status)
         self.assertEqual({"value": "ready"}, document["data"])
+
+        status, _, snapshot = await _request(
+            self.app,
+            "GET",
+            "/canonical/tenants/tenant-a/export",
+        )
+        self.assertEqual(200, status)
+        assert isinstance(snapshot, dict)
+        mismatched_snapshot = dict(snapshot)
+        mismatched_snapshot["tenantId"] = "tenant-b"
+        status, _, _ = await _request(
+            self.app,
+            "POST",
+            "/canonical/tenants/tenant-a/restore",
+            body={
+                "snapshot": mismatched_snapshot,
+                "expectedContentHash": snapshot["contentHash"],
+            },
+        )
+        self.assertEqual(400, status)
+        purge_request = {
+            "tenantId": "tenant-a",
+            "idempotencyKey": "rest-canonical-purge-1",
+            "expectedGeneration": snapshot["generation"],
+            "expectedContentHash": snapshot["contentHash"],
+        }
+        status, _, _ = await _request(
+            self.app,
+            "POST",
+            "/canonical/tenants/tenant-a/purge",
+            body=purge_request,
+            headers={"idempotency-key": "different-purge"},
+        )
+        self.assertEqual(400, status)
+
+        status, _, receipt = await _request(
+            self.app,
+            "POST",
+            "/canonical/tenants/tenant-a/purge",
+            body=purge_request,
+            headers={"idempotency-key": "rest-canonical-purge-1"},
+        )
+        self.assertEqual(200, status)
+        assert isinstance(receipt, dict)
+        self.assertFalse(receipt["replayed"])
+        self.assertEqual(
+            snapshot["generation"] + 1, receipt["generation"]
+        )
+
+        status, _, _ = await _request(
+            self.app,
+            "POST",
+            "/canonical/tenants/tenant-a/documents/read",
+            body={
+                "tenantId": "tenant-a",
+                "documentType": "probe",
+                "id": "doc-1",
+            },
+        )
+        self.assertEqual(404, status)
+
+        status, _, replay = await _request(
+            self.app,
+            "POST",
+            "/canonical/tenants/tenant-a/purge",
+            body=purge_request,
+            headers={"idempotency-key": "rest-canonical-purge-1"},
+        )
+        self.assertEqual(200, status)
+        assert isinstance(replay, dict)
+        self.assertTrue(replay["replayed"])
 
     async def test_binary_object_round_trip_supports_nested_keys(
         self,

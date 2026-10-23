@@ -494,6 +494,7 @@ public sealed class SqliteCanonicalStore : ICanonicalStore
             var snapshot = new CanonicalTenantSnapshot
             {
                 TenantId = tenant,
+                Generation = await ReadTenantGenerationAsync(connection, transaction, tenant, ct),
                 Documents = await ReadJsonListAsync<CanonicalDocument>(connection, transaction, "SELECT document_json FROM vyral_canonical_documents WHERE tenant_id = $tenant_id ORDER BY document_type, document_id", tenant, ct),
                 Revisions = await ReadJsonListAsync<CanonicalDocumentRevision>(connection, transaction, "SELECT revision_json FROM vyral_canonical_revisions WHERE tenant_id = $tenant_id ORDER BY document_type, document_id, revision", tenant, ct),
                 Fences = await ReadFencesAsync(connection, transaction, tenant, ct),
@@ -504,6 +505,88 @@ public sealed class SqliteCanonicalStore : ICanonicalStore
             snapshot.ContentHash = CanonicalSnapshotHasher.Compute(snapshot);
             await transaction.CommitAsync(ct);
             return snapshot;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<CanonicalTenantPurgeReceipt> PurgeTenantAsync(CanonicalTenantPurgeRequest request, CancellationToken ct = default)
+    {
+        CanonicalContractValidator.ValidateTenantPurge(request);
+        await EnsureInitializedAsync(ct);
+        var tenantId = request.TenantId.Trim();
+        var idempotencyKey = request.IdempotencyKey.Trim();
+        var requestHash = CanonicalTenantPurgeHasher.ComputeRequestHash(request);
+        await using var connection = await OpenAsync(ct);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct);
+        try
+        {
+            await EnsureTenantLifecycleAsync(connection, transaction, tenantId, ct);
+            var existing = await ReadPurgeReceiptAsync(connection, transaction, tenantId, idempotencyKey, ct);
+            if (existing is not null)
+            {
+                if (!string.Equals(existing.Value.RequestHash, requestHash, StringComparison.Ordinal))
+                    throw new InvalidOperationException($"Canonical tenant purge idempotency key '{idempotencyKey}' already belongs to a different request.");
+                var replay = existing.Value.Receipt;
+                replay.Replayed = true;
+                await transaction.CommitAsync(ct);
+                return replay;
+            }
+
+            var generation = await ReadTenantGenerationAsync(connection, transaction, tenantId, ct);
+            if (generation != request.ExpectedGeneration)
+                throw new InvalidOperationException($"Canonical tenant purge generation mismatch. Expected {request.ExpectedGeneration}, actual {generation}.");
+            await using (var leaseCommand = connection.CreateCommand())
+            {
+                leaseCommand.Transaction = transaction;
+                leaseCommand.CommandText = "SELECT COUNT(*) FROM vyral_canonical_outbox WHERE tenant_id = $tenant_id AND delivered_at_utc IS NULL AND lease_expires_at_utc > $now";
+                leaseCommand.Parameters.AddWithValue("$tenant_id", tenantId);
+                leaseCommand.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+                if (Convert.ToInt64(await leaseCommand.ExecuteScalarAsync(ct)) > 0)
+                    throw new InvalidOperationException("Canonical tenant purge is blocked while an outbox lease is active.");
+            }
+
+            var snapshot = new CanonicalTenantSnapshot
+            {
+                TenantId = tenantId,
+                Generation = generation,
+                Documents = await ReadJsonListAsync<CanonicalDocument>(connection, transaction, "SELECT document_json FROM vyral_canonical_documents WHERE tenant_id = $tenant_id ORDER BY document_type, document_id", tenantId, ct),
+                Revisions = await ReadJsonListAsync<CanonicalDocumentRevision>(connection, transaction, "SELECT revision_json FROM vyral_canonical_revisions WHERE tenant_id = $tenant_id ORDER BY document_type, document_id, revision", tenantId, ct),
+                Fences = await ReadFencesAsync(connection, transaction, tenantId, ct),
+                Outbox = await ReadOutboxAsync(connection, transaction, tenantId, ct),
+                Transactions = await ReadTransactionsAsync(connection, transaction, tenantId, ct),
+                ExportedAtUtc = DateTime.UtcNow
+            };
+            snapshot.ContentHash = CanonicalSnapshotHasher.Compute(snapshot);
+            if (!string.Equals(snapshot.ContentHash, request.ExpectedContentHash.Trim(), StringComparison.Ordinal))
+                throw new InvalidOperationException("Canonical tenant purge content hash does not match current tenant state.");
+
+            var nextGeneration = checked(generation + 1);
+            await DeleteTenantAsync(connection, transaction, tenantId, ct);
+            await ExecuteAsync(connection, transaction,
+                "UPDATE vyral_canonical_tenant_lifecycle SET generation = $generation, updated_at_utc = $updated_at_utc WHERE tenant_id = $tenant_id", ct,
+                ("$generation", nextGeneration), ("$updated_at_utc", DateTime.UtcNow.ToString("O")), ("$tenant_id", tenantId));
+            var receipt = new CanonicalTenantPurgeReceipt
+            {
+                TenantId = tenantId,
+                IdempotencyKey = idempotencyKey,
+                PurgedGeneration = generation,
+                Generation = nextGeneration,
+                PurgedContentHash = snapshot.ContentHash,
+                PurgedAtUtc = DateTime.UtcNow
+            };
+            await ExecuteAsync(connection, transaction, """
+                INSERT INTO vyral_canonical_tenant_purges
+                    (tenant_id, idempotency_key, request_hash, receipt_json, purged_at_utc)
+                VALUES ($tenant_id, $idempotency_key, $request_hash, $receipt_json, $purged_at_utc)
+                """, ct,
+                ("$tenant_id", tenantId), ("$idempotency_key", idempotencyKey), ("$request_hash", requestHash),
+                ("$receipt_json", Serialize(receipt)), ("$purged_at_utc", receipt.PurgedAtUtc.ToString("O")));
+            await transaction.CommitAsync(ct);
+            return receipt;
         }
         catch
         {
@@ -539,6 +622,8 @@ public sealed class SqliteCanonicalStore : ICanonicalStore
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct);
         try
         {
+            await EnsureTenantLifecycleAsync(connection, transaction, tenantId, ct);
+            var currentGeneration = await ReadTenantGenerationAsync(connection, transaction, tenantId, ct);
             await DeleteTenantAsync(connection, transaction, tenantId, ct);
             foreach (var document in request.Snapshot.Documents)
             {
@@ -557,6 +642,10 @@ public sealed class SqliteCanonicalStore : ICanonicalStore
                 await InsertOutboxAsync(connection, transaction, restored, ct);
             }
             foreach (var receipt in request.Snapshot.Transactions) await InsertTransactionReceiptAsync(connection, transaction, receipt, ct);
+            var nextGeneration = checked(Math.Max(currentGeneration, request.Snapshot.Generation) + 1);
+            await ExecuteAsync(connection, transaction,
+                "UPDATE vyral_canonical_tenant_lifecycle SET generation = $generation, updated_at_utc = $updated_at_utc WHERE tenant_id = $tenant_id", ct,
+                ("$generation", nextGeneration), ("$updated_at_utc", DateTime.UtcNow.ToString("O")), ("$tenant_id", tenantId));
             await transaction.CommitAsync(ct);
         }
         catch
@@ -749,6 +838,19 @@ public sealed class SqliteCanonicalStore : ICanonicalStore
                     committed_at_utc TEXT NOT NULL,
                     PRIMARY KEY (tenant_id, idempotency_key),
                     UNIQUE (tenant_id, transaction_id)
+                );
+                CREATE TABLE IF NOT EXISTS vyral_canonical_tenant_lifecycle (
+                    tenant_id TEXT NOT NULL PRIMARY KEY,
+                    generation INTEGER NOT NULL,
+                    updated_at_utc TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS vyral_canonical_tenant_purges (
+                    tenant_id TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL,
+                    request_hash TEXT NOT NULL,
+                    receipt_json TEXT NOT NULL,
+                    purged_at_utc TEXT NOT NULL,
+                    PRIMARY KEY (tenant_id, idempotency_key)
                 );
                 """;
             await using var command = connection.CreateCommand();
@@ -1007,6 +1109,35 @@ public sealed class SqliteCanonicalStore : ICanonicalStore
         {
             await ExecuteAsync(connection, transaction, $"DELETE FROM {table} WHERE tenant_id = $tenant_id", ct, ("$tenant_id", tenantId));
         }
+    }
+
+    private static Task EnsureTenantLifecycleAsync(SqliteConnection connection, SqliteTransaction transaction, string tenantId, CancellationToken ct) =>
+        ExecuteAsync(connection, transaction, """
+            INSERT OR IGNORE INTO vyral_canonical_tenant_lifecycle (tenant_id, generation, updated_at_utc)
+            VALUES ($tenant_id, 1, $updated_at_utc)
+            """, ct, ("$tenant_id", tenantId), ("$updated_at_utc", DateTime.UtcNow.ToString("O")));
+
+    private static async Task<long> ReadTenantGenerationAsync(SqliteConnection connection, SqliteTransaction transaction, string tenantId, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT generation FROM vyral_canonical_tenant_lifecycle WHERE tenant_id = $tenant_id";
+        command.Parameters.AddWithValue("$tenant_id", tenantId);
+        return await command.ExecuteScalarAsync(ct) is { } value ? Convert.ToInt64(value) : 1;
+    }
+
+    private static async Task<(string RequestHash, CanonicalTenantPurgeReceipt Receipt)?> ReadPurgeReceiptAsync(
+        SqliteConnection connection, SqliteTransaction transaction, string tenantId, string idempotencyKey, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT request_hash, receipt_json FROM vyral_canonical_tenant_purges WHERE tenant_id = $tenant_id AND idempotency_key = $idempotency_key";
+        command.Parameters.AddWithValue("$tenant_id", tenantId);
+        command.Parameters.AddWithValue("$idempotency_key", idempotencyKey);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        return await reader.ReadAsync(ct)
+            ? (reader.GetString(0), Deserialize<CanonicalTenantPurgeReceipt>(reader.GetString(1)))
+            : null;
     }
 
     private static async Task<int> ExecuteAsync(SqliteConnection connection, SqliteTransaction? transaction, string sql, CancellationToken ct, params (string Name, object? Value)[] parameters)

@@ -34,6 +34,7 @@ from vyral_runtime.canonical import (  # noqa: E402
     CanonicalRestoreRequest,
     CanonicalTransactionRequest,
     CanonicalTenantArchive,
+    CanonicalTenantPurgeRequest,
     CanonicalValidationError,
     CanonicalWritePrecondition,
     MAX_ARCHIVE_CHUNKS,
@@ -413,7 +414,88 @@ class CanonicalStoreTests(unittest.TestCase):
                 tenant_id="tenant-a", consumer_id="projector"
             )
         )[0]
-        self.assertEqual(lease.event.delivery_count + 1, resumed.event.delivery_count)
+        self.assertEqual(
+            lease.event.delivery_count + 1,
+            resumed.event.delivery_count,
+        )
+
+    def test_purge_is_hash_and_generation_fenced_idempotent_and_lease_safe(
+        self,
+    ) -> None:
+        self.store.commit(
+            upsert(
+                "tenant-a",
+                "purge-source",
+                "entity",
+                "e-1",
+                "before",
+                outbox=True,
+            )
+        )
+        source = self.store.export_tenant("tenant-a")
+        self.assertEqual(1, source.generation)
+        lease = self.store.lease_outbox(
+            CanonicalOutboxLeaseRequest(
+                tenant_id="tenant-a",
+                consumer_id="purge-test",
+                lease_seconds=60,
+            )
+        )[0]
+        blocked = CanonicalTenantPurgeRequest(
+            tenant_id="tenant-a",
+            idempotency_key="purge-1",
+            expected_generation=source.generation,
+            expected_content_hash=source.content_hash,
+        )
+        with self.assertRaisesRegex(
+            CanonicalConflictError, "lease is active"
+        ):
+            self.store.purge_tenant(blocked)
+        self.store.nack_outbox(
+            CanonicalOutboxNackRequest(
+                tenant_id="tenant-a",
+                event_id=lease.event.id,
+                lease_token=lease.lease_token,
+                retry_after_seconds=60,
+            )
+        )
+        purge_snapshot = self.store.export_tenant("tenant-a")
+        request = replace(
+            blocked,
+            expected_content_hash=purge_snapshot.content_hash,
+        )
+        receipt = self.store.purge_tenant(request)
+        self.assertFalse(receipt.replayed)
+        self.assertEqual(1, receipt.purged_generation)
+        self.assertEqual(2, receipt.generation)
+        self.assertEqual(
+            purge_snapshot.content_hash, receipt.purged_content_hash
+        )
+        self._assert_schema(
+            "CanonicalTenantPurgeReceipt", receipt.to_dict()
+        )
+        empty = self.store.export_tenant("tenant-a")
+        self.assertEqual(2, empty.generation)
+        self.assertEqual((), empty.documents)
+        replay = self.store.purge_tenant(request)
+        self.assertTrue(replay.replayed)
+        self.assertEqual(receipt.purged_at_utc, replay.purged_at_utc)
+
+        self.store.restore_tenant(
+            CanonicalRestoreRequest(
+                snapshot=source,
+                expected_content_hash=source.content_hash,
+            )
+        )
+        restored = self.store.export_tenant("tenant-a")
+        self.assertEqual(3, restored.generation)
+        self.assertEqual(source.content_hash, restored.content_hash)
+        with self.assertRaisesRegex(
+            CanonicalConflictError, "generation mismatch"
+        ):
+            self.store.purge_tenant(
+                replace(request, idempotency_key="stale")
+            )
 
     def test_archive_rejects_corruption_and_store_survives_restart(
         self,

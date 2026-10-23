@@ -1221,6 +1221,18 @@ export class VyralClient {
     return this.#json("GET", `/canonical/tenants/${encodeURIComponent(tenantId)}/export`);
   }
 
+  purgeCanonicalTenant(tenantId, request) {
+    if (!request?.idempotencyKey || !String(request.idempotencyKey).trim()) {
+      throw new Error("request.idempotencyKey is required");
+    }
+    return this.#json(
+      "POST",
+      `/canonical/tenants/${encodeURIComponent(tenantId)}/purge`,
+      request,
+      { headers: { "Idempotency-Key": request.idempotencyKey } }
+    );
+  }
+
   restoreCanonicalTenant(tenantId, snapshot, expectedContentHash) {
     const request = { snapshot };
     if (expectedContentHash !== undefined) request.expectedContentHash = expectedContentHash;

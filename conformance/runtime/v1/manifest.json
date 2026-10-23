@@ -100,7 +100,7 @@
     {
       "id": "canonical.strong-profile.v1",
       "path": "scenarios/canonical/strong-profile.json",
-      "sha256": "sha256:34b40772e8d745c38025e532d745cb531485a671ad0c3ad8868cbbb9272793b7",
+      "sha256": "sha256:e845172b14a6f553344b03f79a90ef083e369821fb2afb1a57101a8dc832b4e9",
       "profile": "vyral.runtime.canonical.v1",
       "kind": "stateful"
     },

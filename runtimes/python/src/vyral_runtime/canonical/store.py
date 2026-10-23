@@ -24,6 +24,7 @@ from .codec import (
     canonical_request_hash,
     canonical_snapshot_byte_count,
     canonical_snapshot_hash,
+    canonical_tenant_purge_request_hash,
     create_canonical_archive,
     mutation_key,
     parse_timestamp,
@@ -38,6 +39,7 @@ from .codec import (
     validate_outbox_replay,
     validate_query_limit,
     validate_restore,
+    validate_tenant_purge,
     validate_tenant_id,
     validate_transaction,
 )
@@ -67,6 +69,8 @@ from .models import (
     CanonicalOutboxReplayRequest,
     CanonicalRestoreRequest,
     CanonicalTenantArchive,
+    CanonicalTenantPurgeReceipt,
+    CanonicalTenantPurgeRequest,
     CanonicalTenantSnapshot,
     CanonicalTransactionReceipt,
     CanonicalTransactionRequest,
@@ -896,6 +900,104 @@ class SQLiteCanonicalStore:
             chunk_bytes,
         )
 
+    def purge_tenant(
+        self,
+        request: CanonicalTenantPurgeRequest | Mapping[str, Any],
+    ) -> CanonicalTenantPurgeReceipt:
+        selected = validate_tenant_purge(request)
+        tenant = selected.tenant_id.strip()
+        idempotency_key = selected.idempotency_key.strip()
+        request_hash = canonical_tenant_purge_request_hash(selected)
+        with self._transaction() as connection:
+            existing = connection.execute(
+                """
+                SELECT request_hash, receipt_json
+                FROM vyral_canonical_tenant_purges
+                WHERE tenant_id = ? AND idempotency_key = ?
+                """,
+                (tenant, idempotency_key),
+            ).fetchone()
+            if existing is not None:
+                if str(existing["request_hash"]) != request_hash:
+                    raise CanonicalConflictError(
+                        "Canonical tenant purge idempotency key already "
+                        "belongs to a different request."
+                    )
+                receipt = CanonicalTenantPurgeReceipt.from_value(
+                    _load_object(str(existing["receipt_json"]))
+                )
+                return replace(receipt, replayed=True)
+
+            self._ensure_tenant_lifecycle(connection, tenant)
+            generation = self._tenant_generation(connection, tenant)
+            if generation != selected.expected_generation:
+                raise CanonicalConflictError(
+                    "Canonical tenant purge generation mismatch. "
+                    f"Expected {selected.expected_generation}, actual "
+                    f"{generation}."
+                )
+            active_lease = connection.execute(
+                """
+                SELECT 1 FROM vyral_canonical_outbox
+                WHERE tenant_id = ? AND delivered_at_utc IS NULL
+                  AND lease_expires_at_utc > ?
+                LIMIT 1
+                """,
+                (tenant, self._now()),
+            ).fetchone()
+            if active_lease is not None:
+                raise CanonicalConflictError(
+                    "Canonical tenant purge is blocked while an outbox "
+                    "lease is active."
+                )
+            snapshot = self._read_tenant_snapshot(
+                connection, tenant, generation
+            )
+            if snapshot.content_hash != selected.expected_content_hash:
+                raise CanonicalIntegrityError(
+                    "Canonical tenant purge content hash does not match "
+                    "current tenant state."
+                )
+            next_generation = generation + 1
+            if next_generation > 9_223_372_036_854_775_807:
+                raise CanonicalConflictError(
+                    "Canonical tenant generation is exhausted."
+                )
+            self._delete_tenant(connection, tenant)
+            now = self._now()
+            connection.execute(
+                """
+                UPDATE vyral_canonical_tenant_lifecycle
+                SET generation = ?, updated_at_utc = ?
+                WHERE tenant_id = ?
+                """,
+                (next_generation, now, tenant),
+            )
+            receipt = CanonicalTenantPurgeReceipt(
+                tenant_id=tenant,
+                idempotency_key=idempotency_key,
+                purged_generation=generation,
+                generation=next_generation,
+                purged_content_hash=snapshot.content_hash,
+                purged_at_utc=now,
+            )
+            connection.execute(
+                """
+                INSERT INTO vyral_canonical_tenant_purges
+                    (tenant_id, idempotency_key, request_hash,
+                     receipt_json, purged_at_utc)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    tenant,
+                    idempotency_key,
+                    request_hash,
+                    _dump(receipt.to_dict()),
+                    now,
+                ),
+            )
+            return receipt
+
     def restore_tenant(
         self,
         request: CanonicalRestoreRequest | Mapping[str, Any],
@@ -1074,112 +1176,115 @@ class SQLiteCanonicalStore:
     ) -> CanonicalTenantSnapshot:
         tenant = validate_tenant_id(tenant_id)
         with self._transaction(immediate=False) as connection:
-            documents = tuple(
-                CanonicalDocument.from_value(
-                    _load_object(str(row["document_json"]))
-                )
-                for row in connection.execute(
-                    """
-                    SELECT document_json
-                    FROM vyral_canonical_documents
-                    WHERE tenant_id = ?
-                    ORDER BY document_type, document_id
-                    """,
-                    (tenant,),
-                ).fetchall()
+            generation = self._tenant_generation(connection, tenant)
+            return self._read_tenant_snapshot(
+                connection, tenant, generation
             )
-            revisions = tuple(
-                CanonicalDocumentRevision.from_value(
-                    _load_object(str(row["revision_json"]))
-                )
-                for row in connection.execute(
-                    """
-                    SELECT revision_json
-                    FROM vyral_canonical_revisions
-                    WHERE tenant_id = ?
-                    ORDER BY document_type, document_id, revision
-                    """,
-                    (tenant,),
-                ).fetchall()
+
+    def _read_tenant_snapshot(
+        self,
+        connection: sqlite3.Connection,
+        tenant: str,
+        generation: int,
+    ) -> CanonicalTenantSnapshot:
+        documents = tuple(
+            CanonicalDocument.from_value(
+                _load_object(str(row["document_json"]))
             )
-            fences = tuple(
-                CanonicalFence(
-                    tenant_id=tenant,
-                    name=str(row["name"]),
-                    value=str(row["value"]),
-                    owner_document_type=str(
-                        row["owner_document_type"]
-                    ),
-                    owner_document_id=str(
-                        row["owner_document_id"]
-                    ),
-                    created_at_utc=str(row["created_at_utc"]),
-                    updated_at_utc=str(row["updated_at_utc"]),
-                )
-                for row in connection.execute(
-                    """
-                    SELECT name, value, owner_document_type,
-                           owner_document_id, created_at_utc,
-                           updated_at_utc
-                    FROM vyral_canonical_fences
-                    WHERE tenant_id = ?
-                    ORDER BY name, value
-                    """,
-                    (tenant,),
-                ).fetchall()
+            for row in connection.execute(
+                """
+                SELECT document_json FROM vyral_canonical_documents
+                WHERE tenant_id = ?
+                ORDER BY document_type, document_id
+                """,
+                (tenant,),
+            ).fetchall()
+        )
+        revisions = tuple(
+            CanonicalDocumentRevision.from_value(
+                _load_object(str(row["revision_json"]))
             )
-            outbox = tuple(
-                _read_outbox_event(row)
-                for row in connection.execute(
-                    """
-                    SELECT event_json, delivery_count,
-                           delivered_at_utc, lease_owner,
-                           lease_expires_at_utc, last_error,
-                           max_delivery_attempts,
-                           dead_lettered_at_utc
-                    FROM vyral_canonical_outbox
-                    WHERE tenant_id = ?
-                    ORDER BY event_id
-                    """,
-                    (tenant,),
-                ).fetchall()
-            )
-            transactions = tuple(
-                CanonicalTransactionReceipt(
-                    tenant_id=tenant,
-                    transaction_id=str(row["transaction_id"]),
-                    idempotency_key=str(row["idempotency_key"]),
-                    request_hash=str(row["request_hash"]),
-                    result=CanonicalTransactionResult.from_value(
-                        _load_object(str(row["result_json"]))
-                    ),
-                    committed_at_utc=str(row["committed_at_utc"]),
-                )
-                for row in connection.execute(
-                    """
-                    SELECT transaction_id, idempotency_key,
-                           request_hash, result_json, committed_at_utc
-                    FROM vyral_canonical_transactions
-                    WHERE tenant_id = ?
-                    ORDER BY transaction_id
-                    """,
-                    (tenant,),
-                ).fetchall()
-            )
-            snapshot = CanonicalTenantSnapshot(
+            for row in connection.execute(
+                """
+                SELECT revision_json FROM vyral_canonical_revisions
+                WHERE tenant_id = ?
+                ORDER BY document_type, document_id, revision
+                """,
+                (tenant,),
+            ).fetchall()
+        )
+        fences = tuple(
+            CanonicalFence(
                 tenant_id=tenant,
-                documents=documents,
-                revisions=revisions,
-                fences=fences,
-                outbox=outbox,
-                transactions=transactions,
-                exported_at_utc=self._now(),
-                content_hash="",
+                name=str(row["name"]),
+                value=str(row["value"]),
+                owner_document_type=str(row["owner_document_type"]),
+                owner_document_id=str(row["owner_document_id"]),
+                created_at_utc=str(row["created_at_utc"]),
+                updated_at_utc=str(row["updated_at_utc"]),
             )
-            return replace(
-                snapshot,
-                content_hash=canonical_snapshot_hash(snapshot),
+            for row in connection.execute(
+                """
+                SELECT name, value, owner_document_type,
+                       owner_document_id, created_at_utc, updated_at_utc
+                FROM vyral_canonical_fences
+                WHERE tenant_id = ?
+                ORDER BY name, value
+                """,
+                (tenant,),
+            ).fetchall()
+        )
+        outbox = tuple(
+            _read_outbox_event(row)
+            for row in connection.execute(
+                """
+                SELECT event_json, delivery_count, delivered_at_utc,
+                       lease_owner, lease_expires_at_utc, last_error,
+                       max_delivery_attempts, dead_lettered_at_utc
+                FROM vyral_canonical_outbox
+                WHERE tenant_id = ?
+                ORDER BY event_id
+                """,
+                (tenant,),
+            ).fetchall()
+        )
+        transactions = tuple(
+            CanonicalTransactionReceipt(
+                tenant_id=tenant,
+                transaction_id=str(row["transaction_id"]),
+                idempotency_key=str(row["idempotency_key"]),
+                request_hash=str(row["request_hash"]),
+                result=CanonicalTransactionResult.from_value(
+                    _load_object(str(row["result_json"]))
+                ),
+                committed_at_utc=str(row["committed_at_utc"]),
             )
+            for row in connection.execute(
+                """
+                SELECT transaction_id, idempotency_key, request_hash,
+                       result_json, committed_at_utc
+                FROM vyral_canonical_transactions
+                WHERE tenant_id = ?
+                ORDER BY transaction_id
+                """,
+                (tenant,),
+            ).fetchall()
+        )
+        snapshot = CanonicalTenantSnapshot(
+            tenant_id=tenant,
+            generation=generation,
+            documents=documents,
+            revisions=revisions,
+            fences=fences,
+            outbox=outbox,
+            transactions=transactions,
+            exported_at_utc=self._now(),
+            content_hash="",
+        )
+        return replace(
+            snapshot,
+            content_hash=canonical_snapshot_hash(snapshot),
+        )
 
     def _restore_snapshot(
         self, snapshot: CanonicalTenantSnapshot
@@ -1194,6 +1299,10 @@ class SQLiteCanonicalStore:
             )
         tenant = snapshot.tenant_id.strip()
         with self._transaction() as connection:
+            self._ensure_tenant_lifecycle(connection, tenant)
+            current_generation = self._tenant_generation(
+                connection, tenant
+            )
             self._delete_tenant(connection, tenant)
             for document in snapshot.documents:
                 self._upsert_document(connection, document)
@@ -1219,6 +1328,21 @@ class SQLiteCanonicalStore:
                         fence.updated_at_utc,
                     ),
                 )
+            next_generation = max(
+                current_generation, snapshot.generation
+            ) + 1
+            if next_generation > 9_223_372_036_854_775_807:
+                raise CanonicalConflictError(
+                    "Canonical tenant generation is exhausted."
+                )
+            connection.execute(
+                """
+                UPDATE vyral_canonical_tenant_lifecycle
+                SET generation = ?, updated_at_utc = ?
+                WHERE tenant_id = ?
+                """,
+                (next_generation, self._now(), tenant),
+            )
             for event in snapshot.outbox:
                 restored = replace(
                     event,
@@ -1607,6 +1731,32 @@ class SQLiteCanonicalStore:
                 (tenant_id,),
             )
 
+    def _ensure_tenant_lifecycle(
+        self, connection: sqlite3.Connection, tenant_id: str
+    ) -> None:
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO vyral_canonical_tenant_lifecycle
+                (tenant_id, generation, updated_at_utc)
+            VALUES (?, 1, ?)
+            """,
+            (tenant_id, self._now()),
+        )
+
+    @staticmethod
+    def _tenant_generation(
+        connection: sqlite3.Connection, tenant_id: str
+    ) -> int:
+        row = connection.execute(
+            """
+            SELECT generation
+            FROM vyral_canonical_tenant_lifecycle
+            WHERE tenant_id = ?
+            """,
+            (tenant_id,),
+        ).fetchone()
+        return int(row["generation"]) if row is not None else 1
+
     def _now(self) -> str:
         return utc_timestamp(self._clock(), "canonical clock")
 
@@ -1785,6 +1935,14 @@ class AsyncSQLiteCanonicalStore:
     ) -> CanonicalTenantSnapshot:
         return await self.executor.run(
             lambda: self.store.export_tenant(tenant_id)
+        )
+
+    async def purge_tenant(
+        self,
+        request: CanonicalTenantPurgeRequest | Mapping[str, Any],
+    ) -> CanonicalTenantPurgeReceipt:
+        return await self.executor.run(
+            lambda: self.store.purge_tenant(request)
         )
 
     async def restore_tenant(
@@ -2168,5 +2326,18 @@ CREATE TABLE IF NOT EXISTS vyral_canonical_transactions (
     committed_at_utc TEXT NOT NULL,
     PRIMARY KEY (tenant_id, idempotency_key),
     UNIQUE (tenant_id, transaction_id)
+);
+CREATE TABLE IF NOT EXISTS vyral_canonical_tenant_lifecycle (
+    tenant_id TEXT NOT NULL PRIMARY KEY,
+    generation INTEGER NOT NULL,
+    updated_at_utc TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS vyral_canonical_tenant_purges (
+    tenant_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    request_hash TEXT NOT NULL,
+    receipt_json TEXT NOT NULL,
+    purged_at_utc TEXT NOT NULL,
+    PRIMARY KEY (tenant_id, idempotency_key)
 );
 """

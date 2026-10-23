@@ -133,7 +133,7 @@ READ_ONLY_POSTS = {
     "generateEmbeddings",
 }
 
-REQUIRED_IDEMPOTENCY = {"commitCanonicalTransaction"}
+REQUIRED_IDEMPOTENCY = {"commitCanonicalTransaction", "purgeCanonicalTenant"}
 SUPPORTED_IDEMPOTENCY = {
     "ingestRecordArtifact",
     "createCollection",

@@ -48,6 +48,7 @@ REST_OPERATION_FAMILIES: Mapping[
                 "listCanonicalMigrations",
                 "preflightCanonicalStore",
                 "probeCanonicalStoreDataPlane",
+                "purgeCanonicalTenant",
                 "queryCanonicalDocumentRevisions",
                 "queryCanonicalDocuments",
                 "queryCanonicalOutbox",

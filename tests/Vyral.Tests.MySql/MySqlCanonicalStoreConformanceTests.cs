@@ -21,6 +21,7 @@ public sealed class MySqlCanonicalStoreConformanceTests : CanonicalStoreConforma
     [MySqlLiveFact] public Task CanonicalStore_ParksAndReplaysDeadLetteredOutbox() => RunCanonicalStore_ParksAndReplaysDeadLetteredOutbox();
     [MySqlLiveFact] public Task CanonicalStore_PreservesHashVerifiedActiveLeaseSnapshot() => RunCanonicalStore_PreservesHashVerifiedActiveLeaseSnapshot();
     [MySqlLiveFact] public Task CanonicalStore_RoundTripsHashVerifiedChunkedTenantArchive() => RunCanonicalStore_RoundTripsHashVerifiedChunkedTenantArchive();
+    [MySqlLiveFact] public Task CanonicalStore_PurgesWithSnapshotFenceLeaseRejectionAndLifecycleGeneration() => RunCanonicalStore_PurgesWithSnapshotFenceLeaseRejectionAndLifecycleGeneration();
     [MySqlLiveFact] public Task CanonicalStore_DataPlanePreflightRestoresIsolatesAndCleansUp() => RunCanonicalStore_DataPlanePreflightRestoresIsolatesAndCleansUp();
     [MySqlLiveFact] public Task CanonicalStore_CanonicalizesEquivalentIdempotentRequests() => RunCanonicalStore_CanonicalizesEquivalentIdempotentRequests();
     [MySqlLiveFact] public Task CanonicalStore_QueriesProjectedRangeAndStableOrder() => RunCanonicalStore_QueriesProjectedRangeAndStableOrder();

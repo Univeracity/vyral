@@ -1229,6 +1229,7 @@ class CanonicalTenantSnapshot:
     transactions: tuple[CanonicalTransactionReceipt, ...]
     exported_at_utc: str
     content_hash: str
+    generation: int = 1
 
     @classmethod
     def from_value(
@@ -1240,6 +1241,11 @@ class CanonicalTenantSnapshot:
         return cls(
             tenant_id=_text(
                 item.get("tenantId"), "snapshot.tenantId"
+            ),
+            generation=_integer(
+                item.get("generation"),
+                "snapshot.generation",
+                default=1,
             ),
             documents=tuple(
                 CanonicalDocument.from_value(
@@ -1296,6 +1302,7 @@ class CanonicalTenantSnapshot:
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "tenantId": self.tenant_id,
+            "generation": self.generation,
             "documents": [
                 item.to_dict() for item in self.documents
             ],
@@ -1333,6 +1340,107 @@ class CanonicalRestoreRequest:
                 "restore.expectedContentHash",
             ),
         )
+
+
+@dataclass(frozen=True)
+class CanonicalTenantPurgeRequest:
+    tenant_id: str
+    idempotency_key: str
+    expected_generation: int
+    expected_content_hash: str
+
+    @classmethod
+    def from_value(
+        cls, value: CanonicalTenantPurgeRequest | Mapping[str, Any]
+    ) -> CanonicalTenantPurgeRequest:
+        if isinstance(value, cls):
+            return value
+        item = _mapping(value, "canonical tenant purge request")
+        return cls(
+            tenant_id=_text(item.get("tenantId"), "purge.tenantId"),
+            idempotency_key=_text(
+                item.get("idempotencyKey"), "purge.idempotencyKey"
+            ),
+            expected_generation=_integer(
+                item.get("expectedGeneration"),
+                "purge.expectedGeneration",
+            ),
+            expected_content_hash=_text(
+                item.get("expectedContentHash"),
+                "purge.expectedContentHash",
+            ),
+        )
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "tenantId": self.tenant_id,
+            "idempotencyKey": self.idempotency_key,
+            "expectedGeneration": self.expected_generation,
+            "expectedContentHash": self.expected_content_hash,
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalTenantPurgeReceipt:
+    tenant_id: str
+    idempotency_key: str
+    purged_generation: int
+    generation: int
+    purged_content_hash: str
+    purged_at_utc: str
+    replayed: bool = False
+    profile: str = "vyral.canonical.tenant-purge.v1"
+
+    @classmethod
+    def from_value(
+        cls, value: CanonicalTenantPurgeReceipt | Mapping[str, Any]
+    ) -> CanonicalTenantPurgeReceipt:
+        if isinstance(value, cls):
+            return value
+        item = _mapping(value, "canonical tenant purge receipt")
+        return cls(
+            profile=_text(
+                item.get("profile", "vyral.canonical.tenant-purge.v1"),
+                "purgeReceipt.profile",
+            ),
+            tenant_id=_text(
+                item.get("tenantId"), "purgeReceipt.tenantId"
+            ),
+            idempotency_key=_text(
+                item.get("idempotencyKey"),
+                "purgeReceipt.idempotencyKey",
+            ),
+            purged_generation=_integer(
+                item.get("purgedGeneration"),
+                "purgeReceipt.purgedGeneration",
+            ),
+            generation=_integer(
+                item.get("generation"), "purgeReceipt.generation"
+            ),
+            purged_content_hash=_text(
+                item.get("purgedContentHash"),
+                "purgeReceipt.purgedContentHash",
+            ),
+            purged_at_utc=utc_timestamp(
+                cast(str, item.get("purgedAtUtc")),
+                "purgeReceipt.purgedAtUtc",
+            ),
+            replayed=_boolean(
+                item.get("replayed"), "purgeReceipt.replayed"
+            ),
+        )
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "profile": self.profile,
+            "tenantId": self.tenant_id,
+            "idempotencyKey": self.idempotency_key,
+            "purgedGeneration": self.purged_generation,
+            "generation": self.generation,
+            "purgedContentHash": self.purged_content_hash,
+            "purgedAtUtc": self.purged_at_utc,
+            "replayed": self.replayed,
+        }
 
 
 @dataclass(frozen=True)

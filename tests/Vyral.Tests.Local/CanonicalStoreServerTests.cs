@@ -58,6 +58,7 @@ public sealed class CanonicalStoreServerTests
         Assert.Equal("commitCanonicalTransaction", openApi["paths"]!["/canonical/tenants/{tenantId}/transactions"]!["post"]!["operationId"]!.GetValue<string>());
         Assert.Equal("readCanonicalDocument", openApi["paths"]!["/canonical/tenants/{tenantId}/documents/read"]!["post"]!["operationId"]!.GetValue<string>());
         Assert.NotNull(openApi["paths"]!["/canonical/tenants/{tenantId}/outbox/{eventId}/renew"]);
+        Assert.Equal("purgeCanonicalTenant", openApi["paths"]!["/canonical/tenants/{tenantId}/purge"]!["post"]!["operationId"]!.GetValue<string>());
         Assert.Equal("probeCanonicalStoreDataPlane", openApi["paths"]!["/canonical/preflight/probe"]!["post"]!["operationId"]!.GetValue<string>());
         Assert.NotNull(openApi["components"]!["schemas"]!["CanonicalTenantSnapshot"]);
         Assert.NotNull(openApi["components"]!["schemas"]!["CanonicalDataPlanePreflightResult"]);
@@ -131,6 +132,21 @@ public sealed class CanonicalStoreServerTests
         var restore = await client.PostAsJsonAsync("/canonical/tenants/tenant-a/restore", new CanonicalRestoreRequest { Snapshot = exported, ExpectedContentHash = exported.ContentHash });
         Assert.Equal(HttpStatusCode.NoContent, restore.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/canonical/tenants/tenant-a/documents/author/a-2")).StatusCode);
+        var restoredSnapshot = await client.GetFromJsonAsync<CanonicalTenantSnapshot>("/canonical/tenants/tenant-a/export");
+        var purgeRequest = new CanonicalTenantPurgeRequest
+        {
+            TenantId = "tenant-a", IdempotencyKey = "server-purge", ExpectedGeneration = restoredSnapshot!.Generation,
+            ExpectedContentHash = restoredSnapshot.ContentHash
+        };
+        using var mismatchedPurge = new HttpRequestMessage(HttpMethod.Post, "/canonical/tenants/tenant-a/purge")
+        {
+            Content = JsonContent.Create(purgeRequest)
+        };
+        mismatchedPurge.Headers.Add("Idempotency-Key", "different-purge");
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(mismatchedPurge)).StatusCode);
+        var purge = await PostAsync<CanonicalTenantPurgeReceipt>(client, "/canonical/tenants/tenant-a/purge", purgeRequest);
+        Assert.Equal(restoredSnapshot.Generation + 1, purge.Generation);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/canonical/tenants/tenant-a/documents/author/a-1")).StatusCode);
     }
 
     [Fact]
@@ -161,6 +177,52 @@ public sealed class CanonicalStoreServerTests
         using var probe = await allowed.PostAsync("/canonical/preflight/probe", content: null);
         probe.EnsureSuccessStatusCode();
         Assert.True((await probe.Content.ReadFromJsonAsync<CanonicalPreflightReport>())!.DataPlaneProbe!.Ready);
+    }
+
+    [Fact]
+    public async Task Server_TenantPurgeRequiresBothTenantPurgeAndGlobalAdmin()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-canonical-purge-access-{Guid.NewGuid():N}.sqlite");
+        var canonicalPath = Path.Combine(Path.GetTempPath(), $"vyral-canonical-purge-access-store-{Guid.NewGuid():N}.sqlite");
+        await using var factory = CreateFactory(dbPath, canonicalPath, new Dictionary<string, string?>
+        {
+            ["Server:CanonicalAccess:AuthenticationMode"] = TestCanonicalIdentityAuthenticator.Mode,
+            ["Server:CanonicalAccess:AuthenticatorType"] = typeof(TestCanonicalIdentityAuthenticator).AssemblyQualifiedName,
+            ["Server:CanonicalAccess:IdentityPolicies:0:Principal"] = "both@tests.example",
+            ["Server:CanonicalAccess:IdentityPolicies:0:AllowedTenantIds:0"] = "tenant-a",
+            ["Server:CanonicalAccess:IdentityPolicies:0:AllowedOperations:0"] = CanonicalAccessOperations.Write,
+            ["Server:CanonicalAccess:IdentityPolicies:0:AllowedOperations:1"] = CanonicalAccessOperations.Export,
+            ["Server:CanonicalAccess:IdentityPolicies:0:AllowedOperations:2"] = CanonicalAccessOperations.Purge,
+            ["Server:CanonicalAccess:IdentityPolicies:1:Principal"] = "both@tests.example",
+            ["Server:CanonicalAccess:IdentityPolicies:1:AllowedTenantIds:0"] = "*",
+            ["Server:CanonicalAccess:IdentityPolicies:1:AllowedOperations:0"] = CanonicalAccessOperations.Admin,
+            ["Server:CanonicalAccess:IdentityPolicies:2:Principal"] = "tenant-only@tests.example",
+            ["Server:CanonicalAccess:IdentityPolicies:2:AllowedTenantIds:0"] = "tenant-a",
+            ["Server:CanonicalAccess:IdentityPolicies:2:AllowedOperations:0"] = CanonicalAccessOperations.Purge,
+            ["Server:CanonicalAccess:IdentityPolicies:3:Principal"] = "admin-only@tests.example",
+            ["Server:CanonicalAccess:IdentityPolicies:3:AllowedTenantIds:0"] = "*",
+            ["Server:CanonicalAccess:IdentityPolicies:3:AllowedOperations:0"] = CanonicalAccessOperations.Admin
+        });
+        var authorized = factory.CreateClient();
+        authorized.DefaultRequestHeaders.Add(TestCanonicalIdentityAuthenticator.HeaderName, "both@tests.example");
+        (await authorized.PostAsJsonAsync("/canonical/tenants/tenant-a/transactions", CreateTransaction("tenant-a", "purge-access", "a-1", "Ada"))).EnsureSuccessStatusCode();
+        var snapshot = await authorized.GetFromJsonAsync<CanonicalTenantSnapshot>("/canonical/tenants/tenant-a/export");
+        var request = new CanonicalTenantPurgeRequest
+        {
+            TenantId = "tenant-a", IdempotencyKey = "purge-access-1", ExpectedGeneration = snapshot!.Generation,
+            ExpectedContentHash = snapshot.ContentHash
+        };
+
+        foreach (var principal in new[] { "tenant-only@tests.example", "admin-only@tests.example" })
+        {
+            var denied = factory.CreateClient();
+            denied.DefaultRequestHeaders.Add(TestCanonicalIdentityAuthenticator.HeaderName, principal);
+            Assert.Equal(HttpStatusCode.Forbidden, (await denied.PostAsJsonAsync("/canonical/tenants/tenant-a/purge", request)).StatusCode);
+        }
+
+        var response = await authorized.PostAsJsonAsync("/canonical/tenants/tenant-a/purge", request);
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(snapshot.Generation + 1, (await response.Content.ReadFromJsonAsync<CanonicalTenantPurgeReceipt>())!.Generation);
     }
 
     [Fact]

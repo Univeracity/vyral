@@ -37,6 +37,7 @@ from .models import (
     CanonicalRestoreRequest,
     CanonicalTenantArchive,
     CanonicalTenantArchiveChunk,
+    CanonicalTenantPurgeRequest,
     CanonicalTenantSnapshot,
     CanonicalTransactionReceipt,
     CanonicalTransactionRequest,
@@ -262,6 +263,21 @@ def canonical_snapshot_hash(snapshot: CanonicalTenantSnapshot) -> str:
         ],
     }
     return _sha256(canonical_json_bytes(material))
+
+
+def canonical_tenant_purge_request_hash(
+    request: CanonicalTenantPurgeRequest | Mapping[str, Any],
+) -> str:
+    selected = validate_tenant_purge(request)
+    material = "\n".join(
+        (
+            selected.tenant_id.strip(),
+            selected.idempotency_key.strip(),
+            str(selected.expected_generation),
+            selected.expected_content_hash.strip(),
+        )
+    )
+    return _sha256(material.encode("utf-8"))
 
 
 def canonical_snapshot_byte_count(
@@ -973,6 +989,10 @@ def validate_snapshot(
     enforce_portable_size: bool = True,
 ) -> None:
     tenant_id = validate_tenant_id(snapshot.tenant_id)
+    if snapshot.generation <= 0:
+        raise CanonicalValidationError(
+            "Canonical snapshot generation must be greater than zero."
+        )
     document_keys: set[tuple[str, str]] = set()
     for document in snapshot.documents:
         validate_document(document)
@@ -1065,6 +1085,30 @@ def validate_restore(
     return request
 
 
+def validate_tenant_purge(
+    value: CanonicalTenantPurgeRequest | Mapping[str, Any],
+) -> CanonicalTenantPurgeRequest:
+    request = CanonicalTenantPurgeRequest.from_value(value)
+    validate_tenant_id(request.tenant_id)
+    validate_required_id(
+        request.idempotency_key,
+        "Canonical tenant purge idempotency key",
+    )
+    if request.expected_generation <= 0:
+        raise CanonicalValidationError(
+            "Canonical tenant purge expectedGeneration must be greater "
+            "than zero."
+        )
+    if not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", request.expected_content_hash
+    ):
+        raise CanonicalValidationError(
+            "Canonical tenant purge expectedContentHash must be a "
+            "lowercase sha256 content hash."
+        )
+    return request
+
+
 __all__ = [
     "CanonicalConflictError",
     "CanonicalIntegrityError",
@@ -1074,6 +1118,7 @@ __all__ = [
     "canonical_request_hash",
     "canonical_snapshot_byte_count",
     "canonical_snapshot_hash",
+    "canonical_tenant_purge_request_hash",
     "canonical_transaction_id",
     "create_canonical_archive",
     "hash_lease_token",
@@ -1091,6 +1136,7 @@ __all__ = [
     "validate_query_limit",
     "validate_restore",
     "validate_snapshot",
+    "validate_tenant_purge",
     "validate_tenant_id",
     "validate_transaction",
 ]

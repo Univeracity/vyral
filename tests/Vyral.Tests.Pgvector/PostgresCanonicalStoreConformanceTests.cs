@@ -42,6 +42,9 @@ public sealed class PostgresCanonicalStoreConformanceTests : CanonicalStoreConfo
     public Task CanonicalStore_RoundTripsHashVerifiedChunkedTenantArchive() => RunCanonicalStore_RoundTripsHashVerifiedChunkedTenantArchive();
 
     [PgvectorLiveFact]
+    public Task CanonicalStore_PurgesWithSnapshotFenceLeaseRejectionAndLifecycleGeneration() => RunCanonicalStore_PurgesWithSnapshotFenceLeaseRejectionAndLifecycleGeneration();
+
+    [PgvectorLiveFact]
     public Task CanonicalStore_DataPlanePreflightRestoresIsolatesAndCleansUp() => RunCanonicalStore_DataPlanePreflightRestoresIsolatesAndCleansUp();
 
     [PgvectorLiveFact]

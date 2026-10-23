@@ -257,6 +257,7 @@ export interface CanonicalTransactionReceipt {
 
 export interface CanonicalTenantSnapshot {
   tenantId: string;
+  generation: number;
   documents: Array<CanonicalDocument>;
   revisions: Array<CanonicalDocumentRevision>;
   fences: Array<CanonicalFence>;
@@ -269,6 +270,24 @@ export interface CanonicalTenantSnapshot {
 export interface CanonicalRestoreRequest {
   snapshot: CanonicalTenantSnapshot;
   expectedContentHash?: string | null;
+}
+
+export interface CanonicalTenantPurgeRequest {
+  tenantId: string;
+  idempotencyKey: string;
+  expectedGeneration: number;
+  expectedContentHash: string;
+}
+
+export interface CanonicalTenantPurgeReceipt {
+  profile: "vyral.canonical.tenant-purge.v1";
+  tenantId: string;
+  idempotencyKey: string;
+  purgedGeneration: number;
+  generation: number;
+  purgedContentHash: string;
+  purgedAtUtc: string;
+  replayed: boolean;
 }
 
 export interface RecordCollectionPolicy {
@@ -3331,6 +3350,7 @@ export class VyralClient {
   releaseCanonicalOutbox(tenantId: string, eventId: string, request: CanonicalOutboxNackRequest): Promise<null>;
   replayCanonicalOutbox(tenantId: string, eventId: string, request: CanonicalOutboxReplayRequest): Promise<null>;
   exportCanonicalTenant(tenantId: string): Promise<CanonicalTenantSnapshot>;
+  purgeCanonicalTenant(tenantId: string, request: CanonicalTenantPurgeRequest): Promise<CanonicalTenantPurgeReceipt>;
   restoreCanonicalTenant(tenantId: string, snapshot: JsonObject, expectedContentHash: string | null): Promise<null>;
   listGraphProviderShapes(): Promise<Array<VyralGraphProviderShape>>;
   getGraphProviderShape(providerId: string): Promise<VyralGraphProviderShape>;

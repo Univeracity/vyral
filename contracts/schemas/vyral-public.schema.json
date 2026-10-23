@@ -616,12 +616,10 @@
       ],
       "properties": {
         "tenantId": {
-          "type": "string",
-          "maxLength": 160
+          "type": "string"
         },
         "idempotencyKey": {
-          "type": "string",
-          "maxLength": 160
+          "type": "string"
         },
         "correlationId": {
           "type": [
@@ -674,10 +672,12 @@
           "type": "string"
         },
         "tenantId": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 160
         },
         "idempotencyKey": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 160
         },
         "correlationId": {
           "type": [
@@ -1170,6 +1170,7 @@
       "type": "object",
       "required": [
         "tenantId",
+        "generation",
         "documents",
         "revisions",
         "fences",
@@ -1181,6 +1182,11 @@
       "properties": {
         "tenantId": {
           "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
         },
         "documents": {
           "type": "array",
@@ -1235,6 +1241,82 @@
             "string",
             "null"
           ]
+        }
+      }
+    },
+    "CanonicalTenantPurgeRequest": {
+      "type": "object",
+      "required": [
+        "tenantId",
+        "idempotencyKey",
+        "expectedGeneration",
+        "expectedContentHash"
+      ],
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "expectedGeneration": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "expectedContentHash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "CanonicalTenantPurgeReceipt": {
+      "type": "object",
+      "required": [
+        "profile",
+        "tenantId",
+        "idempotencyKey",
+        "purgedGeneration",
+        "generation",
+        "purgedContentHash",
+        "purgedAtUtc",
+        "replayed"
+      ],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": [
+            "vyral.canonical.tenant-purge.v1"
+          ]
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "type": "string"
+        },
+        "purgedGeneration": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 2
+        },
+        "purgedContentHash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "purgedAtUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "replayed": {
+          "type": "boolean"
         }
       }
     },

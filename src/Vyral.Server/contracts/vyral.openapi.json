@@ -728,6 +728,47 @@
         }
       }
     },
+    "/canonical/tenants/{tenantId}/purge": {
+      "post": {
+        "operationId": "purgeCanonicalTenant",
+        "description": "Atomically purges one tenant only when both its lifecycle generation and deterministic content hash match. Active outbox leases reject the operation. Replays return the original content-free receipt.",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CanonicalTenantPurgeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tenant purged or an identical purge replayed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CanonicalTenantPurgeReceipt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "operationId": "getServerInfo",
@@ -5548,12 +5589,10 @@
         ],
         "properties": {
           "tenantId": {
-            "type": "string",
-            "maxLength": 160
+            "type": "string"
           },
           "idempotencyKey": {
-            "type": "string",
-            "maxLength": 160
+            "type": "string"
           },
           "correlationId": {
             "type": [
@@ -5607,10 +5646,12 @@
             "type": "string"
           },
           "tenantId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160
           },
           "idempotencyKey": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160
           },
           "correlationId": {
             "type": [
@@ -6120,6 +6161,7 @@
         "type": "object",
         "required": [
           "tenantId",
+          "generation",
           "documents",
           "revisions",
           "fences",
@@ -6131,6 +6173,11 @@
         "properties": {
           "tenantId": {
             "type": "string"
+          },
+          "generation": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
           },
           "documents": {
             "type": "array",
@@ -6189,6 +6236,84 @@
           }
         },
         "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/CanonicalRestoreRequest"
+      },
+      "CanonicalTenantPurgeRequest": {
+        "type": "object",
+        "required": [
+          "tenantId",
+          "idempotencyKey",
+          "expectedGeneration",
+          "expectedContentHash"
+        ],
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "expectedGeneration": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "expectedContentHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/CanonicalTenantPurgeRequest"
+      },
+      "CanonicalTenantPurgeReceipt": {
+        "type": "object",
+        "required": [
+          "profile",
+          "tenantId",
+          "idempotencyKey",
+          "purgedGeneration",
+          "generation",
+          "purgedContentHash",
+          "purgedAtUtc",
+          "replayed"
+        ],
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "vyral.canonical.tenant-purge.v1"
+            ]
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "purgedGeneration": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "generation": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 2
+          },
+          "purgedContentHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "purgedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "$ref": "../../../contracts/schemas/vyral-public.schema.json#/$defs/CanonicalTenantPurgeReceipt"
       },
       "RecordCollectionPolicy": {
         "type": "object",

@@ -64,6 +64,17 @@ snapshot boundary, per-chunk hashes, an overall content hash, and atomic restore
 consumer to split a tenant. Archive chunks default to 8 MiB and are capped at 16 MiB; the profile is
 intended for direct-store and offline backup tooling, not an unbounded shared HTTP response.
 
+Every exported snapshot also carries a monotonic tenant lifecycle `generation`. The generation is
+not part of the content hash: identical restored content keeps its content identity, while restore
+advances the destination generation beyond both the source and current destination epochs.
+`PurgeTenantAsync` requires a fresh export's generation and content hash plus a durable idempotency
+key. It atomically rejects stale fences and active outbox leases, deletes documents, revisions,
+fences, outbox state, and canonical transaction receipts, and advances the generation. Its retained
+purge receipt contains only tenant/idempotency identities, generations, the caller-known hash, and a
+timestamp—never tenant content or lease credentials. Purge receipts are historical proofs; callers
+must inspect a fresh export rather than treat an old replay as proof that no later restore or write
+occurred. The HTTP purge route requires both tenant `purge` permission and global `admin` permission.
+
 `tenantId` is the global data partition within one CanonicalStore deployment, not merely a display
 label. Shared services should use consumer-qualified ids such as `tenant-prod` and grant those
 exact ids through CanonicalAccess policies; a separate migration namespace does not merge or split
@@ -197,6 +208,19 @@ dotnet run --project src/Vyral.Cli -- canonical-restore \
   --db .vyral/vyral.sqlite --tenant tenant-a --file tenant-a.canonical.json \
   --expected-content-hash sha256:...
 ```
+
+After retaining and independently verifying that export, a local operator can perform the same
+generation-and-hash-fenced deletion used by the hosted API:
+
+```bash
+dotnet run --project src/Vyral.Cli -- canonical-purge \
+  --db .vyral/vyral.sqlite --tenant tenant-a \
+  --idempotency-key workspace-delete-2026-10-23 \
+  --expected-generation 1 --expected-content-hash sha256:...
+```
+
+An unexpired outbox lease blocks purge. Release or acknowledge the lease, export again because that
+operation changes canonical state, and use the new hash.
 
 For a tenant that exceeds the 64 MiB JSON snapshot limit, use the archive commands. They write a
 small `manifest.json` plus numbered binary chunks; copying all files together is required. Restore
@@ -340,8 +364,9 @@ Outside `Development`, the server refuses to start CanonicalStore routes without
 `Server:CanonicalAccess:IdentityPolicies`. This is intentionally fail-closed: a generic API key
 cannot express tenant isolation. Every policy must list tenants; `*` is the explicit all-tenant
 grant and cannot be combined with named tenants. The global `admin` operation requires its own
-`*` policy. Tenant restore requires both tenant-scoped `restore` and global `admin`, preventing a
-routine writer/dispatcher from replacing a whole tenant.
+`*` policy. Tenant restore and purge require both their tenant-scoped operation (`restore` or
+`purge`) and global `admin`, preventing a routine writer/dispatcher from replacing or physically
+deleting a whole tenant.
 
 An execution-only deployment can explicitly set `CanonicalStore__Enabled=false`. This is a
 feature-surface opt-out, not an authorization bypass: Vyral does not construct the canonical
@@ -413,7 +438,8 @@ operator-owned and must be checked separately.
 - Versioned transformations and the code associated with migration ids/checksums.
 - Rich query models, joins, reporting, and consumer-specific secondary projections beyond the
   portable projected-index range/order profile.
-- Retention and backup cadence beyond the portable export/restore operation.
+- Retention and backup cadence beyond the portable export/restore operation, including independent
+  archive verification before authorizing purge.
 - Domain decisions for fence names, idempotency-key construction, outbox topics, retry/backoff,
   and downstream delivery idempotency.
 

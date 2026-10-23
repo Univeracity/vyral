@@ -434,6 +434,29 @@ public class Program
             Console.WriteLine($"Canonical tenant '{tenantId}' restored from {filePath}. Content hash: {snapshot.ContentHash}.");
         }, dbOption, canonicalDatabaseOption, canonicalTenantOption, canonicalFileOption, canonicalExpectedHashOption);
 
+        var purgeCanonicalCommand = new Command("canonical-purge", "Atomically purge a CanonicalStore tenant using a fresh export generation and content hash fence");
+        purgeCanonicalCommand.AddOption(dbOption);
+        purgeCanonicalCommand.AddOption(canonicalDatabaseOption);
+        purgeCanonicalCommand.AddOption(canonicalTenantOption);
+        var canonicalPurgeIdempotencyOption = new Option<string>("--idempotency-key", "Durable unique key for this purge request") { IsRequired = true };
+        var canonicalPurgeGenerationOption = new Option<long>("--expected-generation", "Lifecycle generation from a fresh canonical export") { IsRequired = true };
+        var canonicalPurgeHashOption = new Option<string>("--expected-content-hash", "Content hash from the same fresh canonical export") { IsRequired = true };
+        purgeCanonicalCommand.AddOption(canonicalPurgeIdempotencyOption);
+        purgeCanonicalCommand.AddOption(canonicalPurgeGenerationOption);
+        purgeCanonicalCommand.AddOption(canonicalPurgeHashOption);
+        purgeCanonicalCommand.SetHandler(async (dbPath, canonicalDbPath, tenantId, idempotencyKey, expectedGeneration, expectedContentHash) =>
+        {
+            var store = new SqliteCanonicalStore(ResolveCanonicalDatabasePath(dbPath, canonicalDbPath));
+            var receipt = await store.PurgeTenantAsync(new CanonicalTenantPurgeRequest
+            {
+                TenantId = tenantId,
+                IdempotencyKey = idempotencyKey,
+                ExpectedGeneration = expectedGeneration,
+                ExpectedContentHash = expectedContentHash
+            });
+            Console.WriteLine(JsonSerializer.Serialize(receipt, JsonOptions));
+        }, dbOption, canonicalDatabaseOption, canonicalTenantOption, canonicalPurgeIdempotencyOption, canonicalPurgeGenerationOption, canonicalPurgeHashOption);
+
         var exportCanonicalArchiveCommand = new Command("canonical-archive-export", "Export a large CanonicalStore tenant archive as manifest plus binary chunks");
         exportCanonicalArchiveCommand.AddOption(dbOption);
         exportCanonicalArchiveCommand.AddOption(canonicalDatabaseOption);
@@ -590,6 +613,7 @@ public class Program
         rootCommand.AddCommand(importCommand);
         rootCommand.AddCommand(exportCanonicalCommand);
         rootCommand.AddCommand(restoreCanonicalCommand);
+        rootCommand.AddCommand(purgeCanonicalCommand);
         rootCommand.AddCommand(exportCanonicalArchiveCommand);
         rootCommand.AddCommand(restoreCanonicalArchiveCommand);
         rootCommand.AddCommand(applyCanonicalMigrationsCommand);

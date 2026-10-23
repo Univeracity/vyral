@@ -590,6 +590,15 @@ app.MapPost("/canonical/tenants/{tenantId}/restore", async (string tenantId, Can
     await canonicalStore.RestoreTenantAsync(request, ct);
     return Results.NoContent();
 });
+
+app.MapPost("/canonical/tenants/{tenantId}/purge", async (string tenantId, CanonicalTenantPurgeRequest request, HttpContext httpContext, ICanonicalStore canonicalStore, VyralCanonicalAccess canonicalAccess, CancellationToken ct) =>
+{
+    RequireCanonicalTenantMatch(tenantId, request.TenantId, "purge");
+    RequireMatchingIdempotencyKey(httpContext.Request, request.IdempotencyKey);
+    await canonicalAccess.AuthorizeTenantAsync(httpContext, tenantId, CanonicalAccessOperations.Purge, ct);
+    await canonicalAccess.AuthorizeAdminAsync(httpContext, ct);
+    return Results.Ok(await canonicalStore.PurgeTenantAsync(request, ct));
+});
 }
 
 app.MapGet("/execution/runtime", async (HttpContext httpContext, IExecutionRuntimeAdapter runtime, VyralExecutionAccess executionAccess, CancellationToken ct) =>
@@ -1833,6 +1842,17 @@ static string? GetIdempotencyKey(HttpRequest request)
     return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
+static void RequireMatchingIdempotencyKey(HttpRequest request, string bodyKey)
+{
+    var headerKey = GetIdempotencyKey(request);
+    if (headerKey is not null &&
+        !string.Equals(headerKey, bodyKey?.Trim(), StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            "Idempotency-Key must match request.idempotencyKey when both are supplied.");
+    }
+}
+
 static void BindExecutionIdempotencyKey(HttpRequest httpRequest, ExecutionRunRequest runRequest)
 {
     var headerKey = GetIdempotencyKey(httpRequest);
@@ -2698,7 +2718,7 @@ static CanonicalPreflightReport BuildCanonicalPreflightReport(
     MigrationReceiptCount = migrationReceiptCount,
     RateLimitPermitLimit = canonicalRateLimit.PermitLimit,
     RateLimitWindowSeconds = canonicalRateLimit.WindowSeconds,
-    RequiredOperations = [CanonicalAccessOperations.Read, CanonicalAccessOperations.Write, CanonicalAccessOperations.Dispatch, CanonicalAccessOperations.Export, CanonicalAccessOperations.Restore, CanonicalAccessOperations.Admin],
+    RequiredOperations = [CanonicalAccessOperations.Read, CanonicalAccessOperations.Write, CanonicalAccessOperations.Dispatch, CanonicalAccessOperations.Export, CanonicalAccessOperations.Restore, CanonicalAccessOperations.Purge, CanonicalAccessOperations.Admin],
     DataPlaneProbe = dataPlaneProbe
 };
 

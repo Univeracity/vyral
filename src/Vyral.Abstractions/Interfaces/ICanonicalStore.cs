@@ -25,6 +25,7 @@ public interface ICanonicalStore
     Task ReplayOutboxAsync(CanonicalOutboxReplayRequest request, CancellationToken ct = default);
 
     Task<CanonicalTenantSnapshot> ExportTenantAsync(string tenantId, CancellationToken ct = default);
+    Task<CanonicalTenantPurgeReceipt> PurgeTenantAsync(CanonicalTenantPurgeRequest request, CancellationToken ct = default);
     Task RestoreTenantAsync(CanonicalRestoreRequest request, CancellationToken ct = default);
     Task<CanonicalTenantArchive> ExportTenantArchiveAsync(string tenantId, int chunkBytes = CanonicalTenantArchive.DefaultChunkBytes, CancellationToken ct = default);
     Task RestoreTenantArchiveAsync(CanonicalArchiveRestoreRequest request, CancellationToken ct = default);

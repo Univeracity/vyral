@@ -56,9 +56,9 @@ class ContractBundleTests(unittest.TestCase):
 
         self.assertEqual(CONTRACT_VERSION, bundle.summary.contract_version)
         self.assertEqual("3.1.0", bundle.summary.openapi_version)
-        self.assertEqual(130, bundle.summary.operation_count)
-        self.assertEqual(134, bundle.summary.rest_operation_count)
-        self.assertEqual(288, bundle.summary.schema_count)
+        self.assertEqual(131, bundle.summary.operation_count)
+        self.assertEqual(135, bundle.summary.rest_operation_count)
+        self.assertEqual(290, bundle.summary.schema_count)
         self.assertEqual(
             "sha256:" + sha256((ROOT / "contracts/public-sdk-surface.json").read_bytes()).hexdigest(),
             bundle.summary.catalog_sha256,
@@ -86,7 +86,7 @@ class ContractBundleTests(unittest.TestCase):
         self.assertFalse(document["fullLocalReady"])
         self.assertEqual([], document["blockers"])
         self.assertTrue(document["warnings"])
-        self.assertEqual(130, document["contract"]["operationCount"])
+        self.assertEqual(131, document["contract"]["operationCount"])
         self.assertEqual(
             ["passed", "passed", "passed", "passed", "passed"],
             [check["status"] for check in document["checks"]],
