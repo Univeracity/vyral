@@ -21,14 +21,14 @@ public sealed class CanonicalStoreServerTests
         {
             ["CanonicalStore:Provider"] = "cloud-sql-mysql",
             ["CanonicalStore:MySql:ConnectionString"] = "Server=localhost;Database=vyral;User ID=test;Password=test",
-            ["CanonicalStore:MySql:MaxTenantStateBytes"] = "1048576"
+            ["CanonicalStore:MySql:MaxLegacyTenantStateBytes"] = "1048576"
         }).Build();
 
         var options = CanonicalStoreOptions.FromConfiguration(configuration, "vyral.sqlite");
 
         Assert.Equal(CanonicalStoreOptions.MySql, options.Provider);
         Assert.Equal("Server=localhost;Database=vyral;User ID=test;Password=test", options.ConnectionString);
-        Assert.Equal(1_048_576, options.MySqlMaxTenantStateBytes);
+        Assert.Equal(1_048_576, options.MySqlMaxLegacyTenantStateBytes);
         Assert.Equal("provider=mysql; connectionString=configured", options.Describe());
     }
 
@@ -39,12 +39,37 @@ public sealed class CanonicalStoreServerTests
         {
             ["CanonicalStore:Provider"] = "mysql",
             ["CanonicalStore:ConnectionString"] = "Server=localhost;Database=vyral;User ID=test;Password=test",
-            ["CanonicalStore:MySql:MaxTenantStateBytes"] = "0"
+            ["CanonicalStore:MySql:MaxLegacyTenantStateBytes"] = "0"
         }).Build();
 
         var exception = Assert.Throws<InvalidOperationException>(() => CanonicalStoreOptions.FromConfiguration(configuration, "vyral.sqlite"));
 
-        Assert.Contains("MaxTenantStateBytes", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxLegacyTenantStateBytes", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CanonicalStoreOptions_AcceptsDeprecatedMySqlTenantStateLimitAlias()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CanonicalStore:Provider"] = "mysql",
+            ["CanonicalStore:ConnectionString"] = "Server=localhost;Database=vyral;User ID=test;Password=test",
+            ["CanonicalStore:MySql:MaxTenantStateBytes"] = "2097152"
+        }).Build();
+
+        var options = CanonicalStoreOptions.FromConfiguration(configuration, "vyral.sqlite");
+
+        Assert.Equal(2_097_152, options.MySqlMaxLegacyTenantStateBytes);
+    }
+
+    [Fact]
+    public void CanonicalStoreOptions_PreservesDeprecatedInitializerAlias()
+    {
+#pragma warning disable CS0618 // Source compatibility for the renamed legacy-import limit.
+        var options = new CanonicalStoreOptions { MySqlMaxTenantStateBytes = 4_194_304 };
+#pragma warning restore CS0618
+
+        Assert.Equal(4_194_304, options.MySqlMaxLegacyTenantStateBytes);
     }
 
     [Fact]

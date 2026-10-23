@@ -138,7 +138,7 @@ public sealed class CanonicalMySqlBenchmarkOptions
 
 public sealed class CanonicalMySqlBenchmarkReport
 {
-    public string SchemaVersion { get; init; } = "canonical-mysql-contention/v1";
+    public string SchemaVersion { get; init; } = "canonical-mysql-contention/v2";
     public DateTime GeneratedAtUtc { get; init; }
     public string SourceCommit { get; init; } = string.Empty;
     public string DatabaseProduct { get; init; } = "mysql";
@@ -197,9 +197,9 @@ public sealed class CanonicalMySqlScenarioMetrics
     public double P95Ms { get; init; }
     public double P99Ms { get; init; }
     public double MaxMs { get; init; }
-    public long InitialMaxTenantStateBytes { get; init; }
-    public long FinalMaxTenantStateBytes { get; init; }
-    public long FinalTotalTenantStateBytes { get; init; }
+    public long InitialMaxTenantStoredBytes { get; init; }
+    public long FinalMaxTenantStoredBytes { get; init; }
+    public long FinalTotalTenantStoredBytes { get; init; }
     public IReadOnlyDictionary<string, int> FailureClasses { get; init; } = new Dictionary<string, int>();
 }
 
@@ -249,8 +249,8 @@ public static class CanonicalMySqlBenchmarkDecisionPolicy
             WriteContentionRatio = Rounded(writeRatio),
             ReplayContentionRatio = Rounded(replayRatio),
             RecommendedProfile = violations.Count == 0
-                ? "mysql_tenant_row"
-                : "postgresql_granular_or_dedicated_projection",
+                ? "mysql_normalized"
+                : "partitioned_tenants_or_dedicated_projection",
             Violations = violations
         };
     }
@@ -519,9 +519,9 @@ public static class CanonicalMySqlContentionBenchmark
             P95Ms = Rounded(Percentile(sorted, 0.95)),
             P99Ms = Rounded(Percentile(sorted, 0.99)),
             MaxMs = Rounded(sorted.Length == 0 ? 0 : sorted[^1]),
-            InitialMaxTenantStateBytes = initial.Count == 0 ? 0 : initial.Max(),
-            FinalMaxTenantStateBytes = final.Count == 0 ? 0 : final.Max(),
-            FinalTotalTenantStateBytes = final.Sum(),
+            InitialMaxTenantStoredBytes = initial.Count == 0 ? 0 : initial.Max(),
+            FinalMaxTenantStoredBytes = final.Count == 0 ? 0 : final.Max(),
+            FinalTotalTenantStoredBytes = final.Sum(),
             FailureClasses = new SortedDictionary<string, int>(failures, StringComparer.Ordinal)
         };
     }
@@ -542,10 +542,27 @@ public static class CanonicalMySqlContentionBenchmark
             names.Add(name);
             command.Parameters.AddWithValue(name, tenants[index]);
         }
-        command.CommandText = $"SELECT OCTET_LENGTH(state_json) FROM vyral_mysql_canonical_tenants WHERE tenant_id IN ({string.Join(",", names)});";
+        var tenantFilter = string.Join(",", names);
+        command.CommandText = $"""
+            SELECT tenant_id, SUM(stored_bytes)
+            FROM (
+                SELECT tenant_id, OCTET_LENGTH(document_json) AS stored_bytes
+                    FROM vyral_mysql_canonical_documents WHERE tenant_id IN ({tenantFilter})
+                UNION ALL
+                SELECT tenant_id, OCTET_LENGTH(revision_json)
+                    FROM vyral_mysql_canonical_revisions WHERE tenant_id IN ({tenantFilter})
+                UNION ALL
+                SELECT tenant_id, OCTET_LENGTH(event_json)
+                    FROM vyral_mysql_canonical_outbox WHERE tenant_id IN ({tenantFilter})
+                UNION ALL
+                SELECT tenant_id, OCTET_LENGTH(result_json)
+                    FROM vyral_mysql_canonical_transactions WHERE tenant_id IN ({tenantFilter})
+            ) AS tenant_rows
+            GROUP BY tenant_id
+            """;
         var sizes = new List<long>();
         await using var reader = await command.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct)) sizes.Add(reader.GetInt64(0));
+        while (await reader.ReadAsync(ct)) sizes.Add(reader.GetInt64(1));
         return sizes;
     }
 

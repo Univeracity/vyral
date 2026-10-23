@@ -16,6 +16,11 @@ granular layout or a dedicated projection. The result is local machine evidence,
 MySQL 8.4, Cloud SQL, a production topology, or PostgreSQL performance. Operators must rerun the
 same harness with representative state, concurrency, networking, durability, and SLO budgets.
 
+This receipt describes the retired whole-tenant snapshot implementation. Current benchmark reports
+use `canonical-mysql-contention/v2`, aggregate the serialized JSON payload bytes held in normalized
+content rows, and must not be compared to this v1 result as though only the machine or workload
+changed.
+
 Release verification validates the receipt's schema, commit ancestry, operation counts,
 durability, decision arithmetic, and absence of connection/tenant/payload fields:
 

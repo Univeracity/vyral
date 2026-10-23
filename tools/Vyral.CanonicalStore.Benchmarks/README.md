@@ -1,7 +1,7 @@
 # CanonicalStore MySQL Contention Benchmark
 
-This operator tool measures the deliberate one-row-per-tenant lock profile of
-`MySqlCanonicalStore`. It creates and drops a uniquely named database and emits a redacted JSON
+This operator tool measures the normalized row-level persistence and deliberate per-tenant write
+serialization profile of `MySqlCanonicalStore`. It creates and drops a uniquely named database and emits a redacted JSON
 report with four workloads:
 
 - concurrent document-plus-outbox commits against one hot tenant;
@@ -11,9 +11,11 @@ report with four workloads:
 - the same replays sharded across tenants.
 
 No connection string, endpoint, database name, tenant id, document body, exception message, or
-lease token is present in the report. It records the server-default isolation separately from the
-adapter's explicit `READ COMMITTED` mutation transactions, plus InnoDB flush and binary-log
-settings. The source connection must be supplied through
+lease token is present in the report. The `*TenantStoredBytes` fields sum serialized JSON payloads
+from document, revision, outbox, and transaction-receipt rows; they are logical growth indicators,
+not physical InnoDB size measurements, and exclude relational metadata and indexes. The report
+records the server-default isolation separately from the adapter's explicit `READ COMMITTED`
+mutation transactions, plus InnoDB flush and binary-log settings. The source connection must be supplied through
 `VYRAL_MYSQL_CONNECTION_STRING`, never a command-line argument. The credential needs temporary
 database create/drop privileges, so use only a disposable or explicitly isolated benchmark
 server.
@@ -61,12 +63,13 @@ starter rollout budgets, not a universal provider claim:
 
 Exit code `0` means those selected budgets passed, `3` means the report was written but at least
 one budget failed, and `2` means setup or execution could not produce a valid report. A failed
-budget selects `postgresql_granular_or_dedicated_projection`; it does not claim PostgreSQL will
-meet the workload without its own benchmark. Prefer PostgreSQL's granular CanonicalStore layout
-for write-hot aggregates and a dedicated projection for join/reporting pressure.
+budget selects `partitioned_tenants_or_dedicated_projection`; it does not claim another provider
+will meet the workload without its own benchmark. Partition write-hot aggregates where the domain
+permits it, and use a dedicated projection for join/reporting pressure.
 
 The repository retains one explicitly local baseline under
-[`benchmarks/canonical-store`](../../benchmarks/canonical-store/README.md). It is evidence for the
-harness and threshold decision, not a managed-provider qualification. Release verification rejects
+[`benchmarks/canonical-store`](../../benchmarks/canonical-store/README.md). That retained v1 receipt
+predates normalized MySQL persistence and is historical negative evidence for the former snapshot
+layout, not a current-provider or managed-provider qualification. Release verification rejects
 an incomplete, internally inconsistent, relaxed-durability, untraceable, or connection-bearing
 receipt.

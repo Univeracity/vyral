@@ -140,28 +140,47 @@ managed PostgreSQL services. Its schema uses ordinary relational primitives and 
 Cloud SQL- or Google-only APIs.
 
 `MySqlCanonicalStore` is the MySQL 8/InnoDB implementation, suitable for Cloud SQL for MySQL. It
-locks one durable tenant-state row for each tenant mutation, so documents, fences, outbox changes,
-idempotency receipts, and tenant restore are serialized only within that tenant and committed by one
-InnoDB transaction. This is an intentionally correctness-first provider: projected-index queries
-are evaluated over that locked tenant state rather than relying on MySQL-specific JSON query syntax.
-It therefore has the same portable semantics, but deployments with very large, highly concurrent
-tenants should run the checked-in
+stores documents, indexes, revisions, fences, outbox events, and idempotency receipts as normalized
+rows. Exact reads and bounded queries no longer transfer or deserialize unrelated tenant state, and
+real mutations update only their participating rows. A small lifecycle row serializes multi-entity
+writes within one tenant, preserving the same atomic contract for commits, restores, and purges
+without serializing other tenants. Projected-index queries use ordinary relational predicates and
+stable binary ordering. Deployments with large or highly write-concurrent tenants should still run
+the checked-in
 [`CanonicalStore MySQL contention benchmark`](../../tools/Vyral.CanonicalStore.Benchmarks/README.md).
-The redacted report compares one hot tenant with tenant-sharded writes and idempotent replays, then
+The current v2 report compares one hot tenant with tenant-sharded writes and idempotent replays, then
 applies explicit p95, throughput, failure, and contention-ratio budgets. A budget failure directs
-the operator to evaluate PostgreSQL's more granular relational layout or a dedicated projection;
-it never promotes another provider without that provider's own workload evidence. The
-[`retained local MySQL 8.0.46 receipt`](../../benchmarks/canonical-store/README.md) missed the starter
-hot-tenant p95 and throughput budgets and is deliberately scoped to its recorded machine/workload;
-operators must rerun it against their target topology. Configure
-MySQL's `max_allowed_packet` and the connector command timeout for the largest tenant state or
-archive being moved; individual canonical documents and ordinary snapshots retain their portable
-limits. The provider also enforces a 16 MiB tenant-state ceiling by default. It checks
-`OCTET_LENGTH(state_json)` in MySQL before returning the JSON value and rejects an oversized write
-before issuing its update. Set `CanonicalStore:MySql:MaxTenantStateBytes` only after measuring the
-tenant workload; accepted values are 1 byte through 1 GiB. This ceiling bounds transfer and
-deserialization, but the MySQL provider still allocates and rewrites one complete tenant snapshot
-for each mutation. Use PostgreSQL or a consumer-owned normalized schema when that cost is unsafe.
+the operator to partition write-hot aggregates where the domain permits it or add a dedicated
+projection; it never promotes another provider without that provider's own workload evidence. The
+[`retained local MySQL 8.0.46 v1 receipt`](../../benchmarks/canonical-store/README.md) documents the
+retired whole-tenant snapshot layout and must not be used to characterize the normalized provider.
+Operators must rerun v2 against their target topology.
+
+Upgrades are lazy and atomic per tenant. When the provider encounters a legacy
+`vyral_mysql_canonical_tenants.state_json` row, it locks the tenant lifecycle and legacy rows,
+validates the snapshot, inserts the normalized rows, preserves active lease-token hashes, and
+deletes the legacy row in the same transaction. Do not run old and new Vyral server versions as a
+mixed deployment during this storage migration: an old writer does not participate in the new
+lifecycle-row lock. Take a hash-verified archive first, stop old writers, deploy the new version,
+exercise every tenant or allow lazy import, and verify that the legacy table is empty before
+retiring rollback binaries. `CanonicalStore:MySql:MaxLegacyTenantStateBytes` bounds the one-time
+legacy transfer and deserialization before bytes leave MySQL; it defaults to 16 MiB and accepts 1
+byte through 1 GiB. The former `MaxTenantStateBytes` setting remains as a deprecated alias. Raising
+the import bound does not change portable document, transaction, snapshot, or archive limits.
+Configure `max_allowed_packet` and the connector command timeout for the largest legacy row or
+archive that must cross the connection.
+
+Before the maintenance window, size the import bound without returning the JSON payload:
+
+```sql
+SELECT COUNT(*) AS legacy_tenants,
+       COALESCE(MAX(OCTET_LENGTH(state_json)), 0) AS largest_legacy_tenant_bytes
+FROM vyral_mysql_canonical_tenants;
+```
+
+After sending one bounded read to each tenant, require `legacy_tenants = 0` from the same query.
+The table remains present as an upgrade sentinel; an old writer creating a new row after cutover is
+a deployment error, not state that the new provider silently merges with normalized content.
 
 The application enforces tenant isolation; PostgreSQL does not automatically install row-level
 security policies because their role model is deployment-specific. Grant the CanonicalStore database
@@ -185,6 +204,12 @@ data-plane preflight), and removes its isolated `mktemp` state:
 ```bash
 scripts/run-canonical-mysql-conformance-native.sh
 ```
+
+That disposable gate includes an approximately 25 MiB normalized tenant (current documents,
+revisions, and idempotency results), concurrent exact-document reads, and empty outbox leases. It
+requires those operations to allocate less than 192 MiB in aggregate in the test process, alongside
+atomic legacy import and active-lease preservation checks. This is a regression against tenant-wide
+allocation returning; it is not sustained-throughput or managed-service qualification.
 
 For an isolated managed build worker with an ephemeral PostgreSQL 16 container, run the checked-in
 gate (it does not contact a production CanonicalStore):
@@ -252,7 +277,7 @@ For Cloud SQL for MySQL, configure the same server surface with MySqlConnector s
 ```text
 CanonicalStore:Provider=mysql
 CanonicalStore:ConnectionString=Server=/cloudsql/PROJECT:REGION:INSTANCE;Database=vyral;User ID=vyral;Password=...;ConnectionProtocol=UnixSocket
-CanonicalStore:MySql:MaxTenantStateBytes=16777216
+CanonicalStore:MySql:MaxLegacyTenantStateBytes=16777216
 ```
 
 ### MySQL-to-PostgreSQL upgrade path

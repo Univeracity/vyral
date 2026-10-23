@@ -11,7 +11,7 @@ if [[ ! -s "$REPORT" ]]; then
 fi
 
 jq -e '
-  .schemaVersion == "canonical-mysql-contention/v1" and
+  (.schemaVersion == "canonical-mysql-contention/v1" or .schemaVersion == "canonical-mysql-contention/v2") and
   .databaseProduct == "mysql" and
   (.databaseVersion | type == "string" and length > 0 and length <= 160) and
   (.sourceCommit | type == "string" and test("^[0-9a-f]{40}$")) and
@@ -39,16 +39,12 @@ jq -e '
     .operationsFailed == 0 and
     (.failureClasses | type == "object" and length == 0) and
     (.operationsPerSecond | type == "number" and . > 0) and
-    (.p95Ms | type == "number" and . > 0) and
-    (.initialMaxTenantStateBytes | type == "number" and . > 0) and
-    (.finalMaxTenantStateBytes | type == "number" and . > 0)
+    (.p95Ms | type == "number" and . > 0)
   )) and
   .sameTenantWrites.tenantCount == 1 and
   .distinctTenantWrites.tenantCount == 8 and
   .sameTenantReplays.tenantCount == 1 and
   .distinctTenantReplays.tenantCount == 8 and
-  .sameTenantWrites.finalMaxTenantStateBytes > .sameTenantWrites.initialMaxTenantStateBytes and
-  .sameTenantReplays.finalMaxTenantStateBytes == .sameTenantReplays.initialMaxTenantStateBytes and
   (.decision.writeContentionRatio == ((.sameTenantWrites.p95Ms / .distinctTenantWrites.p95Ms) * 1000 | round / 1000)) and
   (.decision.replayContentionRatio == ((.sameTenantReplays.p95Ms / .distinctTenantReplays.p95Ms) * 1000 | round / 1000)) and
   (.decision.withinBudget == (
@@ -56,7 +52,27 @@ jq -e '
     .sameTenantWrites.operationsPerSecond >= .budgets.minSameTenantOperationsPerSecond and
     .decision.writeContentionRatio <= .budgets.maxWriteContentionRatio
   )) and
-  (.decision.recommendedProfile == (if .decision.withinBudget then "mysql_tenant_row" else "postgresql_granular_or_dedicated_projection" end)) and
+  (if .schemaVersion == "canonical-mysql-contention/v1" then
+    ([.sameTenantWrites, .distinctTenantWrites, .sameTenantReplays, .distinctTenantReplays] | all(.[];
+      (.initialMaxTenantStateBytes | type == "number" and . > 0) and
+      (.finalMaxTenantStateBytes | type == "number" and . > 0) and
+      (.finalTotalTenantStateBytes | type == "number") and
+      .finalTotalTenantStateBytes >= .finalMaxTenantStateBytes
+    )) and
+    .sameTenantWrites.finalMaxTenantStateBytes > .sameTenantWrites.initialMaxTenantStateBytes and
+    .sameTenantReplays.finalMaxTenantStateBytes == .sameTenantReplays.initialMaxTenantStateBytes and
+    (.decision.recommendedProfile == (if .decision.withinBudget then "mysql_tenant_row" else "postgresql_granular_or_dedicated_projection" end))
+  else
+    ([.sameTenantWrites, .distinctTenantWrites, .sameTenantReplays, .distinctTenantReplays] | all(.[];
+      (.initialMaxTenantStoredBytes | type == "number" and . > 0) and
+      (.finalMaxTenantStoredBytes | type == "number" and . > 0) and
+      (.finalTotalTenantStoredBytes | type == "number") and
+      .finalTotalTenantStoredBytes >= .finalMaxTenantStoredBytes
+    )) and
+    .sameTenantWrites.finalMaxTenantStoredBytes > .sameTenantWrites.initialMaxTenantStoredBytes and
+    .sameTenantReplays.finalMaxTenantStoredBytes == .sameTenantReplays.initialMaxTenantStoredBytes and
+    (.decision.recommendedProfile == (if .decision.withinBudget then "mysql_normalized" else "partitioned_tenants_or_dedicated_projection" end))
+  end) and
   ((.decision.violations | index("same_tenant_p95_exceeds_budget") | type != "null") ==
     (.sameTenantWrites.p95Ms > .budgets.maxSameTenantP95Ms)) and
   ((.decision.violations | index("same_tenant_throughput_below_budget") | type != "null") ==

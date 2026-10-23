@@ -10,6 +10,27 @@ source_report="benchmarks/canonical-store/mysql-8.0.46-local.json"
 
 scripts/validate-canonical-mysql-benchmark-report.sh "$source_report" >/dev/null
 
+current_commit="$(git rev-parse HEAD)"
+jq --arg source_commit "$current_commit" '
+  .schemaVersion = "canonical-mysql-contention/v2" |
+  .sourceCommit = $source_commit |
+  (.sameTenantWrites, .distinctTenantWrites, .sameTenantReplays, .distinctTenantReplays) |= (
+    .initialMaxTenantStoredBytes = .initialMaxTenantStateBytes |
+    .finalMaxTenantStoredBytes = .finalMaxTenantStateBytes |
+    .finalTotalTenantStoredBytes = .finalTotalTenantStateBytes |
+    del(.initialMaxTenantStateBytes, .finalMaxTenantStateBytes, .finalTotalTenantStateBytes)
+  ) |
+  .decision.recommendedProfile = "partitioned_tenants_or_dedicated_projection"
+' "$source_report" > "$work_root/normalized-v2.json"
+scripts/validate-canonical-mysql-benchmark-report.sh "$work_root/normalized-v2.json" >/dev/null
+
+jq 'del(.sameTenantWrites.initialMaxTenantStoredBytes)' "$work_root/normalized-v2.json" \
+  > "$work_root/normalized-v2-incomplete.json"
+if scripts/validate-canonical-mysql-benchmark-report.sh "$work_root/normalized-v2-incomplete.json" >/dev/null 2>&1; then
+  echo "Canonical MySQL benchmark validator accepted an incomplete normalized v2 receipt." >&2
+  exit 1
+fi
+
 jq '.durability.innoDbFlushLogAtTransactionCommit = 2' "$source_report" > "$work_root/unsafe.json"
 if scripts/validate-canonical-mysql-benchmark-report.sh "$work_root/unsafe.json" >/dev/null 2>&1; then
   echo "Canonical MySQL benchmark validator accepted relaxed commit durability." >&2

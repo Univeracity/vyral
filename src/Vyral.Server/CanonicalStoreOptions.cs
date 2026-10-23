@@ -6,6 +6,8 @@ namespace Vyral.Server;
 /// <summary>Server selection for the strong canonical-domain store.</summary>
 public sealed class CanonicalStoreOptions
 {
+    private long _mySqlMaxLegacyTenantStateBytes = MySqlCanonicalStore.DefaultMaxLegacyTenantStateBytes;
+
     public const string LocalSqlite = "local-sqlite";
     public const string PostgreSql = "postgresql";
     public const string MySql = "mysql";
@@ -19,7 +21,18 @@ public sealed class CanonicalStoreOptions
     public string Provider { get; init; } = LocalSqlite;
     public string DatabasePath { get; init; } = "vyral.canonical.sqlite";
     public string? ConnectionString { get; init; }
-    public long MySqlMaxTenantStateBytes { get; init; } = MySqlCanonicalStore.DefaultMaxTenantStateBytes;
+    public long MySqlMaxLegacyTenantStateBytes
+    {
+        get => _mySqlMaxLegacyTenantStateBytes;
+        init => _mySqlMaxLegacyTenantStateBytes = value;
+    }
+
+    [Obsolete("Use MySqlMaxLegacyTenantStateBytes; the limit applies only to one-time legacy snapshot import.")]
+    public long MySqlMaxTenantStateBytes
+    {
+        get => _mySqlMaxLegacyTenantStateBytes;
+        init => _mySqlMaxLegacyTenantStateBytes = value;
+    }
 
     public static CanonicalStoreOptions FromConfiguration(IConfiguration configuration, string defaultDatabasePath)
     {
@@ -57,14 +70,17 @@ public sealed class CanonicalStoreOptions
                 configuration["Google:CloudSql:ConnectionString"],
                 configuration["VYRAL_CANONICAL_CONNECTION_STRING"],
                 null),
-            MySqlMaxTenantStateBytes = ReadLong(
+            MySqlMaxLegacyTenantStateBytes = ReadLong(
                 FirstNonEmpty(
+                    configuration["CanonicalStore:MySql:MaxLegacyTenantStateBytes"],
+                    configuration["Vyral:CanonicalStore:MySql:MaxLegacyTenantStateBytes"],
+                    configuration["VYRAL_MYSQL_MAX_LEGACY_TENANT_STATE_BYTES"],
                     configuration["CanonicalStore:MySql:MaxTenantStateBytes"],
                     configuration["Vyral:CanonicalStore:MySql:MaxTenantStateBytes"],
                     configuration["VYRAL_MYSQL_MAX_TENANT_STATE_BYTES"],
                     null),
-                MySqlCanonicalStore.DefaultMaxTenantStateBytes,
-                "CanonicalStore:MySql:MaxTenantStateBytes")
+                MySqlCanonicalStore.DefaultMaxLegacyTenantStateBytes,
+                "CanonicalStore:MySql:MaxLegacyTenantStateBytes")
         };
         options.Validate();
         return options;
@@ -79,8 +95,8 @@ public sealed class CanonicalStoreOptions
             throw new InvalidOperationException("CanonicalStore:DatabasePath is required for the local SQLite provider.");
         if (Provider is PostgreSql or MySql && string.IsNullOrWhiteSpace(ConnectionString))
             throw new InvalidOperationException("CanonicalStore:ConnectionString is required for the configured remote SQL provider.");
-        if (MySqlMaxTenantStateBytes is < 1 or > MySqlCanonicalStore.AbsoluteMaxTenantStateBytes)
-            throw new InvalidOperationException($"CanonicalStore:MySql:MaxTenantStateBytes must be between 1 and {MySqlCanonicalStore.AbsoluteMaxTenantStateBytes} bytes.");
+        if (MySqlMaxLegacyTenantStateBytes is < 1 or > MySqlCanonicalStore.AbsoluteMaxLegacyTenantStateBytes)
+            throw new InvalidOperationException($"CanonicalStore:MySql:MaxLegacyTenantStateBytes must be between 1 and {MySqlCanonicalStore.AbsoluteMaxLegacyTenantStateBytes} bytes.");
     }
 
     public string Describe() => !Enabled

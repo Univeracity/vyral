@@ -16,7 +16,7 @@ public sealed class CanonicalMySqlBenchmarkPolicyTests
             Budgets());
 
         Assert.True(decision.WithinBudget);
-        Assert.Equal("mysql_tenant_row", decision.RecommendedProfile);
+        Assert.Equal("mysql_normalized", decision.RecommendedProfile);
         Assert.Equal(3.2, decision.WriteContentionRatio, precision: 6);
         Assert.Empty(decision.Violations);
     }
@@ -32,7 +32,7 @@ public sealed class CanonicalMySqlBenchmarkPolicyTests
             Budgets());
 
         Assert.False(decision.WithinBudget);
-        Assert.Equal("postgresql_granular_or_dedicated_projection", decision.RecommendedProfile);
+        Assert.Equal("partitioned_tenants_or_dedicated_projection", decision.RecommendedProfile);
         Assert.Equal(
             [
                 "workload_failures_detected",
@@ -111,6 +111,7 @@ public sealed class CanonicalMySqlBenchmarkPolicyTests
         };
         var json = JsonSerializer.Serialize(report, CanonicalMySqlBenchmarkJson.Options);
 
+        Assert.Contains("canonical-mysql-contention/v2", json, StringComparison.Ordinal);
         Assert.DoesNotContain("connection", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(secret, json, StringComparison.Ordinal);
         Assert.Equal(

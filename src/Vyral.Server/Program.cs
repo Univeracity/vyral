@@ -2697,7 +2697,7 @@ static ICanonicalStore CreateCanonicalStore(CanonicalStoreOptions options)
     {
         CanonicalStoreOptions.LocalSqlite => new SqliteCanonicalStore(options.DatabasePath),
         CanonicalStoreOptions.PostgreSql => new PostgresCanonicalStore(options.ConnectionString!),
-        CanonicalStoreOptions.MySql => new MySqlCanonicalStore(options.ConnectionString!, options.MySqlMaxTenantStateBytes),
+        CanonicalStoreOptions.MySql => new MySqlCanonicalStore(options.ConnectionString!, options.MySqlMaxLegacyTenantStateBytes),
         _ => throw new InvalidOperationException($"Canonical store provider '{options.Provider}' is not supported by this server.")
     };
 }
