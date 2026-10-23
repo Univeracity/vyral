@@ -14,6 +14,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
     public const string HandlerId = "vyral.provider.run";
 
     private readonly IExecutionRuntime _runtime;
+    private readonly ProviderTargetRegistry _registry;
 
     public ExecutionRuntimeProviderRunJobAdapter(
         IExecutionRuntime runtime,
@@ -24,6 +25,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         IAiMeteringReceiptSigner? meteringSigner = null)
     {
         _runtime = runtime;
+        _registry = registry;
         Options = options ?? new ProviderRunJobStoreOptions();
         PersistenceKind = DescribePersistence(runtime);
         _runtime.RegisterPlugin(new ProviderRunExecutionPlugin(registry, traces, guard, meteringSigner));
@@ -110,6 +112,15 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         return IsProviderRun(run) ? MapRun(run!) : null;
     }
 
+    public async Task<JsonObject?> GetProgressAsync(string id, CancellationToken ct = default)
+    {
+        var run = await _runtime.GetRunAsync(id, includeResult: false, ct);
+        if (!IsProviderRun(run)) return null;
+        var job = MapRun(run!);
+        return ProviderProgressSnapshot.Project(run!, job,
+            _registry.GetTarget(job.Provider)?.Profile.ConfigHash, DateTimeOffset.UtcNow);
+    }
+
     public async Task<IReadOnlyList<ProviderRunJob>> ListAsync(
         string? provider = null,
         int? limit = null,
@@ -184,7 +195,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                 VyralAdmissionOperations.ResolveOperationId(run, VyralAdmissionOperations.StartProviderRunJob),
                 $"/provider-jobs/{run.Id}"),
             Id = run.Id,
-            Status = ToJobStatus(run.Status, result?.Status),
+            Status = ToJobStatus(run.Status, result?.Status ?? ReadResultStatus(run.StatusDetails, run.Status)),
             Provider = provider,
             Capability = result?.Capability ?? request?.Capability ?? string.Empty,
             Operation = result?.Operation ?? request?.Operation ?? string.Empty,
@@ -216,17 +227,15 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             };
         }
 
-        if (providerStatus.HasValue)
+        // Persisting a provider response can precede a crash or cancellation.
+        // Only refine a failed lifecycle with the two provider-specific failures;
+        // a loaded result has no greater lifecycle authority than an observation.
+        if (runStatus == ExecutionRunStatuses.Failed && providerStatus.HasValue)
         {
             return providerStatus.Value switch
             {
-                ProviderRunStatus.Succeeded => ProviderJobStatus.Succeeded,
-                ProviderRunStatus.Failed => ProviderJobStatus.Failed,
-                ProviderRunStatus.TimedOut => ProviderJobStatus.TimedOut,
-                ProviderRunStatus.Rejected => ProviderJobStatus.Rejected,
                 ProviderRunStatus.Unsupported => ProviderJobStatus.Unsupported,
                 ProviderRunStatus.NotConfigured => ProviderJobStatus.NotConfigured,
-                ProviderRunStatus.Cancelled => ProviderJobStatus.Cancelled,
                 _ => ProviderJobStatus.Failed
             };
         }
@@ -255,6 +264,16 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
         };
     }
 
+    private static ProviderRunStatus? ReadResultStatus(JsonObject? details, string runStatus)
+    {
+        // A persisted observation may precede a crash. It may refine a failure,
+        // but must never promote the authoritative execution lifecycle to success.
+        if (runStatus != ExecutionRunStatuses.Failed) return null;
+        var value = GetString(details, "resultStatus");
+        return Enum.TryParse<ProviderRunStatus>(value, out var status)
+            && status is ProviderRunStatus.Unsupported or ProviderRunStatus.NotConfigured ? status : null;
+    }
+
     private static string? GetString(JsonObject? details, string key)
     {
         return details is not null && details.TryGetPropertyValue(key, out var node)
@@ -271,6 +290,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             ["operation"] = request.Operation,
             ["mode"] = request.Mode,
             ["providerStatus"] = result?.ProviderStatus,
+            ["resultStatus"] = result?.Status.ToString(),
             ["traceId"] = result?.Trace?.TraceId
         };
 
@@ -327,6 +347,42 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                 request.CorrelationId = context.Run.CorrelationId;
             }
 
+            // Restart recovery is a new handler execution, not authorization for
+            // a second provider effect. Inspect retained evidence before overwriting it.
+            if (context.Run.Attempt > 1 || context.Run.StatusDetails?.ContainsKey("providerInvocation") == true)
+            {
+                var retained = ProviderInvocationJournal.Read(context.Run, payload.Provider);
+                var completion = retained?.RetainedCompletion(context.Run, request);
+                var details = context.Run.StatusDetails?.DeepClone().AsObject() ?? new JsonObject();
+                if (completion is not null)
+                {
+                    details["providerRecovery"] = "retained_completion";
+                    return new ExecutionRunResult { Status = ToRunStatus(completion.Status),
+                        Result = context.Run.Result!.DeepClone(), FailureClass = completion.FailureClass,
+                        Error = completion.Error, StatusDetails = details };
+                }
+                var held = CreateTerminalResult(context.Run, request, ProviderRunStatus.Failed,
+                    ProviderFailureClasses.Unknown, "provider_effect_unresolved",
+                    "Interrupted provider invocation requires reconciliation; no provider was invoked during recovery.");
+                held.Rejection = new ProviderRunRejectionDiagnostic
+                {
+                    Source = ProviderRejectionSources.ProviderRuntime, Category = "recovery_requires_reconciliation",
+                    Message = "Original provider effects remain unknown. Explicit authority is required for a fresh attempt.",
+                    Retryable = false, RetryRecommendation = ProviderRetryRecommendations.DoNotRetry,
+                    OperatorReviewRecommended = true, StructuredOutputAccepted = false,
+                    ParsedOutputDisposition = ProviderParsedOutputDispositions.None,
+                    DecisionAuthority = ProviderRejectionDecisionAuthorities.ProviderResponseStatus,
+                    ProcessOutcome = ProviderProcessOutcomes.Unknown
+                };
+                held = await PersistCompletionAsync(context.Run, request, held, _traces, ct);
+                details["providerRecovery"] = "reconciliation_required";
+                details["resultStatus"] = held.Status.ToString();
+                details["providerStatus"] = held.ProviderStatus;
+                return new ExecutionRunResult { Status = ExecutionRunStatuses.Failed,
+                    Result = JsonSerializer.SerializeToNode(held, ExecutionJson.Options),
+                    FailureClass = held.FailureClass, Error = held.Error, StatusDetails = details };
+            }
+
             await context.ReportAsync(new ExecutionRunUpdate
             {
                 Requested = 1,
@@ -336,6 +392,45 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             }, ct);
 
             var target = _registry.GetTarget(payload.Provider);
+            ProviderProgressSnapshot? progress = null;
+            ProviderInvocationJournal? invocation = null;
+            async ValueTask RecordIntentAsync(DateTimeOffset deadlineUtc, CancellationToken token)
+            {
+                var intent = new ProviderInvocationJournal(ProviderInvocationJournal.Version,
+                    context.Run.Id, context.Run.Attempt, context.Run.PayloadHash, payload.Provider,
+                    target!.Profile.ConfigHash, DateTimeOffset.UtcNow, deadlineUtc, "intent");
+                var details = BuildStatusDetails(request);
+                details["providerInvocation"] = JsonSerializer.SerializeToNode(intent, ExecutionJson.Options);
+                await context.ReportAsync(new ExecutionRunUpdate { StatusDetails = details }, token);
+                invocation = intent;
+            }
+            async ValueTask ObserveAsync(ProviderProgressObservation item, CancellationToken token)
+            {
+                var configHash = target!.Profile.ConfigHash;
+                if (!ProviderProgressSnapshot.Valid(item, DateTimeOffset.UtcNow)
+                    || string.IsNullOrWhiteSpace(configHash)
+                    || item.Sequence != (progress?.Observation.Sequence ?? 0) + 1
+                    || (progress is not null && (item.StartedAtUtc != progress.Observation.StartedAtUtc
+                        || item.DeadlineUtc != progress.Observation.DeadlineUtc
+                        || configHash != progress.ProviderConfigHash)))
+                    throw new InvalidOperationException("Invalid provider progress observation.");
+                var next = new ProviderProgressSnapshot(context.Run.Id, context.Run.Attempt,
+                    context.Run.PayloadHash, configHash, item);
+                var details = BuildStatusDetails(request);
+                if (invocation is not null)
+                    details["providerInvocation"] = JsonSerializer.SerializeToNode(invocation, ExecutionJson.Options);
+                details["providerProgress"] = JsonSerializer.SerializeToNode(next, ExecutionJson.Options);
+                await context.ReportAsync(new ExecutionRunUpdate { StatusDetails = details }, token);
+                await context.RecordEventAsync("provider.progress", "Observed provider pipeline boundary.", details: new JsonObject
+                {
+                    ["phase"] = ProviderProgressSnapshot.PhaseName(item.Phase), ["sequence"] = item.Sequence,
+                    ["observedAt"] = item.ObservedAtUtc, ["startedAt"] = item.StartedAtUtc,
+                    ["deadlineUtc"] = item.DeadlineUtc, ["runtimeContextTokens"] = item.RuntimeContextTokens,
+                    ["promptTokens"] = item.PromptTokens, ["reservedOutputTokens"] = item.ReservedOutputTokens,
+                    ["promptFitsContext"] = item.PromptFitsContext
+                }, ct: token);
+                progress = next;
+            }
             ProviderRunResult result;
             if (target is null)
             {
@@ -361,11 +456,20 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             }
             else
             {
-                result = await RunProviderWithGuardAsync(target, request, context.Run, _guard, _meteringSigner, ct);
+                result = await RunProviderWithGuardAsync(target, request, context.Run, _guard, _meteringSigner,
+                    RecordIntentAsync, ObserveAsync, ct);
             }
 
             result = await PersistCompletionAsync(context.Run, request, result, _traces, ct);
             var statusDetails = BuildStatusDetails(request, result);
+            var resultNode = JsonSerializer.SerializeToNode(result, ExecutionJson.Options);
+            if (invocation is not null)
+                statusDetails["providerInvocation"] = JsonSerializer.SerializeToNode(invocation with
+                { State = "completed", ResultHash = ProviderHash.Sha256(resultNode!.ToJsonString(ExecutionJson.Options)),
+                    EffectsUnresolved = result.ProviderStatus is "native_effect_unresolved" or "provider_effect_unresolved"
+                        or "server_timeout" or "cancelled" or "job_unhandled_exception" or "job_trace_persist_failed" }, ExecutionJson.Options);
+            if (progress is not null)
+                statusDetails["providerProgress"] = JsonSerializer.SerializeToNode(progress, ExecutionJson.Options);
             await context.ReportAsync(new ExecutionRunUpdate
             {
                 Attempted = 1,
@@ -374,14 +478,14 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                 Progress = 1,
                 FailureClass = result.FailureClass,
                 Error = result.Error,
-                Result = JsonSerializer.SerializeToNode(result, ExecutionJson.Options),
+                Result = resultNode,
                 StatusDetails = statusDetails
             }, ct);
 
             return new ExecutionRunResult
             {
                 Status = ToRunStatus(result.Status),
-                Result = JsonSerializer.SerializeToNode(result, ExecutionJson.Options),
+                Result = resultNode,
                 FailureClass = result.FailureClass,
                 Error = result.Error,
                 StatusDetails = statusDetails
@@ -394,6 +498,8 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             ExecutionRun run,
             ProviderRunGuard guard,
             IAiMeteringReceiptSigner? meteringSigner,
+            Func<DateTimeOffset, CancellationToken, ValueTask> recordIntent,
+            Func<ProviderProgressObservation, CancellationToken, ValueTask> observe,
             CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(request.CorrelationId))
@@ -415,10 +521,30 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             else
             {
                 var active = Stopwatch.StartNew();
-                providerInvoked = true;
                 try
                 {
-                    result = await target.RunAsync(request, admission.CancellationToken);
+                    await recordIntent(admission.DeadlineUtc!.Value, admission.CancellationToken);
+                    admission.CancellationToken.ThrowIfCancellationRequested();
+                    if (DateTimeOffset.UtcNow >= admission.DeadlineUtc.Value)
+                        throw new OperationCanceledException(admission.CancellationToken);
+                    providerInvoked = true;
+                    ValueTask ObserveBoundAsync(ProviderProgressObservation item, CancellationToken token)
+                    {
+                        if (admission.DeadlineUtc is { } bound && item.DeadlineUtc > bound)
+                            throw new InvalidOperationException("Provider progress widened the execution deadline.");
+                        return observe(item, token);
+                    }
+                    result = target is IProviderProgressTarget observedTarget
+                        ? await observedTarget.RunWithProgressAsync(request, ObserveBoundAsync, admission.DeadlineUtc, admission.CancellationToken)
+                        : await target.RunAsync(request, admission.CancellationToken);
+                    // A cooperative provider may return cancellation instead of throwing.
+                    // The guard knows whether its own timer, rather than the caller, expired.
+                    if (result.Status == ProviderRunStatus.Cancelled && admission.TimedOut && !ct.IsCancellationRequested)
+                    {
+                        result.Status = ProviderRunStatus.TimedOut;
+                        result.FailureClass = ProviderFailureClasses.Timeout;
+                        if (result.Trace is not null) result.Trace.FailureClass = ProviderFailureClasses.Timeout;
+                    }
                 }
                 catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
                 {

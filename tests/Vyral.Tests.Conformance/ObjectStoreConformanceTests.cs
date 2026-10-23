@@ -114,6 +114,13 @@ public abstract class ObjectStoreConformanceTests
                 Key = "../escape.txt",
                 Content = new MemoryStream(Encoding.UTF8.GetBytes("bad"))
             }));
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => store.PutObjectAsync(new ObjectWriteRequest
+            {
+                Container = "objects",
+                Key = new string('\u00e9', ObjectNameValidator.MaxObjectKeyUtf8Bytes / 2 + 1),
+                Content = new MemoryStream(Encoding.UTF8.GetBytes("bad"))
+            }));
         });
     }
 
@@ -177,6 +184,53 @@ public abstract class ObjectStoreConformanceTests
                 store.ListObjectsAsync(new ObjectListRequest { Container = "objects", Limit = 0 }));
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 store.ListObjectsAsync(new ObjectListRequest { Container = "objects", Limit = -1 }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.ListObjectsAsync(new ObjectListRequest
+                {
+                    Container = "objects",
+                    Limit = ObjectStoreLimits.MaxListLimit + 1
+                }));
+        });
+    }
+
+    protected async Task RunObjectStore_RejectsOversizedContinuationToken()
+    {
+        await WithStoreAsync(async store =>
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.ListObjectsAsync(new ObjectListRequest
+                {
+                    Container = "objects",
+                    ContinuationToken = new string('x', ObjectStoreLimits.MaxContinuationTokenChars + 1)
+                }));
+        });
+    }
+
+    protected async Task RunObjectStore_RejectsReadsAbovePortableContentLimit()
+    {
+        await WithStoreAsync(async store =>
+        {
+            await store.PutObjectAsync(new ObjectWriteRequest
+            {
+                Container = "objects",
+                Key = "docs/bounded.txt",
+                Content = new MemoryStream(Encoding.UTF8.GetBytes("hello"))
+            });
+
+            await Assert.ThrowsAsync<ObjectContentLimitExceededException>(() =>
+                store.GetObjectAsync(new ObjectReadRequest
+                {
+                    Container = "objects",
+                    Key = "docs/bounded.txt",
+                    MaxContentBytes = 4
+                }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.GetObjectAsync(new ObjectReadRequest
+                {
+                    Container = "objects",
+                    Key = "docs/bounded.txt",
+                    MaxContentBytes = ObjectStoreLimits.MaxContentBytes + 1
+                }));
         });
     }
 

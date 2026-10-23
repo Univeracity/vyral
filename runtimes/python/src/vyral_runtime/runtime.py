@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, replace
+import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, TypeVar
 
@@ -41,6 +42,12 @@ from .retrieval import (
 
 
 T = TypeVar("T")
+
+
+def _ensure_private_directory(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "posix":
+        path.chmod(0o700)
 
 
 @dataclass(frozen=True)
@@ -273,7 +280,7 @@ class VyralRuntime:
                 )
             return
 
-        self._config.root_path.mkdir(parents=True, exist_ok=True)
+        _ensure_private_directory(self._config.root_path)
         storage_schema_receipt = ensure_storage_schema(
             self._config.database_path,
             busy_timeout_ms=self._config.busy_timeout_ms,

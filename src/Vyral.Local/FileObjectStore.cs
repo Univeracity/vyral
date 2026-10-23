@@ -14,8 +14,6 @@ namespace Vyral.Local;
 
 public class FileObjectStore : IObjectStore
 {
-    private const int DefaultObjectListLimit = 100;
-    private const int MaxObjectListLimit = 5000;
     private const string MetadataSuffix = ".metadata.json";
     private const string TempDirectoryName = ".vyral-tmp";
     private readonly string _rootPath;
@@ -26,18 +24,20 @@ public class FileObjectStore : IObjectStore
         if (string.IsNullOrWhiteSpace(rootPath)) throw new ArgumentException("Root path is required.", nameof(rootPath));
         _rootPath = Path.GetFullPath(rootPath);
         _lockRootPath = _rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + ".vyral-locks";
-        Directory.CreateDirectory(_rootPath);
-        Directory.CreateDirectory(_lockRootPath);
+        CreatePrivateDirectory(_rootPath);
+        CreatePrivateDirectory(_lockRootPath);
     }
 
     public async Task<ObjectInfo> PutObjectAsync(ObjectWriteRequest request, CancellationToken ct = default)
     {
         ValidateWriteRequest(request);
-        var fullPath = ResolvePath(request.Container, request.Key);
+        var normalizedKey = NormalizeObjectKey(request.Key);
+        var fullPath = ResolvePath(request.Container, normalizedKey);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         await using var objectLock = await AcquireObjectLockAsync(fullPath, ct);
 
-        var existing = await ResolveExistingInfoAsync(request.Container, request.Key, ct);
+        await EnsureMetadataNamespaceAvailableAsync(request.Container, normalizedKey, fullPath, ct);
+        var existing = await ResolveExistingInfoAsync(request.Container, normalizedKey, ct);
         ValidateWritePreconditions(request, existing);
 
         var tempPath = CreateTempPath();
@@ -54,7 +54,7 @@ public class FileObjectStore : IObjectStore
             var info = new ObjectInfo
             {
                 Container = request.Container,
-                Key = request.Key,
+                Key = normalizedKey,
                 ContentType = request.ContentType,
                 ContentLength = tempInfo.Length,
                 ContentHash = contentHash,
@@ -75,12 +75,14 @@ public class FileObjectStore : IObjectStore
 
     public async Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
     {
+        var maxContentBytes = ObjectStoreLimits.ResolveMaxContentBytes(request.MaxContentBytes);
         var fullPath = ResolvePath(request.Container, request.Key);
         await using var objectLock = await AcquireObjectLockAsync(fullPath, ct);
         if (!File.Exists(fullPath)) return null;
 
         var info = await ResolveExistingInfoAsync(request.Container, request.Key, ct)
             ?? throw new InvalidOperationException("Object content exists but metadata could not be resolved.");
+        ObjectStoreLimits.EnsureContentLength(info.ContentLength, maxContentBytes);
 
         return new ObjectResult
         {
@@ -116,7 +118,8 @@ public class FileObjectStore : IObjectStore
 
     public async Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
     {
-        var limit = ValidateListLimit(request.Limit);
+        var limit = ObjectStoreLimits.ResolveListLimit(request.Limit);
+        ObjectStoreLimits.ValidateContinuationToken(request.ContinuationToken);
         ValidateContainer(request.Container);
         var normalizedPrefix = string.IsNullOrEmpty(request.Prefix)
             ? string.Empty
@@ -128,15 +131,37 @@ public class FileObjectStore : IObjectStore
             return new ObjectListResult();
         }
 
-        var allKeys = Directory.EnumerateFiles(containerPath, "*", SearchOption.AllDirectories)
-            .Where(path => !IsMetadataSidecar(path))
-            .Select(path => Path.GetRelativePath(containerPath, path).Replace(Path.DirectorySeparatorChar, '/'))
-            .Where(path => path.StartsWith(normalizedPrefix, StringComparison.Ordinal))
-            .OrderBy(path => path, StringComparer.Ordinal)
-            .ToList();
+        var afterKey = DecodeContinuationToken(request.ContinuationToken);
+        var selected = new PriorityQueue<string, string>(
+            Comparer<string>.Create((left, right) => StringComparer.Ordinal.Compare(right, left)));
+        var candidateLimit = limit + 1;
+        foreach (var path in Directory.EnumerateFiles(containerPath, "*", SearchOption.AllDirectories))
+        {
+            ct.ThrowIfCancellationRequested();
+            if (IsMetadataSidecar(path)) continue;
+            var key = Path.GetRelativePath(containerPath, path).Replace(Path.DirectorySeparatorChar, '/');
+            if (!key.StartsWith(normalizedPrefix, StringComparison.Ordinal) ||
+                afterKey is not null && StringComparer.Ordinal.Compare(key, afterKey) <= 0)
+            {
+                continue;
+            }
 
-        var start = DecodeContinuationToken(request.ContinuationToken);
-        var pageKeys = allKeys.Skip(start).Take(limit).ToList();
+            if (selected.Count < candidateLimit)
+            {
+                selected.Enqueue(key, key);
+            }
+            else if (StringComparer.Ordinal.Compare(key, selected.Peek()) < 0)
+            {
+                _ = selected.Dequeue();
+                selected.Enqueue(key, key);
+            }
+        }
+
+        var candidates = selected.UnorderedItems
+            .Select(item => item.Element)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToList();
+        var pageKeys = candidates.Take(limit).ToList();
         var items = new List<ObjectInfo>();
         foreach (var key in pageKeys)
         {
@@ -144,7 +169,9 @@ public class FileObjectStore : IObjectStore
             if (info != null) items.Add(info);
         }
 
-        var next = start + pageKeys.Count < allKeys.Count ? EncodeContinuationToken(start + pageKeys.Count) : null;
+        var next = candidates.Count > limit && pageKeys.Count > 0
+            ? EncodeContinuationToken(pageKeys[^1])
+            : null;
         return new ObjectListResult { Items = items, ContinuationToken = next };
     }
 
@@ -226,36 +253,41 @@ public class FileObjectStore : IObjectStore
         }
     }
 
-    private static int ValidateListLimit(int? limit)
+    private static async Task<ObjectInfo?> ReadInfoDocumentAsync(string path, CancellationToken ct)
     {
-        if (limit <= 0)
-        {
-            throw new InvalidOperationException("Object list limit must be greater than zero.");
-        }
-
-        var effectiveLimit = limit ?? DefaultObjectListLimit;
-        if (effectiveLimit > MaxObjectListLimit)
-        {
-            throw new InvalidOperationException($"Object list limit cannot exceed {MaxObjectListLimit}.");
-        }
-
-        return effectiveLimit;
-    }
-
-    private async Task<ObjectInfo?> ReadInfoAsync(string container, string key, CancellationToken ct)
-    {
-        var metadataPath = GetMetadataPath(ResolvePath(container, key));
-        if (!File.Exists(metadataPath)) return null;
+        if (!File.Exists(path)) return null;
 
         try
         {
-            var json = await File.ReadAllTextAsync(metadataPath, ct);
+            var json = await File.ReadAllTextAsync(path, ct);
             return JsonSerializer.Deserialize<ObjectInfo>(json);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    private async Task<ObjectInfo?> ReadInfoAsync(string container, string key, CancellationToken ct)
+    {
+        var normalizedKey = NormalizeObjectKey(key);
+        var fullPath = ResolvePath(container, normalizedKey);
+        var metadataPath = GetMetadataPath(fullPath);
+        if (await PathHasRegisteredObjectAsync(
+            container,
+            normalizedKey + MetadataSuffix,
+            metadataPath,
+            ct))
+        {
+            return null;
+        }
+
+        var info = await ReadInfoDocumentAsync(metadataPath, ct);
+        return info != null &&
+            string.Equals(info.Container, container, StringComparison.Ordinal) &&
+            string.Equals(info.Key, normalizedKey, StringComparison.Ordinal)
+                ? info
+                : null;
     }
 
     private async Task<ObjectInfo?> ResolveExistingInfoAsync(string container, string key, CancellationToken ct)
@@ -303,6 +335,56 @@ public class FileObjectStore : IObjectStore
         }
     }
 
+    private async Task EnsureMetadataNamespaceAvailableAsync(
+        string container,
+        string key,
+        string fullPath,
+        CancellationToken ct)
+    {
+        if (key.EndsWith(MetadataSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            var basePath = fullPath[..^MetadataSuffix.Length];
+            if (File.Exists(basePath))
+            {
+                throw new InvalidOperationException(
+                    "Object key conflicts with metadata for an existing object.");
+            }
+        }
+
+        var metadataPath = GetMetadataPath(fullPath);
+        if (!File.Exists(metadataPath)) return;
+        if (await PathHasRegisteredObjectAsync(
+            container,
+            key + MetadataSuffix,
+            metadataPath,
+            ct))
+        {
+            throw new InvalidOperationException(
+                "Object metadata conflicts with an existing object key.");
+        }
+
+        var info = await ReadInfoDocumentAsync(metadataPath, ct);
+        if (info == null ||
+            !string.Equals(info.Container, container, StringComparison.Ordinal) ||
+            !string.Equals(info.Key, key, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Object metadata conflicts with an existing object key.");
+        }
+    }
+
+    private static async Task<bool> PathHasRegisteredObjectAsync(
+        string container,
+        string key,
+        string path,
+        CancellationToken ct)
+    {
+        var info = await ReadInfoDocumentAsync(GetMetadataPath(path), ct);
+        return info != null &&
+            string.Equals(info.Container, container, StringComparison.Ordinal) &&
+            string.Equals(info.Key, key, StringComparison.Ordinal);
+    }
+
     private string ResolvePath(string container, string key)
     {
         var containerPath = ResolveContainerPath(container);
@@ -339,6 +421,19 @@ public class FileObjectStore : IObjectStore
     }
 
     private static string GetMetadataPath(string fullPath) => fullPath + MetadataSuffix;
+
+    private static void CreatePrivateDirectory(string path)
+    {
+        Directory.CreateDirectory(path);
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(
+                path,
+                UnixFileMode.UserRead |
+                UnixFileMode.UserWrite |
+                UnixFileMode.UserExecute);
+        }
+    }
 
     private bool IsMetadataSidecar(string path)
     {
@@ -380,7 +475,13 @@ public class FileObjectStore : IObjectStore
 
     private async Task<ObjectFileLock> AcquireObjectLockAsync(string fullPath, CancellationToken ct)
     {
-        var lockName = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fullPath))).ToLowerInvariant() + ".lock";
+        var namespacePath = fullPath;
+        while (namespacePath.EndsWith(MetadataSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            namespacePath = namespacePath[..^MetadataSuffix.Length];
+        }
+
+        var lockName = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(namespacePath))).ToLowerInvariant() + ".lock";
         var lockPath = Path.Combine(_lockRootPath, lockName);
         while (true)
         {
@@ -440,16 +541,41 @@ public class FileObjectStore : IObjectStore
         return "sha256:" + Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    private static string EncodeContinuationToken(int offset)
+    private static string EncodeContinuationToken(string afterKey)
     {
-        return Convert.ToBase64String(Encoding.UTF8.GetBytes(offset.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes("v1\n" + afterKey))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
     }
 
-    private static int DecodeContinuationToken(string? token)
+    private static string? DecodeContinuationToken(string? token)
     {
-        if (string.IsNullOrWhiteSpace(token)) return 0;
-        var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(token));
-        return int.Parse(decoded, System.Globalization.CultureInfo.InvariantCulture);
+        if (string.IsNullOrWhiteSpace(token)) return null;
+
+        try
+        {
+            var encoded = token.Replace('-', '+').Replace('_', '/');
+            encoded = encoded.PadRight(encoded.Length + (4 - encoded.Length % 4) % 4, '=');
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+            const string prefix = "v1\n";
+            if (!decoded.StartsWith(prefix, StringComparison.Ordinal) || decoded.Length == prefix.Length)
+            {
+                throw new FormatException();
+            }
+
+            var afterKey = decoded[prefix.Length..];
+            if (!string.Equals(afterKey, NormalizeObjectKey(afterKey), StringComparison.Ordinal))
+            {
+                throw new FormatException();
+            }
+
+            return afterKey;
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            throw new InvalidOperationException("Object continuationToken is invalid.", ex);
+        }
     }
 
     private sealed class ObjectFileLock(FileStream stream) : IAsyncDisposable

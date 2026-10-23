@@ -161,6 +161,7 @@ REST_OPERATION_FAMILIES: Mapping[
                 "getEmbeddingJob",
                 "getGraphJob",
                 "getProviderRunJob",
+                "getProviderRunJobProgress",
                 "getRagIngestionJob",
                 "getRecordImportJob",
                 "getRetrievalEvaluationJob",

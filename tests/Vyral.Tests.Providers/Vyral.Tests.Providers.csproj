@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <Compile Include="../../workers/owned-native-runtime/OwnedNativeDeadline.cs" Link="OwnedNativeDeadline.cs" />
+    <Compile Include="../../workers/owned-native-runtime/OwnedNativeProfile.cs" Link="OwnedNativeProfile.cs" />
+    <Compile Include="../../workers/owned-native-runtime/OwnedNativeFailure.cs" Link="OwnedNativeFailure.cs" />
     <ProjectReference Include="..\Vyral.Tests.Conformance\Vyral.Tests.Conformance.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Vyral.Providers.Cli\Vyral.Providers.Cli.csproj" />

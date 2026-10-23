@@ -12,6 +12,7 @@ public class NativeDeadlineTests
 
     [Theory]
     [InlineData(120)] [InlineData(270)] [InlineData(600)]
+    [InlineData(1500)] [InlineData(1800)] [InlineData(3600)]
     public void ConfiguredCeilingIsPublicAndDoesNotChangeNativeFactoryBinding(int maximum)
     {
         var options = Options(); var original = new LocalLlamaCppProviderTarget(options);
@@ -24,12 +25,13 @@ public class NativeDeadlineTests
     }
 
     [Theory]
-    [InlineData(0)] [InlineData(-1)] [InlineData(601)]
+    [InlineData(0)] [InlineData(-1)] [InlineData(3601)]
     public void InvalidCeilingRefusesDuringConstruction(int maximum) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new LocalLlamaCppProviderTarget(Options(), maximum));
 
     [Theory]
     [InlineData(120, 121)] [InlineData(270, 271)] [InlineData(600, 601)]
+    [InlineData(1500,1501)] [InlineData(1800,1801)] [InlineData(3600,3601)]
     public async Task AboveConfiguredCeilingRefusesBeforeRuntime(int maximum, int requested)
     {
         var options = Options();
@@ -44,6 +46,7 @@ public class NativeDeadlineTests
 
     [Theory]
     [InlineData(270)] [InlineData(600)]
+    [InlineData(1500)] [InlineData(1800)] [InlineData(3600)]
     public async Task SupportedLongRequestStillObeysAlreadyCancelledOwner(int maximum)
     {
         var options = Options(); using var owner = new CancellationTokenSource(); owner.Cancel();
@@ -57,6 +60,7 @@ public class NativeDeadlineTests
 
     [Theory]
     [InlineData(270, 250)] [InlineData(600, 599)] [InlineData(120, 1)]
+    [InlineData(1800,1750)] [InlineData(3600,3599)]
     public void ControllerReturnsOnlyOriginalUtcRemainder(int maximum, int remaining)
     {
         var now = DateTimeOffset.Parse("2026-10-10T10:00:00Z"); var original = now.AddSeconds(remaining);
@@ -65,7 +69,8 @@ public class NativeDeadlineTests
     }
 
     [Theory]
-    [InlineData(0, 1)] [InlineData(601, 1)] [InlineData(270, 271)] [InlineData(270, 0)] [InlineData(270, -1)]
+    [InlineData(0, 1)] [InlineData(3601, 1)] [InlineData(270, 271)] [InlineData(270, 0)] [InlineData(270, -1)]
+    [InlineData(1800,1801)] [InlineData(3600,3601)]
     public void ControllerRefusesInvalidExcessOrExpiredAllowance(int maximum, int remaining)
     {
         var now = DateTimeOffset.Parse("2026-10-10T10:00:00Z");

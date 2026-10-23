@@ -38,6 +38,22 @@ metering. Missing/malformed/mismatched success output refuses application;
 failed agent execution claims no receipt. A valid acknowledgment is retained
 when subsequent host validation fails, without claiming changes were applied.
 
+With `AgentOutcomeFormat=workspace-ipc-v1`, exit code 20 can also expose an
+additive `output.agentDiagnostic` observation. The host accepts only one complete
+stderr JSON object of at most 2048 UTF-8 bytes, with exactly the worker's five
+held-outcome keys, `resendAuthorized=false`, `providerEffects=unresolved`, and a
+fixed known reason code. The public observation has schema
+`vyral.workspace-agent-diagnostic.v1`, source `agent_stderr`, state `held`, reason,
+and those two conservative effect/retry fields. Unknown codes, extra/duplicate
+keys, malformed or oversized stderr remain generic `agent_process_failed`.
+Stdout is never a failure-diagnostic source. Cancellation, timeout, truncation
+and process-start failure take precedence; diagnostics that exceed the public
+result budget are omitted. The observation does not verify its reported cause,
+task delivery, provider effects, usage, acceptance or retry authority. No raw
+stderr, prompt, credential or exception content is copied. Omitted/default
+`AgentOutcomeFormat=none` behavior is unchanged. This additive capability is
+qualified in its isolated owner return; it does not activate a deployed host.
+
 Install and hash the worker, interpreter, runtime closure and Bubblewrap on the
 chosen host. Mount only the necessary read-only Python libraries and dynamic
 loader as `RuntimeReadOnlyPaths`. Mount the worker file and owner-private IPC
@@ -56,8 +72,8 @@ response return time or termination of an already sent provider invocation.
 Serialization is per runner, not a cross-process lock: multiple replicas need
 separate workspaces or an independently qualified coordinator.
 
-Worker profiles and stdin `remainingMilliseconds` support up to 600 seconds
-(600000 milliseconds). Existing example allocations remain unchanged. A v2
+Worker profiles and stdin `remainingMilliseconds` support up to 3600 seconds
+(3600000 milliseconds). Existing example allocations remain unchanged. A v2
 profile may include `invocationDeadlineUtc`, and must include it when
 `maxExecutionSeconds` exceeds 120. This is an ISO UTC string ending in `Z` or
 `+00:00`, with optional 1–7 fractional digits, at most 40 characters. Freeze it once before the original job POST;
@@ -79,6 +95,52 @@ An operator must assemble and review the exact joined configuration before
 enabling it. These examples are an interface, not production qualification.
 
 ## Public wire contracts
+
+### Read-only input preflight
+
+Before execution, the additive public command accepts the same complete private
+profile and exact host stdin envelope:
+
+```sh
+python3 -B workers/workspace-ipc-agent/agent.py preflight \
+  --profile /private/worker-profile.json --workspace /absolute/source-root \
+  < /private/host-input.json
+```
+
+The explicit workspace must be an existing absolute directory with no symlink
+ancestors. Preflight reads the private regular profile and its declared source
+context, then uses the same deadline attenuation, full envelope/profile/context
+guards, rendering, UTF-8 prompt bounds and reservation calculation as `run` and
+`recover`. It never instantiates the gateway, reads credential contents or the
+socket, invokes a provider, admits or reserves a call, writes an outcome, or
+changes source, modes or Git. It can run with read-only mounts and no network.
+The command does not independently verify actual Git HEAD or admission authority;
+the existing host and owner remain responsible for those boundaries.
+
+Exit 0 writes one `vyral.workspace-ipc-preflight.v1` JSON object with
+`state=prepared`, the exact raw `hostInputBytes`/`hostInputSha256`,
+`profileSha256`, `taskUtf8Bytes`/`taskSha256`, rendered
+`promptUtf8Bytes`/`promptSha256`, canonical gateway
+`requestJsonBytes`/`requestSha256`, context-file/window counts, `maxInputBytes`,
+`maxOutputTokens`, and `calculatedReservationTokens`. The request digest uses
+the unchanged gateway JSON serialization, including the original exact UTC
+deadline when present. No prompt, task, history, source, identity or private path
+is returned. `invocationCount=0`, `nativeTokenFitVerified=false` and
+`independentlyIssued=false` are fixed. The reservation field is arithmetic only;
+no reservation is made and it is not a provider token measurement.
+
+Exit 20 writes only a bounded stderr object with the same schema, `state=held`,
+an allowlisted fixed `reason`, `resendAuthorized=false`, and
+`providerEffects=not_invoked_by_preflight`. Unexpected failures collapse to
+`private_ipc_or_input_failure`; argument errors cannot echo private values.
+Success and refusal output are below 2 KiB for every supported input limit.
+
+Preflight does not mint authority, delivery, usage, model attention or native
+token-fit evidence, freeze an external filesystem, or renew a deadline. Bind its
+exact profile, envelope and source digests, and revalidate original inputs during
+the actual new admitted invocation. Native factory context/token/output guards
+remain independently required. Existing `run`/`recover` arguments and result
+shapes are unchanged; `--workspace` is accepted only for `preflight`.
 
 The versioned stdin envelope is:
 
@@ -106,6 +168,58 @@ digest. The response must bind the pinned provider and model, contain a
 successful assistant message, and include nonnegative input/output token
 counters. Unknown usage, mismatched bindings and exceeded limits hold the
 result without applying edits.
+
+A v2 profile consuming the public Vyral result must include
+`providerConfigHash`, an exact `sha256:` followed by 64 lowercase hexadecimal
+digits. Pin it from the admitted provider configuration before the original
+invocation; for the native route it is the selected ten-option factory binding.
+The public result binds provider/model/configuration through `trace.provider`,
+`trace.modelId` and `trace.configHash`. The top-level provider and the result and
+trace capability/operation/mode must agree with `ai.chat`/`run`/`advisory`, and
+the result status must be successful. Missing, malformed or conflicting values
+refuse before proposal parsing or writes. Optional top-level model/configuration
+values must agree too; they are not required by the public Vyral DTO.
+
+This field is part of the original profile digest, without changing prompt or
+request bytes. Preserve that original pin through GET-only recovery; neither a
+proposal nor its returned trace supplies authority to choose or change it.
+The closed v1 profile cannot include it. The limited legacy trace-less fixture
+shape remains supported only when the field is omitted and its top-level
+provider/model match; that route makes no provider configuration claim and
+cannot substitute for a pinned public Vyral result.
+
+V2 profiles may select existing source context independently from edit scope
+with `contextReadPaths`, a nonempty list of at most 32 canonical relative POSIX
+file names of at most 512 UTF-8 bytes each. It must equal the `contextFiles`
+paths in exact order. Duplicate, ancestor-overlapping, unsafe or control-bearing
+names refuse. Reads must be disjoint from writable `allowedPaths` and from
+`avoidedPaths` in both ancestor directions. The selected path and whole-file
+SHA256 pairs in `contextFiles` remain the immutable read manifest; the read list
+cannot select unmanifested data. Explicit null/empty/invalid types and v1 use
+refuse. For example:
+
+```json
+{"allowedPaths":["src/new.py"],"contextReadPaths":["src/seed.py"],"contextFiles":[{"path":"src/seed.py","sha256":"sha256:<exact lowercase 64-hex source digest>"}]}
+```
+
+Omission preserves the existing write-scoped context selection and prompt bytes.
+The explicit route checks ancestors and links, opens the selected existing file
+without following its final symlink, verifies its regular-file type and byte
+bound through the descriptor, and retains every hash, UTF-8, window, full input
+and reservation check. The worker's edit parser still uses only the original
+host `allowedPaths`; selected read files cannot be edited or deleted by this
+option. The original task, mode, context/source/profile and request bindings
+remain pinned through GET-only recovery. A changed manifest or deadline cannot
+renew the original operation. A v1 creation proposal still requires null
+`previousSha256` for its separately allowed absent file.
+
+This is selection authority enforced by the pinned worker. The host's complete
+staged workspace is visible read-only except its declared writable mounts and
+private creation parents; this option does not claim physical isolation of file
+reads. Ancestor checks and the final no-follow descriptor open do not claim an
+atomic lock against an external filesystem writer. Pair the worker with the
+qualified exact-creation host and its independent whole-stage reconciliation
+before using the selected joined creation route.
 
 By default, the assistant message must contain exactly one raw JSON object,
 with optional surrounding whitespace. V2 profiles may explicitly set
@@ -192,7 +306,7 @@ framing form. The stdin schema is unchanged.
 The reservation is `UTF-8 bytes of the full prompt + reservationOverheadTokens
 + maxOutputTokens`. The configured gateway rule must use the identical formula.
 For a native provider that independently enforces templated input tokens plus
-requested output no greater than a pinned context size of at most 4096 tokens,
+requested output no greater than a pinned profile-configured context size,
 an overhead equal to that context size provides a conservative reservation.
 Qualification must bind the actual runtime, model, template and configuration;
 setting that number in a profile does not establish the bound.
@@ -221,7 +335,19 @@ the reservation is exactly the pinned context size, with an output ceiling
 smaller than that size. The independently qualified gateway backend owns its
 qualification/profile artifact DTO; the worker binds its exact backend digest
 and checks the returned reservation. It does not consume or grant qualification
-from a caller's assertion. Its context limit is at most 4096 tokens.
+from a caller's assertion. Its context is profile-configured within the existing
+1048576-token allocation ceiling, and must not exceed the profile's selected
+`maxReservationTokens`. Excess refuses before transport. Native profile,
+worker reservation, gateway qualification and whole grant must agree on the
+exact selected context; this sanity bound is not native qualification. A fresh
+16384 context with 5120 output is supported by source checks, while actual
+readiness/template token fit, output/time and cleanup remain independently
+required. Existing examples/defaults and prior capacity proofs are unchanged. Its full
+UTF-8 input and native prompt byte bounds remain at most 65536; an explicitly
+selected 32768-byte bound is supported. Output is strictly smaller than the
+selected context. A larger byte or output ceiling is not a tokenizer or CPU
+completion guarantee; the native factory must independently enforce actual
+templated input tokens plus reserved output within that exact context.
 
 V2 also requires `maxSourceBytes` (at most 4 MiB per existing source) and permits
 context entries with bounded `windows`. Each entry binds the whole-file SHA256;
@@ -264,3 +390,12 @@ python3 -m unittest discover -s workers/workspace-ipc-agent -p test_deadlines.py
 
 The provider tests additionally exercise real Bubblewrap isolation, private
 agent-only mounts, direct network denial, deadlines and serialized work.
+
+The source checkout itself must be below a workspace-host-owned directory with
+mode `0700` (or stricter), and all path components from that boundary through
+the checkout root must be owned by the host effective user. The CLI host checks
+this once before staging and again immediately before apply. A missing private
+boundary rejects with `workspace_not_private`; unreadable ownership or type
+metadata rejects with `workspace_privacy_unavailable`. This is the enforced
+boundary against another host principal swapping a path during path-based
+application. Do not share the host OS identity with untrusted processes.

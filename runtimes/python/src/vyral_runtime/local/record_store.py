@@ -4,8 +4,8 @@ from contextlib import contextmanager
 from ctypes import c_float, sizeof
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import json
 import heapq
+import json
 import math
 from pathlib import Path
 import re
@@ -25,13 +25,19 @@ from .models import (
     VyralVector,
 )
 from .query_engine import (
+    DEFAULT_LEXICAL_SCAN_LIMIT,
+    DEFAULT_VECTOR_SCAN_LIMIT,
+    MAX_QUERY_PAGE_SIZE,
     QueryValidationError,
     build_lexical_candidate_plan,
     build_query_plan,
     build_vector_candidate_plan,
     decode_continuation_token,
     encode_continuation_token,
-    validate_page_limit,
+    resolve_candidate_limit,
+    resolve_page_limit,
+    resolve_search_top,
+    validate_query_shape,
 )
 from .lexical import PreparedLexicalCache, build_fts_expression, score_many
 from .query_models import (
@@ -501,6 +507,8 @@ class SQLiteRecordStore:
     ) -> RecordQueryResult:
         _validate_collection_name(collection)
         normalized = QueryEnvelope.from_value(query)
+        validate_query_shape(normalized)
+        page_size = resolve_page_limit(normalized.limit, "Query page size")
         with self._connection() as connection:
             policy = self._get_policy(connection, collection)
             plan = build_query_plan(
@@ -512,13 +520,11 @@ class SQLiteRecordStore:
                 VyralRecord.from_value(json.loads(row["record_json"]))
                 for row in connection.execute(plan.sql, plan.parameters)
             )
-        if normalized.limit is None:
-            return RecordQueryResult(items=records)
         offset = decode_continuation_token(normalized.continuation_token)
-        items = records[: normalized.limit]
+        items = records[:page_size]
         continuation = (
-            encode_continuation_token(offset + normalized.limit)
-            if len(records) > normalized.limit
+            encode_continuation_token(offset + page_size)
+            if len(records) > page_size
             else None
         )
         return RecordQueryResult(items=items, continuation_token=continuation)
@@ -592,9 +598,14 @@ class SQLiteRecordStore:
     ) -> RecordSearchResult:
         if not lexical.query.strip():
             raise QueryValidationError("Lexical search query is required.")
-        validate_page_limit(lexical.top, "Lexical top")
-        validate_page_limit(lexical.scan_limit, "Lexical scan limit")
-        validate_page_limit(query.limit, "Search page size")
+        validate_query_shape(query)
+        resolve_search_top(lexical.top, "Lexical top")
+        lexical_scan_limit = resolve_candidate_limit(
+            lexical.scan_limit,
+            DEFAULT_LEXICAL_SCAN_LIMIT,
+            "Lexical scan limit",
+        )
+        page_size = resolve_page_limit(query.limit, "Search page size")
         fts_expression, required_groups = build_fts_expression(
             lexical.query,
             lexical,
@@ -612,7 +623,7 @@ class SQLiteRecordStore:
                     candidate_query,
                     policy.indexed_metadata,
                     fts_expression,
-                    lexical.scan_limit,
+                    lexical_scan_limit,
                 )
                 records = tuple(
                     VyralRecord.from_value(json.loads(row["record_json"]))
@@ -625,7 +636,7 @@ class SQLiteRecordStore:
                 QueryEnvelope(
                     partition_keys=query.partition_keys,
                     filter=query.filter,
-                    limit=lexical.scan_limit,
+                    limit=lexical_scan_limit,
                 ),
             )
             candidate_source = "scan"
@@ -677,7 +688,6 @@ class SQLiteRecordStore:
             for index, match in enumerate(ranked)
         ]
         offset = decode_continuation_token(query.continuation_token)
-        page_size = query.limit or lexical.top
         page_items = tuple(ranked[offset : offset + page_size])
         continuation = (
             encode_continuation_token(offset + len(page_items))
@@ -747,19 +757,36 @@ class SQLiteRecordStore:
         if policy is None:
             return None
         source_query = normalized.query or QueryEnvelope()
-        page = self.query_records_page(
-            collection,
-            QueryEnvelope(
-                partition_keys=source_query.partition_keys,
-                filter=source_query.filter,
-                vector=source_query.vector,
-                lexical=source_query.lexical,
-                order_by=source_query.order_by,
-                limit=max_records,
-                continuation_token=source_query.continuation_token,
-            ),
+        validate_query_shape(source_query)
+        requested_page_size = (
+            source_query.limit
+            if source_query.limit is not None
+            else MAX_QUERY_PAGE_SIZE
         )
-        truncated = page.continuation_token is not None
+        records: list[VyralRecord] = []
+        continuation_token = source_query.continuation_token
+        while len(records) < max_records:
+            page = self.query_records_page(
+                collection,
+                QueryEnvelope(
+                    partition_keys=source_query.partition_keys,
+                    filter=source_query.filter,
+                    vector=source_query.vector,
+                    lexical=source_query.lexical,
+                    order_by=source_query.order_by,
+                    limit=min(
+                        requested_page_size,
+                        MAX_QUERY_PAGE_SIZE,
+                        max_records - len(records),
+                    ),
+                    continuation_token=continuation_token,
+                ),
+            )
+            records.extend(page.items)
+            continuation_token = page.continuation_token
+            if continuation_token is None:
+                break
+        truncated = continuation_token is not None
         if truncated and normalized.fail_on_limit_exceeded:
             raise RecordValidationError(
                 f"Collection export exceeded maxRecords ({max_records}). Increase "
@@ -769,12 +796,12 @@ class SQLiteRecordStore:
         envelope = CollectionExportEnvelope(
             collection=collection,
             policy=policy,
-            records=page.items,
+            records=tuple(records),
             query=normalized.query,
             max_records=max_records,
-            record_count=len(page.items),
+            record_count=len(records),
             truncated=truncated,
-            continuation_token=page.continuation_token,
+            continuation_token=continuation_token,
             exported_at=_normalize_clock_value(self._clock()),
         )
         return envelope.with_hash(compute_collection_snapshot_hash(envelope))
@@ -873,8 +900,14 @@ class SQLiteRecordStore:
         query: QueryEnvelope,
         vector_search: VectorSearchOptions,
     ) -> RecordSearchResult:
-        validate_page_limit(vector_search.top, "Vector top")
-        validate_page_limit(query.limit, "Search page size")
+        validate_query_shape(query)
+        resolve_search_top(vector_search.top, "Vector top")
+        page_size = resolve_page_limit(query.limit, "Search page size")
+        scan_limit = resolve_candidate_limit(
+            vector_search.scan_limit,
+            DEFAULT_VECTOR_SCAN_LIMIT,
+            "Vector scan limit",
+        )
         if not vector_search.field.strip():
             raise QueryValidationError("Vector search field is required.")
         query_vector = _float32_values(
@@ -906,13 +939,22 @@ class SQLiteRecordStore:
                 query,
                 policy.indexed_metadata,
                 vector_search.field,
+                scan_limit,
             )
             candidate_count = 0
+            scanned_count = 0
             similarity = _PreparedSimilarity(field_policy.distance_function, query_vector)
 
             def candidates() -> Iterator[tuple[float, VyralRecord]]:
-                nonlocal candidate_count
+                nonlocal candidate_count, scanned_count
                 for row in connection.execute(plan.sql, plan.parameters):
+                    scanned_count += 1
+                    if scanned_count > scan_limit:
+                        raise QueryValidationError(
+                            "Vector search exceeded the scan limit of "
+                            f"{scan_limit} records. Narrow the query or increase "
+                            "scanLimit within the portable maximum."
+                        )
                     record = VyralRecord.from_value(json.loads(row["record_json"]))
                     stored_dimensions = int(row["dimensions"])
                     if stored_dimensions != field_policy.dimensions:
@@ -962,7 +1004,6 @@ class SQLiteRecordStore:
             for index, (score, record) in enumerate(selected)
         ]
         offset = decode_continuation_token(query.continuation_token)
-        page_size = query.limit or vector_search.top
         page_items = tuple(ranked[offset : offset + page_size])
         continuation = (
             encode_continuation_token(offset + len(page_items))

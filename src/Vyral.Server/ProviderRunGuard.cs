@@ -45,8 +45,9 @@ public sealed class ProviderRunGuard
         }
 
         var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(request.TimeoutSeconds.Value));
-        return ProviderRunAdmission.Accept(limiter, timeoutCts);
+        var deadlineUtc = DateTimeOffset.UtcNow.AddSeconds(request.TimeoutSeconds.Value);
+        timeoutCts.CancelAfter(deadlineUtc - DateTimeOffset.UtcNow);
+        return ProviderRunAdmission.Accept(limiter, timeoutCts, deadlineUtc);
     }
 
     public ProviderRunResult CreateTimeoutResult(string provider, ProviderRunRequest request)
@@ -189,22 +190,25 @@ public sealed class ProviderRunAdmission : IAsyncDisposable
     private readonly ProviderRunLimiter? _limiter;
     private readonly CancellationTokenSource? _timeoutCts;
 
-    private ProviderRunAdmission(bool accepted, ProviderRunResult? rejectionResult, ProviderRunLimiter? limiter, CancellationTokenSource? timeoutCts)
+    private ProviderRunAdmission(bool accepted, ProviderRunResult? rejectionResult, ProviderRunLimiter? limiter,
+        CancellationTokenSource? timeoutCts, DateTimeOffset? deadlineUtc = null)
     {
         Accepted = accepted;
         RejectionResult = rejectionResult;
         _limiter = limiter;
         _timeoutCts = timeoutCts;
+        DeadlineUtc = deadlineUtc;
     }
 
     public bool Accepted { get; }
+    public DateTimeOffset? DeadlineUtc { get; }
     public ProviderRunResult? RejectionResult { get; }
     public CancellationToken CancellationToken => _timeoutCts?.Token ?? CancellationToken.None;
     public bool TimedOut => _timeoutCts?.IsCancellationRequested == true;
 
-    public static ProviderRunAdmission Accept(ProviderRunLimiter limiter, CancellationTokenSource timeoutCts)
+    public static ProviderRunAdmission Accept(ProviderRunLimiter limiter, CancellationTokenSource timeoutCts, DateTimeOffset? deadlineUtc = null)
     {
-        return new ProviderRunAdmission(true, null, limiter, timeoutCts);
+        return new ProviderRunAdmission(true, null, limiter, timeoutCts, deadlineUtc);
     }
 
     public static ProviderRunAdmission Rejected(ProviderRunResult result)

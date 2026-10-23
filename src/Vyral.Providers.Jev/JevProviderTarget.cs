@@ -42,9 +42,20 @@ public sealed class JevProviderTarget : IProviderTarget, IProviderDoctor, IProvi
 
     public JevProviderTarget(JevProviderOptions options, HttpClient? client = null, IEnumerable<ProviderModePolicy>? policies = null)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.TimeoutSeconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Jev provider timeout must be positive.");
+        }
+        if (options.MaxOutputBytes <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Jev provider output limit must be positive.");
+        }
+
+        options.BaseUri = RequireSecureBaseUri(options.BaseUri, nameof(options.BaseUri));
         _options = options;
-        _client = client ?? new HttpClient { BaseAddress = options.BaseUri };
-        _client.BaseAddress ??= options.BaseUri;
+        _client = client ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+        _client.BaseAddress = RequireSecureBaseUri(_client.BaseAddress ?? options.BaseUri, nameof(client));
         _policies = ProviderModePolicies.Index(policies ?? ProviderModePolicies.Defaults(allowNetwork: true));
 
         Profile = new ProviderProfile
@@ -199,6 +210,24 @@ public sealed class JevProviderTarget : IProviderTarget, IProviderDoctor, IProvi
             return CreateResult(request, trace, stopwatch, ProviderRunStatus.Rejected, "Unknown provider mode.", ProviderFailureClasses.Policy, "unknown_mode");
         }
 
+        if (request.MaxOutputBytes is <= 0)
+        {
+            return CreateResult(request, trace, stopwatch, ProviderRunStatus.Rejected, "Requested output limit is invalid.", ProviderFailureClasses.Policy, "invalid_output_limit");
+        }
+        if (request.TimeoutSeconds is <= 0)
+        {
+            return CreateResult(request, trace, stopwatch, ProviderRunStatus.Rejected, "Requested timeout is invalid.", ProviderFailureClasses.Policy, "invalid_timeout");
+        }
+
+        var payloadText = request.Payload.ToJsonString(ProviderJson.Options);
+        if (Encoding.UTF8.GetByteCount(payloadText) > policy.MaxInputBytes)
+        {
+            return CreateResult(request, trace, stopwatch, ProviderRunStatus.Rejected, "Payload exceeds mode input limit.", ProviderFailureClasses.Policy, "input_limit");
+        }
+
+        var outputLimit = Math.Min(request.MaxOutputBytes ?? Math.Min(policy.MaxOutputBytes, _options.MaxOutputBytes), Math.Min(policy.MaxOutputBytes, _options.MaxOutputBytes));
+        var timeoutSeconds = Math.Min(request.TimeoutSeconds ?? Math.Min(policy.TimeoutSeconds, _options.TimeoutSeconds), Math.Min(policy.TimeoutSeconds, _options.TimeoutSeconds));
+
         AiJudgeRequest judgeRequest;
         try
         {
@@ -233,14 +262,13 @@ public sealed class JevProviderTarget : IProviderTarget, IProviderDoctor, IProvi
         try
         {
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            linkedCts.CancelAfter(TimeSpan.FromSeconds(request.TimeoutSeconds ?? _options.TimeoutSeconds));
+            linkedCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "v1/systemone");
             httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_options.ApiKey}");
             httpRequest.Content = JsonContent.Create(body, options: JsonOptions);
 
             using var response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token);
-            var outputLimit = request.MaxOutputBytes ?? _options.MaxOutputBytes;
             var read = await ReadContentWithLimitAsync(response.Content, outputLimit, linkedCts.Token);
             stopwatch.Stop();
             trace.DurationMs = stopwatch.Elapsed.TotalMilliseconds;
@@ -317,11 +345,29 @@ public sealed class JevProviderTarget : IProviderTarget, IProviderDoctor, IProvi
     /// </summary>
     private static string? ValidateQuestions(List<AiJudgeQuestion> questions)
     {
+        var questionIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var question in questions)
         {
             if (string.IsNullOrWhiteSpace(question.Id))
             {
                 return "ai.judge questions require an id.";
+            }
+            if (!questionIds.Add(question.Id))
+            {
+                return $"ai.judge question id '{question.Id}' is duplicated.";
+            }
+
+            var optionIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var option in question.Options)
+            {
+                if (string.IsNullOrWhiteSpace(option.Id))
+                {
+                    return $"ai.judge question '{question.Id}' options require an id.";
+                }
+                if (!optionIds.Add(option.Id))
+                {
+                    return $"ai.judge question '{question.Id}' option id '{option.Id}' is duplicated.";
+                }
             }
 
             if (string.Equals(question.Type, AiJudgeQuestionTypes.Choice, StringComparison.OrdinalIgnoreCase))
@@ -345,6 +391,25 @@ public sealed class JevProviderTarget : IProviderTarget, IProviderDoctor, IProvi
         }
 
         return null;
+    }
+
+    private static Uri RequireSecureBaseUri(Uri? baseUri, string parameterName)
+    {
+        if (baseUri is null || !baseUri.IsAbsoluteUri ||
+            !string.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            !string.IsNullOrEmpty(baseUri.UserInfo) ||
+            !string.IsNullOrEmpty(baseUri.Query) ||
+            !string.IsNullOrEmpty(baseUri.Fragment))
+        {
+            throw new ArgumentException("Jev provider base URI must be an absolute HTTPS URI without userinfo, a query, or a fragment.", parameterName);
+        }
+
+        var builder = new UriBuilder(baseUri);
+        if (!builder.Path.EndsWith("/", StringComparison.Ordinal))
+        {
+            builder.Path += "/";
+        }
+        return builder.Uri;
     }
 
     private static JsonObject BuildRequestBody(AiJudgeRequest request, string modelId)

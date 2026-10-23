@@ -267,6 +267,8 @@ public static class RecordCollectionStoreExtensions
             return ((await store.QueryAllRecordsAsync(collection, query, ct)).ToList(), false, null);
         }
 
+        QueryWorkLimits.Validate(query);
+
         var records = new List<VyralRecord>();
         var token = query.ContinuationToken;
         string? continuationToken = null;
@@ -282,9 +284,10 @@ public static class RecordCollectionStoreExtensions
             }
 
             var pageQuery = CloneWithToken(query, token);
-            pageQuery.Limit = pageQuery.Limit.HasValue
-                ? System.Math.Min(pageQuery.Limit.Value, remaining)
-                : remaining;
+            var requestedPageSize = pageQuery.Limit ?? QueryWorkLimits.MaxPageSize;
+            pageQuery.Limit = System.Math.Min(
+                requestedPageSize,
+                System.Math.Min(remaining, QueryWorkLimits.MaxPageSize));
             var page = await store.QueryRecordsPageAsync(collection, pageQuery, ct);
             records.AddRange(page.Items);
             token = page.ContinuationToken;

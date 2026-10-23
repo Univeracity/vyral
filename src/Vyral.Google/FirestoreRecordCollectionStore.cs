@@ -232,7 +232,8 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
     public async Task<RecordQueryResult> QueryRecordsPageAsync(string collection, QueryEnvelope query, CancellationToken ct = default)
     {
         RecordIdentityValidator.ValidateCollectionName(collection);
-        ValidatePageLimit(query.Limit, "Query page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
         FilterValueNormalizer.ValidateFilter(query.Filter);
 
         var policy = await GetCollectionPolicyAsync(collection, ct);
@@ -241,15 +242,13 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
             throw new InvalidOperationException($"Collection '{collection}' does not exist.");
         }
 
-        var all = await LoadFilteredSortedAsync(collection, query, ct);
+        var all = await LoadFilteredSortedAsync(
+            collection,
+            query,
+            QueryWorkLimits.MaxCandidateLimit,
+            ct);
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit;
-        if (!pageSize.HasValue)
-        {
-            return new RecordQueryResult { Items = all.Skip(offset).ToList() };
-        }
-
-        var items = all.Skip(offset).Take(pageSize.Value).ToList();
+        var items = all.Skip(offset).Take(pageSize).ToList();
         var next = offset + items.Count < all.Count
             ? EncodeContinuationToken(offset + items.Count)
             : null;
@@ -287,14 +286,19 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
         }
 
         var fieldPolicy = RecordVectorValidator.ValidateSearchVector(collection, policy, query.Vector);
-        ValidatePageLimit(query.Limit, "Search page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
+        var scanLimit = QueryWorkLimits.ResolveCandidateLimit(
+            query.Vector.ScanLimit,
+            QueryWorkLimits.DefaultVectorScanLimit,
+            "Vector scan limit");
 
         var candidates = await LoadFilteredSortedAsync(collection, new QueryEnvelope
         {
             PartitionKeys = query.PartitionKeys,
             Filter = query.Filter,
             OrderBy = null
-        }, ct);
+        }, scanLimit, ct);
 
         var ranked = new List<VyralRecordMatch>();
         foreach (var record in candidates)
@@ -320,7 +324,6 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
             .ToList();
 
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit ?? query.Vector.Top;
         var pageItems = ranked.Skip(offset).Take(pageSize).ToList();
         var next = offset + pageItems.Count < ranked.Count
             ? EncodeContinuationToken(offset + pageItems.Count)
@@ -345,6 +348,7 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
     private async Task<List<VyralRecord>> LoadFilteredSortedAsync(
         string collection,
         QueryEnvelope query,
+        int workLimit,
         CancellationToken ct)
     {
         Query firestoreQuery = Records.WhereEqualTo("collection", collection);
@@ -353,7 +357,11 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
             firestoreQuery = firestoreQuery.WhereEqualTo("partitionKey", query.PartitionKeys[0]);
         }
 
-        var snapshot = await firestoreQuery.GetSnapshotAsync(ct);
+        var snapshot = await firestoreQuery.Limit(workLimit + 1).GetSnapshotAsync(ct);
+        if (snapshot.Count > workLimit)
+        {
+            throw new InvalidOperationException($"Record query exceeded the work limit of {workLimit} records. Narrow the query or increase the applicable scan limit within the portable maximum.");
+        }
         var all = snapshot.Documents
             .Select(DeserializeRecord)
             .Where(record => record != null)
@@ -443,22 +451,6 @@ public class FirestoreRecordCollectionStore : IRecordCollectionStore
         {
             throw new InvalidOperationException($"Firestore record document would exceed the safe portable size budget ({byteCount} bytes > {SafeRecordDocumentBytes} bytes). Store large/raw payloads as objects and keep the record compact.");
         }
-    }
-
-    private static int ValidatePageLimit(int? limit, string description)
-    {
-        if (limit <= 0)
-        {
-            throw new InvalidOperationException($"{description} must be greater than zero.");
-        }
-
-        var effectiveLimit = limit ?? DefaultPageLimit;
-        if (effectiveLimit > MaxPageLimit)
-        {
-            throw new InvalidOperationException($"{description} cannot exceed {MaxPageLimit}.");
-        }
-
-        return effectiveLimit;
     }
 
     private static bool MatchesFilter(VyralRecord record, FilterNode node)

@@ -53,6 +53,200 @@ public sealed class MySqlCanonicalStoreConformanceTests : CanonicalStoreConforma
         await restore;
     }
 
+    [MySqlLiveFact]
+    public async Task CanonicalStore_OutboxQueryHonorsLimitAcrossPages()
+    {
+        var store = await CreateStoreAsync();
+        for (var index = 0; index < 3; index++)
+        {
+            await store.CommitAsync(new CanonicalTransactionRequest
+            {
+                TenantId = "tenant-page",
+                IdempotencyKey = $"page-{index}",
+                Mutations =
+                [
+                    new CanonicalMutation
+                    {
+                        Document = new CanonicalDocument
+                        {
+                            TenantId = "tenant-page",
+                            DocumentType = "page",
+                            Id = $"document-{index}",
+                            SchemaVersion = "v1",
+                            Data = new System.Text.Json.Nodes.JsonObject
+                            {
+                                ["index"] = index
+                            }
+                        }
+                    }
+                ],
+                Outbox =
+                [
+                    new CanonicalOutboxWrite
+                    {
+                        Topic = "page.changed",
+                        Key = $"document-{index}",
+                        Payload = new System.Text.Json.Nodes.JsonObject
+                        {
+                            ["index"] = index
+                        }
+                    }
+                ]
+            });
+        }
+
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        string? continuation = null;
+        for (var pageIndex = 0; pageIndex < 3; pageIndex++)
+        {
+            var page = await store.QueryOutboxAsync(new CanonicalOutboxQuery
+            {
+                TenantId = "tenant-page",
+                Topic = "page.changed",
+                State = CanonicalOutboxStates.Ready,
+                Limit = 1,
+                ContinuationToken = continuation
+            });
+            Assert.Single(page.Items);
+            Assert.True(ids.Add(page.Items[0].Id));
+            continuation = page.ContinuationToken;
+            Assert.Equal(pageIndex < 2, continuation is not null);
+        }
+
+        Assert.Equal(3, ids.Count);
+    }
+
+    [MySqlLiveFact]
+    public async Task CanonicalStore_RejectsOversizedTenantBeforeReturningJson()
+    {
+        var store = await CreateStoreAsync();
+        await store.CommitAsync(new CanonicalTransactionRequest
+        {
+            TenantId = "tenant-oversized-read",
+            IdempotencyKey = "seed",
+            Mutations =
+            [
+                new CanonicalMutation
+                {
+                    Document = new CanonicalDocument
+                    {
+                        TenantId = "tenant-oversized-read",
+                        DocumentType = "entity",
+                        Id = "seed",
+                        SchemaVersion = "v1",
+                        Data = new System.Text.Json.Nodes.JsonObject()
+                    }
+                }
+            ]
+        });
+        await using (var connection = new MySqlConnection(_connectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE vyral_mysql_canonical_tenants SET state_json = JSON_OBJECT('padding', REPEAT('x', 24 * 1024 * 1024)) WHERE tenant_id = 'tenant-oversized-read'";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var limitedStore = new MySqlCanonicalStore(_connectionString!);
+        var exception = await Assert.ThrowsAsync<MySqlCanonicalTenantStateLimitExceededException>(() =>
+            limitedStore.GetDocumentAsync("tenant-oversized-read", "entity", "one"));
+
+        Assert.Equal("tenant-oversized-read", exception.TenantId);
+        Assert.True(exception.ContentLength > exception.MaxContentLength);
+        Assert.Equal(MySqlCanonicalStore.DefaultMaxTenantStateBytes, exception.MaxContentLength);
+    }
+
+    [MySqlLiveFact]
+    public async Task CanonicalStore_RejectsOversizedTenantBeforeUpdate()
+    {
+        _ = await CreateStoreAsync();
+        var limitedStore = new MySqlCanonicalStore(_connectionString!, maxTenantStateBytes: 2048);
+        var exception = await Assert.ThrowsAsync<MySqlCanonicalTenantStateLimitExceededException>(() =>
+            limitedStore.CommitAsync(new CanonicalTransactionRequest
+            {
+                TenantId = "tenant-oversized-write",
+                IdempotencyKey = "oversized",
+                Mutations =
+                [
+                    new CanonicalMutation
+                    {
+                        Document = new CanonicalDocument
+                        {
+                            TenantId = "tenant-oversized-write",
+                            DocumentType = "entity",
+                            Id = "one",
+                            SchemaVersion = "v1",
+                            Data = new System.Text.Json.Nodes.JsonObject
+                            {
+                                ["padding"] = new string('x', 8192)
+                            }
+                        }
+                    }
+                ]
+            }));
+
+        Assert.Equal("tenant-oversized-write", exception.TenantId);
+        Assert.True(exception.ContentLength > exception.MaxContentLength);
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM vyral_mysql_canonical_tenants WHERE tenant_id = 'tenant-oversized-write'";
+        Assert.Equal(0L, Convert.ToInt64(await command.ExecuteScalarAsync()));
+    }
+
+    [MySqlLiveFact]
+    public async Task CanonicalStore_NoOpReplayAndEmptyLeaseDoNotRewriteTenantSnapshot()
+    {
+        var store = await CreateStoreAsync();
+        var request = new CanonicalTransactionRequest
+        {
+            TenantId = "tenant-no-op",
+            IdempotencyKey = "seed",
+            Mutations =
+            [
+                new CanonicalMutation
+                {
+                    Document = new CanonicalDocument
+                    {
+                        TenantId = "tenant-no-op",
+                        DocumentType = "entity",
+                        Id = "one",
+                        SchemaVersion = "v1",
+                        Data = new System.Text.Json.Nodes.JsonObject { ["value"] = 1 }
+                    }
+                }
+            ]
+        };
+        await store.CommitAsync(request);
+        var before = await ReadTenantStateIdentityAsync("tenant-no-op");
+
+        var replay = await store.CommitAsync(request);
+        var leases = await store.LeaseOutboxAsync(new CanonicalOutboxLeaseRequest
+        {
+            TenantId = "tenant-no-op",
+            ConsumerId = "no-op-test",
+            MaxItems = 1,
+            LeaseSeconds = 30
+        });
+        var after = await ReadTenantStateIdentityAsync("tenant-no-op");
+
+        Assert.True(replay.Replayed);
+        Assert.Empty(leases);
+        Assert.Equal(before, after);
+    }
+
+    private async Task<(string Hash, DateTime UpdatedAtUtc)> ReadTenantStateIdentityAsync(string tenantId)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT SHA2(CAST(state_json AS CHAR), 256), updated_at_utc FROM vyral_mysql_canonical_tenants WHERE tenant_id = @tenant_id";
+        command.Parameters.AddWithValue("@tenant_id", tenantId);
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        return (reader.GetString(0), reader.GetDateTime(1));
+    }
+
     public Task InitializeAsync() => Task.CompletedTask;
 
     public async Task DisposeAsync()

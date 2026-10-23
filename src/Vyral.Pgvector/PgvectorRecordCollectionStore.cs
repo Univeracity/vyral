@@ -277,15 +277,15 @@ public class PgvectorRecordCollectionStore : IRecordCollectionStore
     public async Task<RecordQueryResult> QueryRecordsPageAsync(string collection, QueryEnvelope query, CancellationToken ct = default)
     {
         RecordIdentityValidator.ValidateCollectionName(collection);
-        if (query.Limit.HasValue && query.Limit.Value <= 0)
-            throw new InvalidOperationException("Query page size must be greater than zero.");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
         var policy = await GetCollectionPolicyAsync(collection, ct)
             ?? throw new InvalidOperationException($"Collection '{collection}' does not exist.");
 
         var qb = new PgvectorQueryBuilder();
-        var (sql, parameters) = qb.BuildQuery(collection, query, policy.IndexedMetadata);
+        var boundedQuery = CloneQuery(query, pageSize + 1);
+        var (sql, parameters) = qb.BuildQuery(collection, boundedQuery, policy.IndexedMetadata);
         var offset = PgvectorQueryBuilder.DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit;
 
         await using var conn = await OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -302,12 +302,12 @@ public class PgvectorRecordCollectionStore : IRecordCollectionStore
             items.Add(JsonSerializer.Deserialize<VyralRecord>(reader.GetString(0), JsonOptions)!);
 
         string? next = null;
-        if (pageSize.HasValue && items.Count == pageSize.Value)
+        if (items.Count > pageSize)
         {
-            next = PgvectorQueryBuilder.EncodeContinuationToken(offset + items.Count);
+            next = PgvectorQueryBuilder.EncodeContinuationToken(offset + pageSize);
         }
 
-        return new RecordQueryResult { Items = items, ContinuationToken = next };
+        return new RecordQueryResult { Items = items.Take(pageSize).ToList(), ContinuationToken = next };
     }
 
     // -------------------------------------------------------------------------
@@ -317,8 +317,8 @@ public class PgvectorRecordCollectionStore : IRecordCollectionStore
     public async Task<RecordSearchResult> SearchRecordsPageAsync(string collection, QueryEnvelope query, CancellationToken ct = default)
     {
         RecordIdentityValidator.ValidateCollectionName(collection);
-        if (query.Limit.HasValue && query.Limit.Value <= 0)
-            throw new InvalidOperationException("Search page size must be greater than zero.");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
 
         if (query.Vector == null)
         {
@@ -398,7 +398,6 @@ public class PgvectorRecordCollectionStore : IRecordCollectionStore
             .ToList();
 
         var offset = PgvectorQueryBuilder.DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit ?? query.Vector.Top;
         var page = ranked.Skip(offset).Take(pageSize).ToList();
         var nextToken = offset + page.Count < ranked.Count
             ? PgvectorQueryBuilder.EncodeContinuationToken(offset + page.Count) : null;
@@ -415,6 +414,8 @@ public class PgvectorRecordCollectionStore : IRecordCollectionStore
         var lexical = query.Lexical!;
         if (string.IsNullOrWhiteSpace(lexical.Query))
             throw new InvalidOperationException("Lexical search query is required.");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
 
         var qb = new PgvectorQueryBuilder();
         var (sql, parameters) = qb.BuildLexicalSearchQuery(collection, query);
@@ -444,13 +445,23 @@ public class PgvectorRecordCollectionStore : IRecordCollectionStore
             .ToList();
 
         var offset = PgvectorQueryBuilder.DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit ?? lexical.Top;
         var page = ranked.Skip(offset).Take(pageSize).ToList();
         var nextToken = offset + page.Count < ranked.Count
             ? PgvectorQueryBuilder.EncodeContinuationToken(offset + page.Count) : null;
 
         return new RecordSearchResult { Items = page, ContinuationToken = nextToken };
     }
+
+    private static QueryEnvelope CloneQuery(QueryEnvelope query, int limit) => new()
+    {
+        PartitionKeys = query.PartitionKeys,
+        Filter = query.Filter,
+        Vector = query.Vector,
+        Lexical = query.Lexical,
+        OrderBy = query.OrderBy,
+        Limit = limit,
+        ContinuationToken = query.ContinuationToken
+    };
 
     private async Task UpsertRecordCoreAsync(
         NpgsqlConnection conn,

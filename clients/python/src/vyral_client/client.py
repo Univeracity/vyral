@@ -2364,6 +2364,14 @@ class VyralClient:
                 return None
             raise
 
+    def get_provider_run_job_progress(self, job_id: str) -> dict[str, Any] | None:
+        try:
+            return self._json("GET", f"/provider-jobs/{quote(job_id, safe='')}/progress")
+        except VyralClientError as exc:
+            if exc.status == 404:
+                return None
+            raise
+
     def cancel_provider_job(self, job_id: str) -> dict[str, Any] | None:
         try:
             return self._json("DELETE", f"/provider-jobs/{quote(job_id, safe='')}")

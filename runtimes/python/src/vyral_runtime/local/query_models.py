@@ -111,6 +111,7 @@ class VectorSearchOptions:
     field: str
     value: tuple[float, ...]
     top: int = 10
+    scan_limit: int | None = 10_000
     min_score: float | None = None
 
     @classmethod
@@ -133,6 +134,14 @@ class VectorSearchOptions:
             field=_text(item.get("field"), "vector search field"),
             value=tuple(vector),
             top=_integer(item.get("top"), "vector search top", 10),
+            scan_limit=(
+                None
+                if item.get("scanLimit", 10_000) is None
+                else _integer(
+                    item.get("scanLimit", 10_000),
+                    "vector search scanLimit",
+                )
+            ),
             min_score=_optional_number(item.get("minScore"), "vector search minScore"),
         )
 
@@ -141,6 +150,7 @@ class VectorSearchOptions:
             "field": self.field,
             "value": list(self.value),
             "top": self.top,
+            "scanLimit": self.scan_limit,
             "minScore": self.min_score,
         }
 

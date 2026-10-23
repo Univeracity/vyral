@@ -213,3 +213,5 @@ Failed HTTP calls raise `VyralClientError` with `status`, raw `body`, parsed pro
 ```bash
 python -m unittest discover -s tests
 ```
+
+`get_provider_run_job_progress` reads bounded job lifecycle metadata without returning provider output; native phase is explicitly unknown while running.

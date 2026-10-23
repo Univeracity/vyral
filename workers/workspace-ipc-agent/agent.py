@@ -25,6 +25,24 @@ class Held(Exception):
     """A safe, non-content-bearing refusal."""
 
 
+MAXIMUM_RESERVATION_TOKENS = 1048576
+
+
+PREFLIGHT_HELD_REASONS = frozenset({
+    "absolute_private_path_required", "base_binding", "context_binding", "context_limit",
+    "context_read_manifest", "context_read_overlap", "context_window", "deadline",
+    "duplicate_json_key", "host_input_limit", "input_limit", "invalid_binding",
+    "invalid_context", "invalid_context_read_scope", "invalid_digest", "invalid_json",
+    "invalid_invocation_deadline", "invalid_limit", "invalid_path", "invalid_profile",
+    "invalid_scope", "invocation_deadline_required", "model_binding", "overlapping_context",
+    "path_ancestor", "path_scope", "preflight_workspace_required", "private_file_limit",
+    "private_file_required", "readable_prompt_requires_windows", "regular_file_required",
+    "reservation_limit", "symlink", "task_binding", "unsupported_host_input",
+    "unsupported_profile", "unsupported_prompt_format", "unsupported_reservation",
+    "unsupported_response_framing", "workspace_binding", "invalid_preflight_arguments",
+})
+
+
 def encode(value, *, utf8=False):
     # Gateway request/result digests use JSON's ASCII escaping. Prompt/context
     # bytes use UTF-8; conflating the two breaks non-ASCII request bindings.
@@ -131,6 +149,10 @@ def load_profile(path):
             fields |= {"responseFraming"}
         if "promptFormat" in p:
             fields |= {"promptFormat"}
+        if "providerConfigHash" in p:
+            fields |= {"providerConfigHash"}
+        if "contextReadPaths" in p:
+            fields |= {"contextReadPaths"}
     if set(p) != fields or version not in {"vyral.workspace-ipc-profile.v1", "vyral.workspace-ipc-profile.v2"}:
         raise Held("unsupported_profile")
     response_framing(p)
@@ -143,8 +165,10 @@ def load_profile(path):
             raise Held("absolute_private_path_required")
     for name in ("taskSha256", "grantSha256", "backendSha256"):
         digest(p[name])
-    for name, ceiling in (("maxInputBytes", 65536), ("maxOutputTokens", 8192), ("maxReservationTokens", 1048576),
-                          ("maxExecutionSeconds", 600), ("maxResponseBytes", 1048576), ("maxEdits", 32), ("maxEditBytes", 65536)):
+    if "providerConfigHash" in p:
+        digest(p["providerConfigHash"])
+    for name, ceiling in (("maxInputBytes", 65536), ("maxOutputTokens", 8192), ("maxReservationTokens", MAXIMUM_RESERVATION_TOKENS),
+                          ("maxExecutionSeconds", 3600), ("maxResponseBytes", 1048576), ("maxEdits", 32), ("maxEditBytes", 65536)):
         integer(p[name], ceiling)
     if "invocationDeadlineUtc" in p:
         invocation_deadline(p["invocationDeadlineUtc"])
@@ -160,8 +184,9 @@ def load_profile(path):
         if rule.get("method") == "utf8_bytes_plus_output" and set(rule) == {"method", "overhead_tokens"}:
             if type(rule["overhead_tokens"]) is not int or not 0 <= rule["overhead_tokens"] <= 4096: raise Held("invalid_limit")
         elif rule.get("method") == "native_context_window" and set(rule) == {"method", "context_tokens", "max_prompt_bytes"}:
-            integer(rule["context_tokens"], 4096)
+            integer(rule["context_tokens"], MAXIMUM_RESERVATION_TOKENS)
             integer(rule["max_prompt_bytes"], 65536)
+            if rule["context_tokens"] > p["maxReservationTokens"]: raise Held("reservation_limit")
             if p["maxOutputTokens"] >= rule["context_tokens"]: raise Held("invalid_limit")
         else: raise Held("unsupported_reservation")
     if type(p["allowInvoke"]) is not bool or not isinstance(p["contextFiles"], list) or len(p["contextFiles"]) > 32:
@@ -186,6 +211,7 @@ def load_profile(path):
                 if any(start < end and beginning < start + count for beginning, end in spans): raise Held("overlapping_context")
                 spans.append((start, start + count))
         relative(entry["path"]); digest(entry["sha256"])
+    context_read_scope(p)
     if prompt_format(p) == "readable-windowed-v1" and not any(entry.get("windows") for entry in p["contextFiles"]):
         raise Held("readable_prompt_requires_windows")
     p["profileSha256"] = sha(body)
@@ -270,6 +296,36 @@ def scoped_path(root, name, allowed, avoided):
     return path
 
 
+def context_read_scope(profile):
+    if "contextReadPaths" not in profile:
+        return profile["allowedPaths"]
+    paths = profile["contextReadPaths"]
+    if profile["schemaVersion"] != "vyral.workspace-ipc-profile.v2" or not isinstance(paths, list) or not 1 <= len(paths) <= 32:
+        raise Held("invalid_context_read_scope")
+    for name in paths:
+        relative(name)
+        if any(ord(c) < 32 or 0x7f <= ord(c) <= 0x9f for c in name): raise Held("invalid_path")
+    if paths != [entry["path"] for entry in profile["contextFiles"]] or len(set(paths)) != len(paths):
+        raise Held("context_read_manifest")
+    for index, name in enumerate(paths):
+        if any(within(name, other) or within(other, name) for other in paths[:index] + profile["allowedPaths"] + profile["avoidedPaths"]):
+            raise Held("context_read_overlap")
+    return paths
+
+
+def read_selected_context(path, maximum):
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode): raise Held("regular_file_required")
+        if info.st_size > maximum: raise Held("context_limit")
+        with os.fdopen(fd, "rb", closefd=False) as stream: body = stream.read(maximum + 1)
+        if len(body) > maximum: raise Held("context_limit")
+        return body
+    finally:
+        os.close(fd)
+
+
 def source_windows(body, entry):
     lines = body.decode("utf-8").splitlines(keepends=True)
     offsets = [0]
@@ -342,14 +398,18 @@ def input_request(profile, envelope, root):
         raise Held("invalid_scope")
     files = []
     size = len(envelope["task"].encode())
+    read_paths = context_read_scope(profile)
     for entry in profile["contextFiles"]:
         name = entry["path"]
-        path = scoped_path(root, name, allowed, avoided)
+        path = scoped_path(root, name, read_paths, avoided)
         source_limit = profile.get("maxSourceBytes", profile["maxInputBytes"]) if "windows" in entry else profile["maxInputBytes"]
-        if path.stat().st_size > source_limit:
-            raise Held("context_limit")
-        with path.open("rb") as stream: body = stream.read(source_limit + 1)
-        if len(body) > source_limit: raise Held("context_limit")
+        if "contextReadPaths" in profile:
+            body = read_selected_context(path, source_limit)
+        else:
+            if path.stat().st_size > source_limit:
+                raise Held("context_limit")
+            with path.open("rb") as stream: body = stream.read(source_limit + 1)
+            if len(body) > source_limit: raise Held("context_limit")
         if sha(body) != entry["sha256"]: raise Held("context_binding")
         if "windows" in entry:
             windows = []
@@ -387,10 +447,31 @@ def input_request(profile, envelope, root):
     return request, reservation
 
 
-def apply_edits(profile, envelope, response, root, deadline):
+def provider_binding(profile, response):
     provider = response.get("provider_result", {})
-    if response.get("status") != "Succeeded" or provider.get("provider") != profile["providerId"] or provider.get("modelId") != profile["modelId"]:
+    if response.get("status") != "Succeeded" or not isinstance(provider, dict) or provider.get("provider") != profile["providerId"]:
         raise Held("provider_binding")
+    if "trace" in provider:
+        if "providerConfigHash" not in profile:
+            raise Held("provider_config_binding_required")
+        trace = provider["trace"]
+        if not isinstance(trace, dict) or any(trace.get(key) != value for key, value in
+                (("provider", profile["providerId"]), ("modelId", profile["modelId"]), ("configHash", profile["providerConfigHash"]))):
+            raise Held("provider_binding")
+        for key, expected in (("status", "Succeeded"), ("capability", "ai.chat"), ("operation", "run"), ("mode", "advisory")):
+            if provider.get(key) != expected or (key != "status" and trace.get(key) != expected):
+                raise Held("provider_binding")
+        for key, expected in (("modelId", profile["modelId"]), ("configHash", profile["providerConfigHash"])):
+            if key in provider and provider[key] != expected:
+                raise Held("provider_binding")
+    elif "providerConfigHash" in profile or "configHash" in provider or provider.get("modelId") != profile["modelId"]:
+        # The old trace-less fixture contract binds only provider/model and is
+        # not a substitute for a pinned public Vyral result configuration.
+        raise Held("provider_binding")
+
+
+def apply_edits(profile, envelope, response, root, deadline):
+    provider_binding(profile, response)
     message = response.get("output", {}).get("message", {})
     if not isinstance(message, dict) or message.get("role") != "assistant" or not isinstance(message.get("content"), str):
         raise Held("unsupported_model_output")
@@ -463,14 +544,38 @@ def apply_edits(profile, envelope, response, root, deadline):
     return sorted(seen)
 
 
-def run(profile, envelope, root, recover=False):
-    integer(envelope.get("remainingMilliseconds"), 600000)
+def prepare_input(profile, envelope, root):
+    """The common local preparation boundary; no transport or source writes."""
+    integer(envelope.get("remainingMilliseconds"), 3600000)
     remaining = min(profile["maxExecutionSeconds"], envelope["remainingMilliseconds"] / 1000)
     if "invocationDeadlineUtc" in profile:
         remaining = min(remaining, (invocation_deadline(profile["invocationDeadlineUtc"]) - datetime.now(timezone.utc)).total_seconds())
     if remaining <= 0: raise Held("deadline")
     deadline = time.monotonic() + remaining
     request, reservation = input_request(profile, envelope, root)
+    return request, reservation, deadline
+
+
+def preflight(profile, envelope, root, raw):
+    request, reservation, deadline = prepare_input(profile, envelope, root)
+    if time.monotonic() >= deadline:
+        raise Held("deadline")
+    prompt = request["prompt"].encode("utf-8")
+    serialized = encode(request)
+    return {"schemaVersion": "vyral.workspace-ipc-preflight.v1", "state": "prepared",
+            "profileSha256": profile["profileSha256"], "hostInputBytes": len(raw),
+            "hostInputSha256": sha(raw), "taskUtf8Bytes": len(envelope["task"].encode("utf-8")),
+            "taskSha256": profile["taskSha256"], "promptUtf8Bytes": len(prompt),
+            "promptSha256": sha(prompt), "requestJsonBytes": len(serialized),
+            "requestSha256": sha(serialized), "contextFileCount": len(profile["contextFiles"]),
+            "sourceWindowCount": sum(len(entry.get("windows", [])) for entry in profile["contextFiles"]),
+            "maxInputBytes": profile["maxInputBytes"], "maxOutputTokens": profile["maxOutputTokens"],
+            "calculatedReservationTokens": reservation, "invocationCount": 0,
+            "nativeTokenFitVerified": False, "independentlyIssued": False}
+
+
+def run(profile, envelope, root, recover=False):
+    request, reservation, deadline = prepare_input(profile, envelope, root)
     gateway = Gateway(profile, deadline)
     owner = gateway.request("GET")
     if owner.get("session_id") != profile["sessionId"] or owner.get("grant_sha256") != profile["grantSha256"] or owner.get("backend_sha256") != profile["backendSha256"]:
@@ -508,22 +613,50 @@ def run(profile, envelope, root, recover=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("run", "recover"))
+    parser.add_argument("mode", choices=("run", "recover", "preflight"))
     parser.add_argument("--profile", required=True)
-    args = parser.parse_args()
+    parser.add_argument("--workspace", help="Absolute real source root; preflight only")
+    mode_arguments = iter(sys.argv[1:])
+    mode_hint = None
+    for argument in mode_arguments:
+        if argument in ("--profile", "--workspace"):
+            next(mode_arguments, None)
+        elif argument in ("run", "recover", "preflight"):
+            mode_hint = argument
+            break
+    preflight_mode = mode_hint == "preflight"
+    if preflight_mode:
+        # argparse normally echoes unknown argument values, which may be private.
+        def safe_argument_error(_): raise Held("invalid_preflight_arguments")
+        parser.error = safe_argument_error
     try:
-        if Path.cwd() != Path("/workspace"):
+        args = parser.parse_args()
+        root = Path.cwd()
+        if args.mode == "preflight":
+            if args.workspace is None:
+                raise Held("preflight_workspace_required")
+            root = Path(args.workspace)
+            if (not root.is_absolute() or root.resolve(strict=True) != root or not root.is_dir()
+                    or any(parent.is_symlink() for parent in (root, *root.parents))):
+                raise Held("preflight_workspace_required")
+        elif args.workspace is not None or root != Path("/workspace"):
             raise Held("workspace_host_required")
         profile = load_profile(args.profile)
         raw = sys.stdin.buffer.read(98305)
         if len(raw) > 98304: raise Held("host_input_limit")
-        result = run(profile, parse(raw), Path.cwd(), args.mode == "recover")
+        envelope = parse(raw)
+        result = (preflight(profile, envelope, root, raw) if args.mode == "preflight"
+                  else run(profile, envelope, root, args.mode == "recover"))
         print(encode(result).decode())
         return 0
     except (Held, OSError, ValueError, TypeError, KeyError, AttributeError, http.client.HTTPException) as exc:
         reason = str(exc) if isinstance(exc, Held) else "private_ipc_or_input_failure"
-        print(encode({"schemaVersion": "vyral.workspace-ipc-outcome.v1", "state": "held", "reason": reason,
-                      "resendAuthorized": False, "providerEffects": "unresolved"}).decode(), file=sys.stderr)
+        if preflight_mode and reason not in PREFLIGHT_HELD_REASONS:
+            reason = "private_ipc_or_input_failure"
+        schema = "vyral.workspace-ipc-preflight.v1" if preflight_mode else "vyral.workspace-ipc-outcome.v1"
+        print(encode({"schemaVersion": schema, "state": "held", "reason": reason,
+                      "resendAuthorized": False,
+                      "providerEffects": "not_invoked_by_preflight" if preflight_mode else "unresolved"}).decode(), file=sys.stderr)
         return 20
 
 

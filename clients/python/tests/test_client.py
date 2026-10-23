@@ -2431,6 +2431,7 @@ class VyralClientTests(unittest.TestCase):
             started = client.start_provider_job("local-deterministic-ai", {"capability": "ai.chat"})
             listed = client.list_provider_jobs("local-deterministic-ai", limit=5, include_result=True)
             fetched = client.get_provider_job("job-1")
+            client.get_provider_run_job_progress("job-1")
             cancelled = client.cancel_provider_job("job-1")
         finally:
             client_module.urlopen = original_urlopen
@@ -2455,6 +2456,7 @@ class VyralClientTests(unittest.TestCase):
                 "url": "http://vyral.local/provider-jobs/job-1",
                 "body": None,
             },
+            {"method": "GET", "url": "http://vyral.local/provider-jobs/job-1/progress", "body": None},
             {
                 "method": "DELETE",
                 "url": "http://vyral.local/provider-jobs/job-1",

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Versioning;
 using Vyral.Providers.Abstractions;
 using Vyral.Providers.Cli;
 
@@ -23,7 +24,7 @@ internal static class BubblewrapTestEnvironment
         Environment.GetEnvironmentVariable("VYRAL_TEST_BUBBLEWRAP") ?? "/usr/bin/bwrap";
 }
 
-public class CliWorkspaceCodingAgentRunnerTests
+public partial class CliWorkspaceCodingAgentRunnerTests
 {
     [BubblewrapFact]
     public async Task Runner_PreservesExecutableFilesWhileStaging()
@@ -367,6 +368,30 @@ public class CliWorkspaceCodingAgentRunnerTests
         Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src/generated.txt")));
     }
 
+    [BubblewrapFact]
+    [SupportedOSPlatform("linux")]
+    public async Task Runner_RejectsWorkspaceWithoutPrivateHostOwnedAncestor()
+    {
+        await using var fixture = await WorkspaceFixture.CreateAsync("write-untracked");
+        File.SetUnixFileMode(
+            fixture.Root,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        File.SetUnixFileMode(
+            fixture.Workspace,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+
+        var result = await fixture.CreateTarget().RunAsync(
+            ProviderRunRequests.ForWorkspaceCodingAgent(fixture.CreateRequest()));
+
+        Assert.Equal(ProviderRunStatus.Rejected, result.Status);
+        Assert.Equal("workspace_not_private", result.ProviderStatus);
+        Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src/generated.txt")));
+    }
+
     private sealed class WorkspaceFixture : IAsyncDisposable
     {
         private WorkspaceFixture(string root, string workspace, string agentScript, string baseCommit, string behavior)
@@ -394,6 +419,9 @@ public class CliWorkspaceCodingAgentRunnerTests
             var root = Path.Combine(Path.GetTempPath(), $"vyral-workspace-agent-{Guid.NewGuid():N}");
             var workspace = Path.Combine(root, "workspace");
             Directory.CreateDirectory(Path.Combine(workspace, "src"));
+            File.SetUnixFileMode(
+                root,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await File.WriteAllTextAsync(Path.Combine(workspace, "src", "seed.txt"), "seed");
             await RunProcessAsync(workspace, "git", "init", "-q");
             await RunProcessAsync(workspace, "git", "config", "user.email", "tests@example.com");

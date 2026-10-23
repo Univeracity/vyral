@@ -12,6 +12,18 @@ public interface IRetrievalService
     Task<RetrievalResultEnvelope> SearchAsync(RetrievalRequest request, CancellationToken ct = default);
 }
 
+public static class RetrievalWorkLimits
+{
+    public const int MaxResultLimit = 1_000;
+    public const int MaxCandidateLimit = 10_000;
+    public const int MaxCollections = 16;
+    public const int MaxQueryChars = QueryWorkLimits.MaxSearchTextChars;
+    public const int MaxHybridCandidateMultiplier = 100;
+    public const int MaxRerankCandidateChars = 32_768;
+    public const int MaxRerankOutputBytes = 16 * 1024 * 1024;
+    public const int MaxRerankTimeoutSeconds = 600;
+}
+
 /// <summary>
 /// For vector-capable retrieval, VectorFields takes precedence over Embedding.
 /// Set Embedding for single-field vector search; set VectorFields for multi-field weighted search.

@@ -332,6 +332,29 @@ public class ServerErrorHandlingTests
     }
 
     [Fact]
+    public async Task PublicBindingRequiresGlobalApiKeyProtection()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-server-{Guid.NewGuid():N}.sqlite");
+        var objectsPath = Path.Combine(Path.GetTempPath(), $"vyral-server-objects-{Guid.NewGuid():N}");
+
+        await using var factory = CreateFactory(dbPath, objectsPath, new Dictionary<string, string?>
+        {
+            ["urls"] = "http://0.0.0.0:5220"
+        });
+
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        Assert.Contains("not loopback-only", error.Message);
+
+        await using var protectedFactory = CreateFactory(dbPath, objectsPath, new Dictionary<string, string?>
+        {
+            ["urls"] = "http://0.0.0.0:5220",
+            ["VYRAL_API_KEY"] = "test-secret"
+        });
+        using var protectedClient = protectedFactory.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await protectedClient.GetAsync("/health")).StatusCode);
+    }
+
+    [Fact]
     public async Task ProviderRunGuard_RejectsLongJobsAndRateLimitedRuns()
     {
         var dbPath = Path.Combine(Path.GetTempPath(), $"vyral-server-{Guid.NewGuid():N}.sqlite");
@@ -784,6 +807,23 @@ public class ServerErrorHandlingTests
         (await client.GetAsync("/health")).EnsureSuccessStatusCode();
     }
 
+    [Fact]
+    public async Task ObjectDownload_EnforcesConfiguredLimitWithoutOpeningContent()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-download-limit-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        await using var factory = CreateFactory(Path.Combine(root, "data.sqlite"), Path.Combine(root, "objects"),
+            new Dictionary<string, string?> { ["Server:ObjectDownloadMaxBytes"] = "4" });
+        var client = factory.CreateClient();
+        var put = await client.PutAsync("/objects/limit/oversized", new ByteArrayContent(new byte[5]));
+        put.EnsureSuccessStatusCode();
+
+        var rejected = await client.GetAsync("/objects/limit/oversized");
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, rejected.StatusCode);
+        (await client.GetAsync("/health")).EnsureSuccessStatusCode();
+    }
+
     [Theory]
     [InlineData("Cpu", "onnx-nli-judge-cpu", null, 0)]
     [InlineData("Gpu", "onnx-nli-judge-gpu", null, 0)]
@@ -813,6 +853,18 @@ public class ServerErrorHandlingTests
             new Dictionary<string, string?> { ["Server:ObjectUploadMaxBytes"] = value });
         var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
         Assert.Contains("Server:ObjectUploadMaxBytes", error.Message);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("1073741825")]
+    public async Task ObjectDownload_RejectsInvalidLimitAtStartup(string value)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-download-config-{Guid.NewGuid():N}");
+        await using var factory = CreateFactory(Path.Combine(root, "data.sqlite"), Path.Combine(root, "objects"),
+            new Dictionary<string, string?> { ["Server:ObjectDownloadMaxBytes"] = value });
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        Assert.Contains("Server:ObjectDownloadMaxBytes", error.Message);
     }
 
     private static WebApplicationFactory<Program> CreateFactory(

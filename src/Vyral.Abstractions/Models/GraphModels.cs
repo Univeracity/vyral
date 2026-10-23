@@ -1026,6 +1026,15 @@ public class VyralGraphReviewEvent : IJsonOnDeserialized
     }
 }
 
+public static class VyralGraphTraversalLimits
+{
+    public const int MaxDepth = 16;
+    public const int MaxStartNodes = 1_000;
+    public const int MaxNodeLimit = VyralGraphCollectionLimits.MaxRecords;
+    public const int MaxEdgeLimit = VyralGraphCollectionLimits.MaxRecords;
+    public const int MaxSelectorsPerKind = 1_000;
+}
+
 public class VyralGraphTraversalProfile : IJsonOnDeserialized
 {
     [JsonPropertyName("id")]

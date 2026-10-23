@@ -9,6 +9,23 @@ additional host-level check, not an object policy. With no object policies,
 the routes retain their existing host-level behavior for compatibility;
 shared multi-tenant deployments must configure object policies before exposure.
 
+Object work is bounded independently of authorization. List requests default to
+100 entries and cannot request more than 5,000. The local provider keeps only
+the next page plus one key while scanning the namespace and uses an ordered key
+cursor, so page memory does not grow with the container. Reads default to a
+64 MiB ceiling and cannot exceed the portable 1 GiB maximum. The HTTP host applies
+`Server:ObjectDownloadMaxBytes` before opening provider content and returns 413
+when stored metadata exceeds it. Set a lower deployment ceiling when callers do
+not need large objects. Uploads retain the separate
+`Server:ObjectUploadMaxBytes` limit.
+
+Portable object keys and list prefixes cannot exceed 1,024 UTF-8 bytes, and
+opaque continuation tokens cannot exceed 8,192 characters. Azure Blob and
+Google Cloud Storage reads pin the download to the ETag or generation whose
+length was checked; a concurrent replacement fails the read instead of
+bypassing its byte ceiling. Direct `IObjectStore` callers receive the same
+limits as HTTP callers.
+
 Each `AllowedKeyPrefixes` value must end in `/`. This is a key-segment
 boundary: `tenant-a/` permits `tenant-a/song.wav` but never `tenant-aa/song.wav`.
 Listing requires a supplied prefix inside a permitted prefix; a container-root

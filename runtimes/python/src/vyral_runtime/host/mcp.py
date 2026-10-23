@@ -37,6 +37,7 @@ from ..graph import (
 )
 from ..retrieval import get_retrieval_profiles
 from ..runtime import VyralRuntime
+from ._http_authority import host_allowed, validate_allowed_hosts
 from .auth import HostAuthenticationError
 from .diagnostics import public_readiness_document
 
@@ -179,6 +180,7 @@ class McpApplicationConfig:
                 raise ValueError(
                     f"{name} must be between one and {maximum}."
                 )
+        validate_allowed_hosts(self.allowed_hosts)
         if not isinstance(self.require_explicit_origins, bool):
             raise TypeError("require_explicit_origins must be a boolean.")
         if not isinstance(self.enable_conformance_diagnostics, bool):
@@ -1944,7 +1946,7 @@ def _request_origin_allowed(
     require_explicit_origins: bool = False,
 ) -> bool:
     host = headers.get("host")
-    if host is not None and not _host_allowed(host, allowed_hosts):
+    if host is None or not host_allowed(host, allowed_hosts):
         return False
     origin = headers.get("origin")
     if origin is None:
@@ -1961,26 +1963,7 @@ def _request_origin_allowed(
         return False
     if host is None or parsed.netloc.lower() != host.lower():
         return False
-    return _host_allowed(parsed.netloc, allowed_hosts)
-
-
-def _host_allowed(
-    host: str, allowed_hosts: frozenset[str]
-) -> bool:
-    normalized = host.strip().lower()
-    normalized_allowed = {
-        value.strip().lower() for value in allowed_hosts
-    }
-    if normalized in normalized_allowed:
-        return True
-    try:
-        parsed = urlsplit(f"//{normalized}")
-    except ValueError:
-        return False
-    hostname = parsed.hostname
-    return hostname is not None and hostname.lower() in {
-        value.strip("[]").lower() for value in normalized_allowed
-    }
+    return host_allowed(parsed.netloc, allowed_hosts)
 
 
 def _require_task_capability(meta: Mapping[str, Any]) -> None:

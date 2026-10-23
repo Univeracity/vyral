@@ -30,7 +30,7 @@ prototype includes:
   leases, checkpoints, artifacts, restart recovery, maintenance, policy, and
   thirteen built-in domain job adapters, including staged cross-store artifact ingestion and
   receipt-bound collection lifecycle;
-- an OpenAPI-derived ASGI host covering all 133 REST operation IDs;
+- an OpenAPI-derived ASGI host covering all 134 REST operation IDs;
 - parity with the shared `vyral.admission.v1` contract: aggregate mutations return durable,
   idempotent jobs with `Location`, while non-mutating RAG dry-runs remain synchronous;
 - a stateless MCP `2026-07-28` endpoint with self-describing routing headers,

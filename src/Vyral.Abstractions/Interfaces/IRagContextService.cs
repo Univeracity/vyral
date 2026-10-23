@@ -15,6 +15,20 @@ public interface IRagContextService
     Task<RagContextEvaluationResult> EvaluateContextAsync(RagContextEvaluationRequest request, CancellationToken ct = default);
 }
 
+public static class RagContextWorkLimits
+{
+    public const int MaxChars = 1_000_000;
+    public const int MaxCharsPerChunk = 100_000;
+    public const int MaxCitationsPerChunk = 1_000;
+    public const int MaxAssemblyGroups = 256;
+    public const int MaxChunksPerGroup = 10_000;
+    public const int MaxSeedNodes = 1_000;
+    public const int MaxSeedNodeIds = 1_000;
+    public const int MaxSeedJsonPointers = 64;
+    public const int MaxGraphContextChars = 1_000_000;
+    public const int MaxGraphProvenanceItems = 10_000;
+}
+
 public class RagContextRequest
 {
     [JsonPropertyName("retrieval")]

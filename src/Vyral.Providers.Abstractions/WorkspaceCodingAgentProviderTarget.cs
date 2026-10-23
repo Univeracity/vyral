@@ -15,6 +15,12 @@ public interface IWorkspaceCodingAgentRunner
     Task<WorkspaceCodingAgentExecution> RunAsync(WorkspaceCodingAgentExecutionRequest request, CancellationToken ct = default);
 }
 
+/// <summary>Explicit host support for exact creation and whole private-stage reconciliation.</summary>
+public interface IWorkspaceExactFileCreationRunner : IWorkspaceCodingAgentRunner
+{
+    string ExactFileCreationContract { get; }
+}
+
 public sealed class WorkspaceCodingAgentExecutionRequest
 {
     public WorkspaceCodingAgentRequest Request { get; init; } = new();
@@ -30,6 +36,8 @@ public sealed class WorkspaceCodingAgentExecution
     public string? FailureClass { get; init; }
     public string? ProviderStatus { get; init; }
     public string? Error { get; init; }
+    /// <summary>Untrusted, bounded agent observation; never delivery, usage, or retry authority.</summary>
+    public WorkspaceAgentDiagnostic? AgentDiagnostic { get; init; }
 }
 
 public interface IWorkspaceCodingAgentTarget : IProviderTarget
@@ -136,6 +144,14 @@ public sealed class WorkspaceCodingAgentProviderTarget : IWorkspaceCodingAgentTa
                 UnsupportedFeatures = new List<string> { "unbounded_workspace_access", "unbounded_tool_execution", "direct_commit", "direct_push" }
             }
         };
+        if (runner is IWorkspaceExactFileCreationRunner { ExactFileCreationContract: "exact-file-creation-v1" })
+        {
+            var limits = Capabilities[0].InputLimits;
+            limits["newFilePaths"] = "exact-file-creation-v1";
+            limits["newFilePathLimit"] = 32;
+            limits["newFilePathMaxUtf8Bytes"] = 512;
+            limits["creationStagePolicy"] = "private-parent-whole-stage-reconciled";
+        }
     }
 
     public ProviderProfile Profile { get; }
@@ -181,6 +197,8 @@ public sealed class WorkspaceCodingAgentProviderTarget : IWorkspaceCodingAgentTa
         {
             workspaceRequest = ProviderJson.DeserializePayload<WorkspaceCodingAgentRequest>(request);
             WorkspaceCodingAgentContract.ValidateRequest(workspaceRequest);
+            if (workspaceRequest.NewFilePaths is not null && _runner is not IWorkspaceExactFileCreationRunner { ExactFileCreationContract: "exact-file-creation-v1" })
+                return CreateResult(request, ProviderRunStatus.Rejected, trace, stopwatch.Elapsed, ProviderFailureClasses.Unsupported, "exact_file_creation_unsupported", "The selected host does not support exact file creation.");
             if (!IsWithinAnAllowedWorkspaceRoot(workspaceRequest.WorkspaceRoot))
             {
                 throw new ArgumentException("Workspace coding-agent workspaceRoot is not mounted for this target.");
@@ -259,6 +277,17 @@ public sealed class WorkspaceCodingAgentProviderTarget : IWorkspaceCodingAgentTa
         var failureClass = execution.Status == ProviderRunStatus.Succeeded ? null : execution.FailureClass ?? DefaultFailureClass(execution.Status);
         var providerStatus = execution.ProviderStatus ?? (execution.Status == ProviderRunStatus.Succeeded ? "succeeded" : "workspace_runner_failed");
         var result = CreateResult(request, execution.Status, trace, stopwatch.Elapsed, failureClass, providerStatus, execution.Error, execution.Result);
+        if (execution.Status == ProviderRunStatus.Failed && failureClass == ProviderFailureClasses.Tool &&
+            providerStatus == "agent_process_failed" && execution.AgentDiagnostic is { } diagnostic &&
+            WorkspaceAgentDiagnostic.IsKnownReason(diagnostic.Reason))
+        {
+            // Reconstruct only the closed public observation, never runner-supplied
+            // fields or raw stderr. An observation cannot consume more output budget.
+            var candidate = result.Output.DeepClone().AsObject();
+            candidate["agentDiagnostic"] = ProviderJson.ToJsonObject(new WorkspaceAgentDiagnostic { Reason = diagnostic.Reason });
+            if (Encoding.UTF8.GetByteCount(candidate.ToJsonString(ProviderJson.Options)) <= maxOutputBytes)
+                result.Output = candidate;
+        }
         result.Trace!.InputHash = ProviderHash.Sha256(request.Payload.ToJsonString(ProviderJson.Options));
         result.Trace.OutputHash = ProviderHash.Sha256(result.Output.ToJsonString(ProviderJson.Options));
         return result;

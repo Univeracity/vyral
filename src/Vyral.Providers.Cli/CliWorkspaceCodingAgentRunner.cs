@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 using System.Text;
 using Vyral.Providers.Abstractions;
 
@@ -12,8 +13,11 @@ namespace Vyral.Providers.Cli;
 /// remounted writable, then applies a reconciled, validated change set back to
 /// the original checkout. If isolation or reconciliation cannot be established,
 /// it fails closed and leaves the original checkout untouched.
+/// Exact new-file scope temporarily exposes a private parent for creation;
+/// whole-stage reconciliation guards validation and application, not every
+/// possible sibling name during agent execution.
 /// </summary>
-public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
+public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceExactFileCreationRunner
 {
     private static readonly string[] SensitiveEnvironmentNames =
     {
@@ -84,10 +88,12 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         AdapterId = $"cli-bwrap:{options.AgentProfile}:lifetime-v3" +
             (options.InputFormat == "workspace-json-v1" ? ":workspace-json-v1" : string.Empty) +
             (options.SerializeRuns ? ":serialized" : string.Empty) +
-            (options.AgentOutcomeFormat == "workspace-ipc-v1" ? ":delivery-v1" : string.Empty);
+            (options.AgentOutcomeFormat == "workspace-ipc-v1" ? ":delivery-v1:held-diagnostic-v1" : string.Empty) +
+            ":exact-file-creation-v1:private-source-workspace-v1";
     }
 
     public string AdapterId { get; }
+    public string ExactFileCreationContract => "exact-file-creation-v1";
 
     public async Task<WorkspaceCodingAgentExecution> RunAsync(WorkspaceCodingAgentExecutionRequest executionRequest, CancellationToken ct = default)
     {
@@ -124,6 +130,8 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         }
         try
         {
+            try { WorkspaceCodingAgentContract.ValidateNewFilePaths(request); }
+            catch (ArgumentException) { return Failure("invalid_new_file_paths", "Exact file creation scope is invalid.", ProviderFailureClasses.Schema, ProviderRunStatus.Rejected); }
             _ = Remaining();
             if (_options.SerializeRuns)
             {
@@ -136,23 +144,32 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 return Failure("workspace_not_mounted", "The requested workspace is not under a configured host root.", ProviderFailureClasses.Policy);
             }
 
+            EnsurePrivateSourceWorkspace(sourceRoot);
+
             if (IsUnderPath(Path.GetFullPath(_options.StagingRoot), sourceRoot))
             {
                 return Failure("staging_root_inside_workspace", "The configured staging root must not be inside the source workspace.", ProviderFailureClasses.Configuration);
             }
 
             EnsureNoSymlinks(sourceRoot, ct);
+            if (request.NewFilePaths is not null)
+            {
+                EnsureRegularWorkspaceEntries(sourceRoot, ct);
+                EnsureNewFilePreconditions(sourceRoot, request.NewFilePaths, ct);
+            }
             var baseCommit = (await GetGitOutputAsync(sourceRoot, "rev-parse", "HEAD", ct)).Trim();
             if (!IsCommit(baseCommit))
             {
                 return Failure("base_commit_unavailable", "The workspace did not yield a Git base commit.", ProviderFailureClasses.Configuration);
             }
+            var sourceSnapshot = request.NewFilePaths is null ? null : await SnapshotWorkspaceAsync(sourceRoot, ct, includeDirectoryModes: true);
 
             staging = Path.Combine(Path.GetFullPath(_options.StagingRoot), $"vyral-workspace-agent-{Guid.NewGuid():N}");
             Directory.CreateDirectory(staging);
             await CopyWorkspaceAsync(sourceRoot, staging, ct);
-            PrepareWritablePaths(staging, request.AllowedPaths, ct);
+            PrepareWritablePaths(staging, request.AllowedPaths.Except(request.NewFilePaths ?? [], StringComparer.Ordinal), ct);
             PrepareAvoidedPaths(staging, request.AvoidedPaths, ct);
+            var initialSnapshot = request.NewFilePaths is null ? null : await SnapshotWorkspaceAsync(staging, ct, includeDirectoryModes: true);
 
             evidence = CreateEvidence(baseCommit, Array.Empty<WorkspaceChangedPath>(), new(), new());
             evidence.ChangeSetReconciled = false;
@@ -188,6 +205,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             var validations = new List<WorkspaceValidationResult>();
             var executed = new List<string>();
             var result = CreateEvidence(baseCommit, changes, validations, executed);
+            if (initialSnapshot is not null) result.ChangeSetReconciled = false;
             evidence = result;
 
             if (agentResult.Cancelled)
@@ -196,7 +214,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 return new WorkspaceCodingAgentExecution
                 {
                     Status = ProviderRunStatus.Cancelled,
-                    Result = result,
+                    Result = result.ChangeSetReconciled ? result : null,
                     FailureClass = ProviderFailureClasses.Cancelled,
                     ProviderStatus = "cancelled",
                     Error = "Workspace coding-agent run was cancelled before changes were applied."
@@ -209,7 +227,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 return new WorkspaceCodingAgentExecution
                 {
                     Status = ProviderRunStatus.TimedOut,
-                    Result = result,
+                    Result = result.ChangeSetReconciled ? result : null,
                     FailureClass = ProviderFailureClasses.Timeout,
                     ProviderStatus = "timeout",
                     Error = "Workspace coding-agent run timed out before changes were applied."
@@ -222,7 +240,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 return new WorkspaceCodingAgentExecution
                 {
                     Status = ProviderRunStatus.Rejected,
-                    Result = result,
+                    Result = result.ChangeSetReconciled ? result : null,
                     FailureClass = ProviderFailureClasses.Policy,
                     ProviderStatus = "output_limit",
                     Error = "Workspace coding-agent output exceeded the configured limit; changes were not applied."
@@ -235,9 +253,11 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 return new WorkspaceCodingAgentExecution
                 {
                     Status = ProviderRunStatus.Failed,
-                    Result = result,
+                    Result = result.ChangeSetReconciled ? result : null,
                     FailureClass = ProviderFailureClasses.Tool,
                     ProviderStatus = "agent_process_failed",
+                    AgentDiagnostic = _options.AgentOutcomeFormat == "workspace-ipc-v1" && agentResult.ExitCode == 20 &&
+                        string.IsNullOrWhiteSpace(agentResult.StartError) ? ReadAgentDiagnostic(agentResult.StandardError) : null,
                     Error = $"Workspace coding-agent process failed with exit code {agentResult.ExitCode}; changes were not applied."
                 };
             }
@@ -249,7 +269,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 {
                     FillSkippedValidations(request, validations);
                     return Failure("agent_delivery_mismatch", "The bounded agent acknowledgment did not bind the delivered task.",
-                        ProviderFailureClasses.Schema, ProviderRunStatus.Rejected, result);
+                        ProviderFailureClasses.Schema, ProviderRunStatus.Rejected, result.ChangeSetReconciled ? result : null);
                 }
             }
 
@@ -272,7 +292,25 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
                 };
             }
 
-            var stagedSnapshot = await SnapshotWorkspaceAsync(staging, ct);
+            if (initialSnapshot is not null)
+            {
+                EnsureRegularWorkspaceEntries(staging, ct);
+                // Refuse new undeclared entries before opening or hashing them.
+                foreach (var entry in Directory.EnumerateFileSystemEntries(staging, "*", SearchOption.AllDirectories))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var path = NormalizeRelativePath(Path.GetRelativePath(staging, entry));
+                    if (path == ".git" || path.StartsWith(".git/", StringComparison.Ordinal)) continue;
+                    if (!initialSnapshot.ContainsKey(path) && !IsWithinAllowedPath(path, request))
+                        throw OutOfScope();
+                }
+            }
+            var stagedSnapshot = await SnapshotWorkspaceAsync(staging, ct, includeDirectoryModes: initialSnapshot is not null);
+            if (initialSnapshot is not null)
+            {
+                ReconcileCreationStage(request, changes, initialSnapshot, stagedSnapshot);
+                result.ChangeSetReconciled = true;
+            }
 
             foreach (var validationCommand in request.ValidationCommands)
             {
@@ -318,7 +356,8 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             }
 
             EnsureNoSymlinks(staging, ct, "sandbox_symlink_present", "A validation created a symbolic link in the staged workspace; changes were not applied.");
-            if (!SnapshotEquals(stagedSnapshot, await SnapshotWorkspaceAsync(staging, ct)))
+            if (initialSnapshot is not null) EnsureRegularWorkspaceEntries(staging, ct);
+            if (!SnapshotEquals(stagedSnapshot, await SnapshotWorkspaceAsync(staging, ct, includeDirectoryModes: initialSnapshot is not null)))
             {
                 return new WorkspaceCodingAgentExecution
                 {
@@ -333,7 +372,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             result.Summary = "Agent changes were sandboxed, validated, reconciled, and applied for review.";
             EnsureResultFitsOutputLimit(result, executionRequest.MaxOutputBytes);
             _ = Remaining();
-            await ApplyChangesAsync(sourceRoot, staging, baseCommit, request, changes, ct, Remaining);
+            await ApplyChangesAsync(sourceRoot, staging, baseCommit, request, changes, ct, Remaining, sourceSnapshot);
             return new WorkspaceCodingAgentExecution { Status = ProviderRunStatus.Succeeded, Result = result, ProviderStatus = "succeeded" };
         }
         catch (OperationCanceledException)
@@ -377,10 +416,34 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             return value;
         }
         var delivered = Digest("taskSha256");
-        if (delivered != "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(task))))
+        if (delivered != "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(task))).ToLowerInvariant())
             throw new InvalidOperationException();
         return new() { TaskSha256 = delivered, ProfileSha256 = Digest("profileSha256"), RequestSha256 = Digest("requestSha256"),
-            ResultSha256 = Digest("resultSha256"), OutcomeSha256 = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(stdout))) };
+            ResultSha256 = Digest("resultSha256"), OutcomeSha256 = "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(stdout))).ToLowerInvariant() };
+    }
+
+    private static WorkspaceAgentDiagnostic? ReadAgentDiagnostic(string stderr)
+    {
+        if (Encoding.UTF8.GetByteCount(stderr) > 2048) return null;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(stderr, new() { MaxDepth = 4 });
+            var root = document.RootElement;
+            if (root.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+            var keys = root.EnumerateObject().Select(p => p.Name).ToArray();
+            var expected = new[] { "schemaVersion", "state", "reason", "resendAuthorized", "providerEffects" };
+            if (keys.Length != expected.Length || !keys.ToHashSet(StringComparer.Ordinal).SetEquals(expected) ||
+                root.GetProperty("schemaVersion").GetString() != "vyral.workspace-ipc-outcome.v1" ||
+                root.GetProperty("state").GetString() != "held" ||
+                root.GetProperty("resendAuthorized").ValueKind != System.Text.Json.JsonValueKind.False ||
+                root.GetProperty("providerEffects").GetString() != "unresolved") return null;
+            var reason = root.GetProperty("reason").GetString();
+            return WorkspaceAgentDiagnostic.IsKnownReason(reason) ? new() { Reason = reason! } : null;
+        }
+        catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            return null;
+        }
     }
 
     private async Task<string> GetCleanWorkspaceRootAsync(string workspaceRoot, CancellationToken ct)
@@ -496,8 +559,23 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         arguments.Add("--ro-bind");
         arguments.Add(staging);
         arguments.Add("/workspace");
+        if (!includeDeclaredTools && request.NewFilePaths is not null)
+        {
+            foreach (var parent in request.NewFilePaths.Select(Path.GetDirectoryName).Select(parent => string.IsNullOrEmpty(parent) ? "." : NormalizeRelativePath(parent))
+                         .Distinct(StringComparer.Ordinal).OrderBy(path => path == "." ? -1 : path.Count(c => c == '/')))
+            {
+                var source = Path.Combine(staging, parent == "." ? string.Empty : parent);
+                var destination = parent == "." ? "/workspace" : $"/workspace/{parent}";
+                arguments.AddRange(["--bind", source, destination]);
+                // Existing siblings retain read-only mounts. Absent sibling
+                // names can still be created privately and must be reconciled.
+                foreach (var child in Directory.EnumerateFileSystemEntries(source).Order(StringComparer.Ordinal))
+                    arguments.AddRange(["--ro-bind", child, destination + "/" + Path.GetFileName(child)]);
+            }
+        }
         foreach (var path in request.AllowedPaths.Select(NormalizeRelativePath).OrderBy(path => path.Count(character => character == '/')))
         {
+            if (request.NewFilePaths?.Contains(path, StringComparer.Ordinal) == true && !File.Exists(Path.Combine(staging, path))) continue;
             arguments.Add("--bind");
             arguments.Add(Path.Combine(staging, path == "." ? string.Empty : path));
             arguments.Add(path == "." ? "/workspace" : $"/workspace/{path}");
@@ -594,13 +672,30 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         WorkspaceCodingAgentRequest request,
         IReadOnlyList<WorkspaceChangedPath> changes,
         CancellationToken ct,
-        Func<TimeSpan> remaining)
+        Func<TimeSpan> remaining,
+        IReadOnlyDictionary<string, string>? originalSourceSnapshot)
     {
+        EnsurePrivateSourceWorkspace(sourceRoot);
         var sourceHead = (await GetGitOutputAsync(sourceRoot, "rev-parse", "HEAD", ct)).Trim();
         var sourceStatus = await GetGitOutputAsync(sourceRoot, "status", "--porcelain=v1", "--untracked-files=all", ct);
         if (!string.Equals(sourceHead, baseCommit, StringComparison.Ordinal) || !string.IsNullOrWhiteSpace(sourceStatus))
         {
             throw new WorkspaceHostException("workspace_changed_during_run", "The source workspace changed during the agent run; sandbox changes were not applied.", ProviderFailureClasses.Trust);
+        }
+        if (request.NewFilePaths is not null)
+        {
+            EnsureNoSymlinks(sourceRoot, ct);
+            EnsureRegularWorkspaceEntries(sourceRoot, ct);
+            if (!SnapshotEquals(originalSourceSnapshot!, await SnapshotWorkspaceAsync(sourceRoot, ct, includeDirectoryModes: true)))
+                throw new WorkspaceHostException("workspace_changed_during_run", "The original filesystem changed during the exact creation run.", ProviderFailureClasses.Trust);
+            EnsureNewFilePreconditions(sourceRoot, request.NewFilePaths, ct);
+            // Validate the entire batch before the first source write.
+            foreach (var changed in changes)
+            {
+                if (!IsWithinAllowedPath(changed.Path, request) || IsWithinAnyAvoidedPath(changed.Path, request.AvoidedPaths)) throw OutOfScope();
+                if (changed.Kind != "deleted" && !File.Exists(Path.Combine(staging, changed.Path)))
+                    throw new WorkspaceHostException("change_set_missing_file", "The staged change set is incomplete.", ProviderFailureClasses.Trust);
+            }
         }
 
         var rollbackDirectory = Path.Combine(staging, $".vyral-rollback-{Guid.NewGuid():N}");
@@ -612,7 +707,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
             {
                 _ = remaining();
                 var path = NormalizeRelativePath(changed.Path);
-                if (!IsWithinAllowedPath(path, request.AllowedPaths) || IsWithinAnyAvoidedPath(path, request.AvoidedPaths))
+                if (!IsWithinAllowedPath(path, request) || IsWithinAnyAvoidedPath(path, request.AvoidedPaths))
                 {
                     throw new WorkspaceHostException("out_of_scope_change", "The sandbox produced a change outside its declared workspace paths; changes were not applied.", ProviderFailureClasses.Trust);
                 }
@@ -910,7 +1005,120 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
         }
     }
 
-    private static async Task<Dictionary<string, string>> SnapshotWorkspaceAsync(string root, CancellationToken ct)
+    private static void EnsureNewFilePreconditions(string root, IEnumerable<string> paths, CancellationToken ct)
+    {
+        foreach (var path in paths)
+        {
+            ct.ThrowIfCancellationRequested();
+            var target = Path.Combine(root, path);
+            if (File.Exists(target) || Directory.Exists(target))
+                throw new WorkspaceHostException("new_file_already_exists", "An exact creation target already exists.", ProviderFailureClasses.Policy, ProviderRunStatus.Rejected);
+            if (!Directory.Exists(Path.GetDirectoryName(target)))
+                throw new WorkspaceHostException("new_file_parent_missing", "Exact creation requires an existing real parent directory.", ProviderFailureClasses.Policy, ProviderRunStatus.Rejected);
+        }
+    }
+
+    // Linux statx has a fixed 256-byte ABI. Only the independently reported
+    // file type is used; permission bits alone cannot distinguish a FIFO.
+    [StructLayout(LayoutKind.Explicit, Size = 256)]
+    private struct LinuxStatx
+    {
+        [FieldOffset(0)] public uint Mask;
+        [FieldOffset(20)] public uint Uid;
+        [FieldOffset(28)] public ushort Mode;
+    }
+    [DllImport("libc", EntryPoint = "statx", SetLastError = true)]
+    private static extern int Statx(int directoryFd, [MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags, uint mask, out LinuxStatx result);
+
+    [DllImport("libc", EntryPoint = "geteuid")]
+    private static extern uint GetEffectiveUserId();
+
+    private static void EnsurePrivateSourceWorkspace(string sourceRoot)
+    {
+        var fullRoot = Path.GetFullPath(sourceRoot);
+        var ancestors = new Stack<string>();
+        for (var current = new DirectoryInfo(fullRoot); current is not null; current = current.Parent)
+        {
+            ancestors.Push(current.FullName);
+        }
+
+        var effectiveUserId = GetEffectiveUserId();
+        var privateBoundaryFound = false;
+        while (ancestors.TryPop(out var path))
+        {
+            if (Statx(-100, path, 0x100, 0x9, out var stat) != 0 ||
+                (stat.Mask & 0x9) != 0x9 ||
+                (stat.Mode & 0xf000) != 0x4000)
+            {
+                throw new WorkspaceHostException(
+                    "workspace_privacy_unavailable",
+                    "Workspace source privacy could not be established from Linux ownership and mode metadata.",
+                    ProviderFailureClasses.Configuration);
+            }
+
+            if (!privateBoundaryFound &&
+                stat.Uid == effectiveUserId &&
+                (stat.Mode & 0x003f) == 0)
+            {
+                privateBoundaryFound = true;
+            }
+
+            if (privateBoundaryFound && stat.Uid != effectiveUserId)
+            {
+                throw new WorkspaceHostException(
+                    "workspace_not_private",
+                    "Workspace source paths below the private boundary must be owned by the workspace host user.",
+                    ProviderFailureClasses.Policy,
+                    ProviderRunStatus.Rejected);
+            }
+        }
+
+        if (!privateBoundaryFound)
+        {
+            throw new WorkspaceHostException(
+                "workspace_not_private",
+                "Workspace coding-agent writes require a checkout beneath a host-owned directory with no group or other permissions.",
+                ProviderFailureClasses.Policy,
+                ProviderRunStatus.Rejected);
+        }
+    }
+
+    private static void EnsureRegularWorkspaceEntries(string root, CancellationToken ct)
+    {
+        foreach (var entry in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories))
+        {
+            ct.ThrowIfCancellationRequested();
+            if (Statx(-100, entry, 0x100, 1, out var stat) != 0 || (stat.Mask & 1) == 0)
+                throw new WorkspaceHostException("file_type_unavailable", "Exact creation requires independently observable Linux file types.", ProviderFailureClasses.Configuration);
+            if ((stat.Mode & 0xf000) is not (0x8000 or 0x4000))
+                throw new WorkspaceHostException("workspace_special_entry", "Exact creation rejects nonregular files and links.", ProviderFailureClasses.Policy, ProviderRunStatus.Rejected);
+        }
+    }
+
+    private static WorkspaceHostException OutOfScope() => new("out_of_scope_change", "The private stage changed outside the declared exact scope; changes were not applied.", ProviderFailureClasses.Trust, ProviderRunStatus.Rejected);
+
+    private static void ReconcileCreationStage(WorkspaceCodingAgentRequest request, IReadOnlyList<WorkspaceChangedPath> changes,
+        IReadOnlyDictionary<string, string> before, IReadOnlyDictionary<string, string> after)
+    {
+        foreach (var change in changes)
+            if (!IsWithinAllowedPath(change.Path, request) || IsWithinAnyAvoidedPath(change.Path, request.AvoidedPaths)) throw OutOfScope();
+        foreach (var path in request.NewFilePaths!)
+            if (after.TryGetValue(path, out var value) && !value.StartsWith("file:", StringComparison.Ordinal))
+                throw new WorkspaceHostException("new_file_not_regular", "An exact creation target must be a regular file.", ProviderFailureClasses.Trust, ProviderRunStatus.Rejected);
+        foreach (var path in before.Keys.Union(after.Keys, StringComparer.Ordinal))
+        {
+            before.TryGetValue(path, out var previous); after.TryGetValue(path, out var current);
+            if (previous == current) continue;
+            if (!IsWithinAllowedPath(path, request) || IsWithinAnyAvoidedPath(path, request.AvoidedPaths)) throw OutOfScope();
+            var reconciled = previous?.StartsWith("file:", StringComparison.Ordinal) == true || current?.StartsWith("file:", StringComparison.Ordinal) == true
+                ? changes.Any(change => change.Path == path)
+                : changes.Any(change => change.Path.StartsWith(path + "/", StringComparison.Ordinal));
+            if (!reconciled)
+                throw new WorkspaceHostException("filesystem_change_unreconciled", "A filesystem change is absent from the Git change set; changes were not applied.", ProviderFailureClasses.Trust, ProviderRunStatus.Rejected);
+        }
+    }
+
+    private static async Task<Dictionary<string, string>> SnapshotWorkspaceAsync(string root, CancellationToken ct, bool includeDirectoryModes = false)
     {
         var snapshot = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var entry in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories))
@@ -921,7 +1129,7 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
             if (Directory.Exists(entry))
             {
-                snapshot[relative] = "directory";
+                snapshot[relative] = includeDirectoryModes ? $"directory:{GetUnixFileMode(entry)}" : "directory";
                 continue;
             }
 
@@ -977,7 +1185,8 @@ public sealed class CliWorkspaceCodingAgentRunner : IWorkspaceCodingAgentRunner
 
     private bool IsUnderConfiguredRoot(string path) => _options.AllowedWorkspaceRoots.Any(root => IsUnderPath(path, Path.GetFullPath(root)));
 
-    private static bool IsWithinAllowedPath(string path, IEnumerable<string> allowed) => allowed.Select(NormalizeRelativePath).Any(root => IsWithinRelativePath(path, root));
+    private static bool IsWithinAllowedPath(string path, WorkspaceCodingAgentRequest request) => request.AllowedPaths.Select(NormalizeRelativePath)
+        .Any(root => request.NewFilePaths?.Contains(root, StringComparer.Ordinal) == true ? path == root : IsWithinRelativePath(path, root));
     private static bool IsWithinAnyAvoidedPath(string path, IEnumerable<string> avoided) => avoided.Select(NormalizeRelativePath).Any(root => IsWithinRelativePath(path, root));
     private static bool IsWithinRelativePath(string path, string root) => root == "." || path == root || path.StartsWith(root + "/", StringComparison.Ordinal);
     private static bool IsUnderPath(string candidate, string root) => PathEquals(candidate, root) || candidate.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal);

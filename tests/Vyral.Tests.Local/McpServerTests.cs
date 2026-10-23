@@ -1020,7 +1020,11 @@ public sealed class McpServerTests
                 var values = new Dictionary<string, string?>
                 {
                     ["DatabasePath"] = Path.Combine(root, "vyral.sqlite"),
-                    ["ObjectsPath"] = Path.Combine(root, "objects")
+                    ["ObjectsPath"] = Path.Combine(root, "objects"),
+                    // These tests exercise MCP's own stricter Host/Origin
+                    // middleware without ASP.NET Host Filtering intercepting
+                    // the request first.
+                    ["AllowedHosts"] = "*"
                 };
                 foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
                     values[key] = value;

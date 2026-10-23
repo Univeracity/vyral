@@ -21,9 +21,12 @@ public sealed class LlamaCppRuntimeOptions
     public int ContextTokens { get; init; } = 2048;
     public int MaxOutputTokens { get; init; } = 512;
     public int MaxResponseBytes { get; init; } = 1048576;
+    public string ChatOutputFormat { get; init; } = LlamaCppChatOutputFormats.Text;
 
     internal void Validate()
     {
+        if (ChatOutputFormat is not (LlamaCppChatOutputFormats.Text or LlamaCppChatOutputFormats.JsonObjectV1))
+            throw new ArgumentException("Unsupported native chat output format.");
         if (Endpoint.Scheme != "http" || !IPAddress.TryParse(Endpoint.Host, out var ip) || !IPAddress.IsLoopback(ip)
             || Endpoint.AbsolutePath != "/" || Endpoint.Query != "" || Endpoint.UserInfo != "" || Endpoint.Fragment != "")
             throw new ArgumentException("Runtime endpoint must be a literal loopback HTTP origin.");
@@ -38,10 +41,14 @@ public sealed class LlamaCppRuntimeOptions
 public sealed class LlamaCppRuntimeSessionFactory : ILocalLogprobSessionFactory
 {
     private readonly LlamaCppRuntimeOptions _options;
-    public LlamaCppRuntimeSessionFactory(LlamaCppRuntimeOptions options)
+    private readonly Func<HttpMessageHandler>? _handlerFactory;
+    public LlamaCppRuntimeSessionFactory(LlamaCppRuntimeOptions options) : this(options, null) { }
+    internal LlamaCppRuntimeSessionFactory(LlamaCppRuntimeOptions options, Func<HttpMessageHandler>? handlerFactory)
     {
-        options.Validate(); _options = options;
-        BindingId = ProviderHash.Sha256($"llamacpp-native-v1|{options.Endpoint}|{options.ModelId}|{options.ModelSha256}|{options.BuildInfo}|{options.TemplateSha256}|{options.TemplateProbeSha256}|{options.ContextTokens}|{options.MaxOutputTokens}|{options.MaxResponseBytes}");
+        options.Validate(); _options = options; _handlerFactory = handlerFactory;
+        var legacyBinding = $"llamacpp-native-v1|{options.Endpoint}|{options.ModelId}|{options.ModelSha256}|{options.BuildInfo}|{options.TemplateSha256}|{options.TemplateProbeSha256}|{options.ContextTokens}|{options.MaxOutputTokens}|{options.MaxResponseBytes}";
+        BindingId = ProviderHash.Sha256(options.ChatOutputFormat == LlamaCppChatOutputFormats.Text ? legacyBinding :
+            $"{legacyBinding}|chat-output:{options.ChatOutputFormat}|{NativeJsonObjectOutput.PolicySha256}");
     }
     public string BindingId { get; }
     public string ModelId => _options.ModelId;
@@ -49,7 +56,7 @@ public sealed class LlamaCppRuntimeSessionFactory : ILocalLogprobSessionFactory
     public bool RequiresNetwork => true; // Loopback HTTP is still network transport.
     public async ValueTask<ILocalLogprobSession> OpenAsync(CancellationToken ct)
     {
-        var session = new LlamaCppRuntimeSession(_options);
+        var session = new LlamaCppRuntimeSession(_options, _handlerFactory?.Invoke());
         try { await session.ValidateBindingAsync(ct); return session; }
         catch { await session.DisposeAsync(); throw; }
     }
@@ -59,10 +66,10 @@ internal sealed class LlamaCppRuntimeSession : ILocalLogprobSession
 {
     private readonly LlamaCppRuntimeOptions _options;
     private readonly HttpClient _client;
-    public LlamaCppRuntimeSession(LlamaCppRuntimeOptions options)
+    public LlamaCppRuntimeSession(LlamaCppRuntimeOptions options, HttpMessageHandler? handler = null)
     {
         _options = options;
-        _client = new(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
+        _client = new(handler ?? new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
         { BaseAddress = options.Endpoint, Timeout = Timeout.InfiniteTimeSpan };
     }
     public int ContextTokens => _options.ContextTokens;
@@ -153,12 +160,19 @@ internal sealed class LlamaCppRuntimeSession : ILocalLogprobSession
     {
         if (maxTokens < 1 || maxTokens > _options.MaxOutputTokens || prompt.TokenIds.Length > ContextTokens - maxTokens)
             throw new LocalScoringException("context_limit_exceeded", ProviderFailureClasses.Policy);
-        return SendAsync(HttpMethod.Post, "completion", new() {
+        var payload = new JsonObject {
             ["prompt"] = new JsonArray(prompt.TokenIds.Select(id => JsonValue.Create(id)).ToArray()),
             ["n_predict"] = maxTokens, ["cache_prompt"] = false, ["stream"] = false,
             ["temperature"] = -1, ["seed"] = 0,
             ["n_probs"] = score ? 256 : 0, ["post_sampling_probs"] = false,
-            ["samplers"] = new JsonArray(), ["return_tokens"] = true }, ct);
+            ["samplers"] = new JsonArray(), ["return_tokens"] = true };
+        if (!score && _options.ChatOutputFormat == LlamaCppChatOutputFormats.JsonObjectV1)
+        {
+            payload["grammar"] = NativeJsonObjectOutput.Grammar;
+            payload["grammar_lazy"] = false;
+            payload["backend_sampling"] = false;
+        }
+        return SendAsync(HttpMethod.Post, "completion", payload, ct);
     }
 
     public async ValueTask<LocalDecisionScore> ScoreAsync(LocalScoringPrompt prompt,

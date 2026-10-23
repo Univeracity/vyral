@@ -381,24 +381,22 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
         CancellationToken ct = default)
     {
         RecordIdentityValidator.ValidateCollectionName(collection);
-        ValidatePageLimit(query.Limit, "Query page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
         FilterValueNormalizer.ValidateFilter(query.Filter);
 
         var policy = await GetCollectionPolicyAsync(collection, ct);
         if (policy == null)
             throw new InvalidOperationException($"Collection '{collection}' does not exist.");
 
-        var all = await LoadFilteredSortedAsync(collection, query, ct);
+        var all = await LoadFilteredSortedAsync(
+            collection,
+            query,
+            QueryWorkLimits.MaxCandidateLimit,
+            ct);
 
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit;
-
-        if (!pageSize.HasValue)
-        {
-            return new RecordQueryResult { Items = all.Skip(offset).ToList() };
-        }
-
-        var items = all.Skip(offset).Take(pageSize.Value).ToList();
+        var items = all.Skip(offset).Take(pageSize).ToList();
         var next = offset + items.Count < all.Count
             ? EncodeContinuationToken(offset + items.Count)
             : null;
@@ -436,10 +434,15 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
             throw new InvalidOperationException($"Collection '{collection}' does not exist.");
 
         var fieldPolicy = RecordVectorValidator.ValidateSearchVector(collection, policy, query.Vector);
-        ValidatePageLimit(query.Limit, "Search page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
+        var scanLimit = QueryWorkLimits.ResolveCandidateLimit(
+            query.Vector.ScanLimit,
+            QueryWorkLimits.DefaultVectorScanLimit,
+            "Vector scan limit");
 
         // Collect candidates
-        var candidates = await ScanCollectionAsync(collection, ct);
+        var candidates = await ScanCollectionAsync(collection, scanLimit, ct);
 
         if (query.PartitionKeys?.Count > 0)
         {
@@ -481,7 +484,6 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
 
         // Paginate
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit ?? query.Vector.Top;
         var pageItems = ranked.Skip(offset).Take(pageSize).ToList();
         var nextToken = offset + pageItems.Count < ranked.Count
             ? EncodeContinuationToken(offset + pageItems.Count)
@@ -497,20 +499,29 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
     private async Task<List<VyralRecord>> LoadFilteredSortedAsync(
         string collection,
         QueryEnvelope query,
+        int workLimit,
         CancellationToken ct)
     {
         List<VyralRecord> all;
 
         if (query.PartitionKeys?.Count > 0)
         {
-            var tasks = query.PartitionKeys.Select(pk =>
-                QueryByPartitionKeyAsync(collection, pk, ct));
-            var pages = await Task.WhenAll(tasks);
-            all = pages.SelectMany(x => x).ToList();
+            all = new List<VyralRecord>();
+            foreach (var partitionKey in query.PartitionKeys)
+            {
+                var remaining = workLimit - all.Count;
+                var page = await QueryByPartitionKeyAsync(
+                    collection,
+                    partitionKey,
+                    remaining,
+                    ct);
+                all.AddRange(page);
+                EnsureWorkLimit(all.Count, workLimit);
+            }
         }
         else
         {
-            all = await ScanCollectionAsync(collection, ct);
+            all = await ScanCollectionAsync(collection, workLimit, ct);
         }
 
         if (query.Filter != null)
@@ -536,6 +547,7 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
     private async Task<List<VyralRecord>> QueryByPartitionKeyAsync(
         string collection,
         string partitionKey,
+        int workLimit,
         CancellationToken ct)
     {
         var tableName = CollectionTableName(collection);
@@ -558,7 +570,8 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
                 {
                     [":pkval"] = new AttributeValue { S = partitionKey }
                 },
-                ExclusiveStartKey = lastKey
+                ExclusiveStartKey = lastKey,
+                Limit = Math.Max(1, workLimit - results.Count + 1)
             };
 
             var response = await _client.QueryAsync(request, ct);
@@ -567,6 +580,7 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
                 var record = DeserializeRecord(item);
                 if (record != null) results.Add(record);
             }
+            EnsureWorkLimit(results.Count, workLimit);
 
             lastKey = response.LastEvaluatedKey is { Count: > 0 } ? response.LastEvaluatedKey : null;
         }
@@ -577,6 +591,7 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
 
     private async Task<List<VyralRecord>> ScanCollectionAsync(
         string collection,
+        int workLimit,
         CancellationToken ct)
     {
         var tableName = CollectionTableName(collection);
@@ -590,7 +605,8 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
             var request = new ScanRequest
             {
                 TableName = tableName,
-                ExclusiveStartKey = lastKey
+                ExclusiveStartKey = lastKey,
+                Limit = Math.Max(1, workLimit - results.Count + 1)
             };
 
             var response = await _client.ScanAsync(request, ct);
@@ -599,12 +615,21 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
                 var record = DeserializeRecord(item);
                 if (record != null) results.Add(record);
             }
+            EnsureWorkLimit(results.Count, workLimit);
 
             lastKey = response.LastEvaluatedKey is { Count: > 0 } ? response.LastEvaluatedKey : null;
         }
         while (lastKey != null);
 
         return results;
+    }
+
+    private static void EnsureWorkLimit(int count, int workLimit)
+    {
+        if (count > workLimit)
+        {
+            throw new InvalidOperationException($"Record query exceeded the work limit of {workLimit} records. Narrow the query or increase the applicable scan limit within the portable maximum.");
+        }
     }
 
     private async Task DeleteAllItemsAsync(string tableName, CancellationToken ct)
@@ -1001,12 +1026,6 @@ public class DynamoDbRecordCollectionStore : IRecordCollectionStore
                 throw new InvalidOperationException(
                     $"Vector policy '{vectorPolicy.Name}' index type '{vectorPolicy.IndexType}' is not supported.");
         }
-    }
-
-    private static void ValidatePageLimit(int? limit, string description)
-    {
-        if (limit <= 0)
-            throw new InvalidOperationException($"{description} must be greater than zero.");
     }
 
     private static string EncodeContinuationToken(int offset) =>

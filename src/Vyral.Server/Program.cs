@@ -38,6 +38,9 @@ var builder = WebApplication.CreateBuilder(args);
 var objectUploadMaxBytes = builder.Configuration.GetValue<long?>("Server:ObjectUploadMaxBytes") ?? 30_000_000;
 if (objectUploadMaxBytes is < 1 or > 1_073_741_824)
     throw new InvalidOperationException("Server:ObjectUploadMaxBytes must be between 1 and 1073741824 bytes.");
+var objectDownloadMaxBytes = builder.Configuration.GetValue<long?>("Server:ObjectDownloadMaxBytes") ?? ObjectStoreLimits.DefaultMaxContentBytes;
+if (objectDownloadMaxBytes is < 1 or > ObjectStoreLimits.MaxContentBytes)
+    throw new InvalidOperationException($"Server:ObjectDownloadMaxBytes must be between 1 and {ObjectStoreLimits.MaxContentBytes} bytes.");
 
 // Register services
 var startupOverall = LogStartupPhaseStarting("server.startup", $"environment={builder.Environment.EnvironmentName}");
@@ -76,6 +79,7 @@ startupPhase = LogStartupPhaseStarting("server.options");
 var allowedCorsOrigins = GetConfiguredCorsOrigins(builder.Configuration);
 var providerTargetRegistry = CreateProviderTargetRegistry(builder.Configuration);
 var accessOptions = ServerAccessOptions.FromConfiguration(builder.Configuration);
+ValidateServerBindingAuthentication(builder.Configuration, accessOptions);
 var executionAccessOptions = VyralExecutionAccessOptions.FromConfiguration(builder.Configuration);
 var canonicalAccessOptions = canonicalStoreOptions.Enabled ? VyralCanonicalAccessOptions.FromConfiguration(builder.Configuration) : null;
 var objectAccessOptions = VyralObjectAccessOptions.FromConfiguration(builder.Configuration);
@@ -306,6 +310,10 @@ _ = app.Services.GetRequiredService<ExecutionRuntimeRecordImportJobAdapter>();
 _ = app.Services.GetRequiredService<ExecutionRuntimeArtifactRecordIngestionAdapter>();
 _ = app.Services.GetRequiredService<ExecutionRuntimeCollectionManagementAdapter>();
 LogStartupPhaseCompleted("execution.runtime.handlers", startupPhase, $"handlers={executionRuntime.ListHandlers().Count}");
+// Provider recovery is observation/reconciliation only, guarded by its durable
+// invocation journal. Other plugins retain their independently owned resume policy.
+if (executionRuntime is LocalExecutionRuntime localProviderRuntime)
+    await localProviderRuntime.RecoverInterruptedHandlerAsync(ExecutionRuntimeProviderRunJobAdapter.HandlerId);
 var knownLiveProviderIds = new[] { "codex-cli", "claude-cli", "gemini-cli", "antigravity-cli", "grok-build-cli", "jules-api" };
 
 app.Use(async (context, next) =>
@@ -1128,6 +1136,12 @@ app.MapGet("/provider-jobs/{jobId}", async (string jobId, ExecutionRuntimeProvid
     return job is not null ? Results.Ok(job) : Results.NotFound();
 });
 
+app.MapGet("/provider-jobs/{jobId}/progress", async (string jobId, ExecutionRuntimeProviderRunJobAdapter jobs, CancellationToken ct) =>
+{
+    var progress = await jobs.GetProgressAsync(jobId, ct);
+    return progress is not null ? Results.Ok(progress) : Results.NotFound();
+});
+
 app.MapDelete("/provider-jobs/{jobId}", async (string jobId, ExecutionRuntimeProviderRunJobAdapter jobs, CancellationToken ct) =>
 {
     var job = await jobs.CancelAsync(jobId, ct);
@@ -1573,7 +1587,22 @@ app.MapGet("/objects/{container}", async (string container, string? prefix, int?
 app.MapGet("/objects/{container}/{**key}", async (string container, string key, HttpResponse response, IObjectStore objects, VyralObjectAccess objectAccess, CancellationToken ct) =>
 {
     key = await objectAccess.AuthorizeKeyAsync(response.HttpContext, container, key, ObjectAccessOperations.Read, ct);
-    var result = await objects.GetObjectAsync(new ObjectReadRequest { Container = container, Key = key });
+    ObjectResult? result;
+    try
+    {
+        result = await objects.GetObjectAsync(new ObjectReadRequest
+        {
+            Container = container,
+            Key = key,
+            MaxContentBytes = objectDownloadMaxBytes
+        }, ct);
+    }
+    catch (ObjectContentLimitExceededException ex)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status413PayloadTooLarge,
+            detail: ex.Message);
+    }
     if (result == null) return Results.NotFound();
     try
     {
@@ -2643,7 +2672,7 @@ static ICanonicalStore CreateCanonicalStore(CanonicalStoreOptions options)
     {
         CanonicalStoreOptions.LocalSqlite => new SqliteCanonicalStore(options.DatabasePath),
         CanonicalStoreOptions.PostgreSql => new PostgresCanonicalStore(options.ConnectionString!),
-        CanonicalStoreOptions.MySql => new MySqlCanonicalStore(options.ConnectionString!),
+        CanonicalStoreOptions.MySql => new MySqlCanonicalStore(options.ConnectionString!, options.MySqlMaxTenantStateBytes),
         _ => throw new InvalidOperationException($"Canonical store provider '{options.Provider}' is not supported by this server.")
     };
 }
@@ -4430,7 +4459,8 @@ static ProviderTargetRegistry CreateProviderTargetRegistry(IConfiguration config
             TemplateSha256 = configuration["Providers:LocalRuntime:TemplateSha256"] ?? "",
             TemplateProbeSha256 = configuration["Providers:LocalRuntime:TemplateProbeSha256"] ?? "",
             ContextTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:ContextTokens"], "Providers:LocalRuntime:ContextTokens") ?? 2048,
-            MaxOutputTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:MaxOutputTokens"], "Providers:LocalRuntime:MaxOutputTokens") ?? 512
+            MaxOutputTokens = ParseOptionalInt(configuration["Providers:LocalRuntime:MaxOutputTokens"], "Providers:LocalRuntime:MaxOutputTokens") ?? 512,
+            ChatOutputFormat = configuration["Providers:LocalRuntime:ChatOutputFormat"] ?? LlamaCppChatOutputFormats.Text
         };
         targets.Add(new LocalLlamaCppProviderTarget(runtime,
             ParseOptionalInt(configuration["Providers:LocalRuntime:MaxExecutionSeconds"], "Providers:LocalRuntime:MaxExecutionSeconds")
@@ -4653,6 +4683,64 @@ static CliWorkspaceCodingAgentOptions GetCliWorkspaceCodingAgentOptions(IConfigu
         RequiresNetwork = ParseOptionalBool(configuration[$"{section}:RequiresNetwork"], $"{section}:RequiresNetwork") ?? false,
         Auth = configuration[$"{section}:Auth"] ?? ProviderAuthTypes.ExternalCli
     };
+}
+
+static void ValidateServerBindingAuthentication(
+    IConfiguration configuration,
+    ServerAccessOptions access)
+{
+    if (access.Enabled)
+    {
+        return;
+    }
+
+    foreach (var portSetting in new[]
+    {
+        configuration["HTTP_PORTS"],
+        configuration["HTTPS_PORTS"],
+        configuration["ASPNETCORE_HTTP_PORTS"],
+        configuration["ASPNETCORE_HTTPS_PORTS"]
+    })
+    {
+        if (!string.IsNullOrWhiteSpace(portSetting))
+        {
+            throw new InvalidOperationException(
+                "Wildcard HTTP(S) port bindings require Server:RequireApiKey and a configured API key.");
+        }
+    }
+
+    var configuredUrls = new[]
+        {
+            configuration["urls"],
+            configuration["ASPNETCORE_URLS"]
+        }
+        .Concat(configuration.GetSection("Kestrel:Endpoints")
+            .GetChildren()
+            .Select(endpoint => endpoint["Url"]))
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .SelectMany(value => value!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+    foreach (var configuredUrl in configuredUrls)
+    {
+        if (!Uri.TryCreate(configuredUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+            !IsLoopbackBindingHost(uri.Host))
+        {
+            throw new InvalidOperationException(
+                $"Server URL binding '{configuredUrl}' is not loopback-only; configure Server:RequireApiKey and an API key before exposing Vyral on a non-loopback interface.");
+        }
+    }
+}
+
+static bool IsLoopbackBindingHost(string host)
+{
+    if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    return System.Net.IPAddress.TryParse(host, out var address) &&
+        System.Net.IPAddress.IsLoopback(address);
 }
 
 public partial class Program;

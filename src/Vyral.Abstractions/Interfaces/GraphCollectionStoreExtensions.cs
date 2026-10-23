@@ -1313,21 +1313,44 @@ public static class GraphCollectionStoreExtensions
         {
             throw new InvalidOperationException("Graph traversal request must include at least one startNodeId.");
         }
+        if (request.StartNodeIds.Count > VyralGraphTraversalLimits.MaxStartNodes)
+        {
+            throw new InvalidOperationException($"Graph traversal supports at most {VyralGraphTraversalLimits.MaxStartNodes} startNodeIds.");
+        }
 
         request.Profile ??= new VyralGraphTraversalProfile();
         if (request.Profile.MaxDepth < 0)
         {
             throw new InvalidOperationException("Graph traversal maxDepth cannot be negative.");
         }
+        if (request.Profile.MaxDepth > VyralGraphTraversalLimits.MaxDepth)
+        {
+            throw new InvalidOperationException($"Graph traversal maxDepth cannot exceed {VyralGraphTraversalLimits.MaxDepth}.");
+        }
 
         if (request.Profile.Limit <= 0)
         {
             throw new InvalidOperationException("Graph traversal limit must be greater than zero.");
         }
+        if (request.Profile.Limit > VyralGraphTraversalLimits.MaxNodeLimit)
+        {
+            throw new InvalidOperationException($"Graph traversal limit cannot exceed {VyralGraphTraversalLimits.MaxNodeLimit}.");
+        }
 
         if (request.Profile.EdgeLimit <= 0)
         {
             throw new InvalidOperationException("Graph traversal edgeLimit must be greater than zero.");
+        }
+        if (request.Profile.EdgeLimit > VyralGraphTraversalLimits.MaxEdgeLimit)
+        {
+            throw new InvalidOperationException($"Graph traversal edgeLimit cannot exceed {VyralGraphTraversalLimits.MaxEdgeLimit}.");
+        }
+        if (request.Profile.Predicates.Count > VyralGraphTraversalLimits.MaxSelectorsPerKind ||
+            request.Profile.NodeTypes.Count > VyralGraphTraversalLimits.MaxSelectorsPerKind ||
+            request.Profile.ReviewStatuses.Count > VyralGraphTraversalLimits.MaxSelectorsPerKind ||
+            request.Profile.AssertionStatuses.Count > VyralGraphTraversalLimits.MaxSelectorsPerKind)
+        {
+            throw new InvalidOperationException($"Graph traversal selector lists cannot exceed {VyralGraphTraversalLimits.MaxSelectorsPerKind} values each.");
         }
 
         if (request.MaxRecords.HasValue && request.MaxRecords.Value <= 0)

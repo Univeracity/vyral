@@ -157,6 +157,9 @@ scripts/start-local-server.sh
 ```
 
 It listens on `http://127.0.0.1:5220` and writes local state beneath `.vyral/`.
+Non-loopback or wildcard bindings require `VYRAL_API_KEY`; the server refuses
+to start publicly without global API-key protection. Public deployments must
+also set ASP.NET Core `AllowedHosts` to their exact ingress host names.
 For original audio masters or other large objects, set
 `Server__ObjectUploadMaxBytes` to a byte limit (for example, `100663296` for
 96 MiB). The default remains 30,000,000 bytes; valid values are 1 through

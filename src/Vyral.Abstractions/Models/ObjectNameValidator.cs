@@ -1,11 +1,14 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Vyral.Abstractions.Models;
 
 public static class ObjectNameValidator
 {
+    public const int MaxObjectKeyUtf8Bytes = 1_024;
+
     public static void ValidateContainer(string container)
     {
         if (string.IsNullOrWhiteSpace(container)) throw new ArgumentException("Container is required.", nameof(container));
@@ -39,6 +42,11 @@ public static class ObjectNameValidator
         if (Path.IsPathRooted(key) || validationPath.Split('/').Any(segment => segment is "" or "." or ".."))
         {
             throw new InvalidOperationException("Object key must be relative and cannot contain traversal segments.");
+        }
+
+        if (Encoding.UTF8.GetByteCount(normalized) > MaxObjectKeyUtf8Bytes)
+        {
+            throw new InvalidOperationException($"Object key cannot exceed {MaxObjectKeyUtf8Bytes} UTF-8 bytes.");
         }
 
         return normalized;

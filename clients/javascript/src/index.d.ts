@@ -398,6 +398,7 @@ export interface VectorSearchOptions {
   field: string;
   value: Array<number>;
   top?: number;
+  scanLimit?: number | null;
   minScore?: number | null;
 }
 
@@ -3129,6 +3130,20 @@ export interface AiJudgeResult {
   modelId?: string | null;
 }
 
+export interface ProviderRunJobProgress {
+  id: string;
+  status: "Succeeded" | "Failed" | "TimedOut" | "Rejected" | "Unsupported" | "NotConfigured" | "Cancelled" | "Queued" | "Running";
+  phase: "queued" | "unknown" | "terminal" | "runtime_binding" | "prompt_preparation" | "prompt_prepared" | "completion_pending" | "completion_validation";
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancellationRequested: boolean;
+  nativePhaseAvailable: boolean;
+  observation: JsonObject | null;
+  invocation: JsonObject | null;
+  reconciliationRequired: boolean;
+}
+
 export interface VyralRequestOptions {
   headers?: HeadersInit;
   signal?: AbortSignal;
@@ -3291,6 +3306,7 @@ export class VyralClient {
   startProviderJob(provider: string, request: ProviderRunRequest, options?: VyralRequestOptions & Record<string, unknown>): Promise<ProviderRunJob>;
   listProviderJobs(options?: VyralRequestOptions & Record<string, unknown>): Promise<Array<ProviderRunJob>>;
   getProviderJob(id: string): Promise<ProviderRunJob>;
+  getProviderRunJobProgress(id: string): Promise<ProviderRunJobProgress>;
   cancelProviderJob(id: string): Promise<ProviderRunJob>;
   waitProviderJob(id: string, options?: VyralRequestOptions & Record<string, unknown>): Promise<JsonValue>;
   embedText(text: string, options?: VyralRequestOptions & Record<string, unknown>): Promise<JsonValue>;

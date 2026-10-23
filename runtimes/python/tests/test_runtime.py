@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import importlib
 import json
-from hashlib import sha256
+import os
 from pathlib import Path
 import shutil
 import sqlite3
+import stat
 import sys
 import tempfile
+from hashlib import sha256
 from typing import Any
 import unittest
 from unittest.mock import patch
@@ -53,9 +56,9 @@ class ContractBundleTests(unittest.TestCase):
 
         self.assertEqual(CONTRACT_VERSION, bundle.summary.contract_version)
         self.assertEqual("3.1.0", bundle.summary.openapi_version)
-        self.assertEqual(129, bundle.summary.operation_count)
-        self.assertEqual(133, bundle.summary.rest_operation_count)
-        self.assertEqual(281, bundle.summary.schema_count)
+        self.assertEqual(130, bundle.summary.operation_count)
+        self.assertEqual(134, bundle.summary.rest_operation_count)
+        self.assertEqual(282, bundle.summary.schema_count)
         self.assertEqual(
             "sha256:" + sha256((ROOT / "contracts/public-sdk-surface.json").read_bytes()).hexdigest(),
             bundle.summary.catalog_sha256,
@@ -83,7 +86,7 @@ class ContractBundleTests(unittest.TestCase):
         self.assertFalse(document["fullLocalReady"])
         self.assertEqual([], document["blockers"])
         self.assertTrue(document["warnings"])
-        self.assertEqual(129, document["contract"]["operationCount"])
+        self.assertEqual(130, document["contract"]["operationCount"])
         self.assertEqual(
             ["passed", "passed", "passed", "passed", "passed"],
             [check["status"] for check in document["checks"]],
@@ -110,6 +113,24 @@ class ContractBundleTests(unittest.TestCase):
         readiness = get_readiness()
         self.assertEqual("ok", readiness.status)
         self.assertFalse(readiness.full_local_ready)
+
+    def test_readiness_serializes_and_reuses_static_baseline(self) -> None:
+        readiness_module = importlib.import_module("vyral_runtime.readiness")
+        builder = readiness_module._build_readiness_baseline
+        with (
+            patch.object(readiness_module, "_READINESS_BASELINE", None),
+            patch.object(
+                readiness_module,
+                "_build_readiness_baseline",
+                wraps=builder,
+            ) as build,
+        ):
+            first = readiness_module.get_readiness()
+            first.checks[0]["status"] = "tampered"
+            second = readiness_module.get_readiness()
+
+        self.assertEqual(1, build.call_count)
+        self.assertEqual("passed", second.checks[0]["status"])
 
     def test_local_runtime_composes_services_and_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory(prefix="vyral-python-runtime-") as temporary:
@@ -323,6 +344,29 @@ class ContractBundleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unknown"):
             LocalRuntimeConfig.from_value(
                 {"rootPath": ".", "surprise": True}
+            )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permission check")
+    def test_local_runtime_state_root_is_private_despite_umask(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-python-permissions-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            previous_umask = os.umask(0)
+            try:
+                with VyralRuntime(root):
+                    pass
+            finally:
+                os.umask(previous_umask)
+
+            self.assertEqual(
+                0o700,
+                stat.S_IMODE(root.stat().st_mode),
+            )
+            lock_root = Path(str(root / "objects") + ".vyral-locks")
+            self.assertEqual(
+                0o700,
+                stat.S_IMODE(lock_root.stat().st_mode),
             )
 
 

@@ -13,7 +13,17 @@ from .query_models import FilterNode, OrderExpression, QueryEnvelope
 
 _MAX_FILTER_DEPTH = 16
 _MAX_FILTER_NODES = 100
+MAX_FILTER_IN_VALUES = 1000
 _MAX_ORDER_EXPRESSIONS = 8
+DEFAULT_QUERY_PAGE_SIZE = 100
+MAX_QUERY_PAGE_SIZE = 5000
+DEFAULT_VECTOR_SCAN_LIMIT = 10_000
+DEFAULT_LEXICAL_SCAN_LIMIT = 5000
+MAX_QUERY_CANDIDATE_LIMIT = 100_000
+MAX_SEARCH_TOP = 10_000
+MAX_PARTITION_KEYS = 1000
+MAX_CONTINUATION_TOKEN_CHARS = 8192
+MAX_SEARCH_TEXT_CHARS = 32_768
 _DIRECT_COLUMNS = {
     "/id": "r.id",
     "/partitionkey": "r.partition_key",
@@ -39,6 +49,10 @@ def encode_continuation_token(offset: int) -> str:
 def decode_continuation_token(token: str | None) -> int:
     if token is None or not token.strip():
         return 0
+    if len(token) > MAX_CONTINUATION_TOKEN_CHARS:
+        raise QueryValidationError(
+            "Continuation token is not valid for the local SQLite adapter."
+        )
     try:
         raw = base64.b64decode(token, validate=True)
         text = raw.decode("utf-8")
@@ -54,9 +68,70 @@ def decode_continuation_token(token: str | None) -> int:
     return offset
 
 
-def validate_page_limit(limit: int | None, description: str) -> None:
+def resolve_page_limit(limit: int | None, description: str) -> int:
     if limit is not None and limit <= 0:
         raise QueryValidationError(f"{description} must be greater than zero.")
+    selected = limit if limit is not None else DEFAULT_QUERY_PAGE_SIZE
+    if selected > MAX_QUERY_PAGE_SIZE:
+        raise QueryValidationError(
+            f"{description} cannot exceed {MAX_QUERY_PAGE_SIZE}."
+        )
+    return selected
+
+
+def resolve_search_top(limit: int, description: str) -> int:
+    if limit <= 0:
+        raise QueryValidationError(f"{description} must be greater than zero.")
+    if limit > MAX_SEARCH_TOP:
+        raise QueryValidationError(
+            f"{description} cannot exceed {MAX_SEARCH_TOP}."
+        )
+    return limit
+
+
+def resolve_candidate_limit(
+    limit: int | None,
+    default: int,
+    description: str,
+) -> int:
+    if limit is not None and limit <= 0:
+        raise QueryValidationError(f"{description} must be greater than zero.")
+    selected = limit if limit is not None else default
+    if selected > MAX_QUERY_CANDIDATE_LIMIT:
+        raise QueryValidationError(
+            f"{description} cannot exceed {MAX_QUERY_CANDIDATE_LIMIT}."
+        )
+    return selected
+
+
+def validate_query_shape(query: QueryEnvelope) -> None:
+    resolve_page_limit(query.limit, "Query page size")
+    if query.partition_keys is not None and len(query.partition_keys) > MAX_PARTITION_KEYS:
+        raise QueryValidationError(
+            f"Query partitionKeys supports at most {MAX_PARTITION_KEYS} values."
+        )
+    if query.order_by is not None and len(query.order_by) > _MAX_ORDER_EXPRESSIONS:
+        raise QueryValidationError(
+            f"Query orderBy supports at most {_MAX_ORDER_EXPRESSIONS} expressions."
+        )
+    if query.vector is not None:
+        resolve_search_top(query.vector.top, "Vector top")
+        resolve_candidate_limit(
+            query.vector.scan_limit,
+            DEFAULT_VECTOR_SCAN_LIMIT,
+            "Vector scan limit",
+        )
+    if query.lexical is not None:
+        resolve_search_top(query.lexical.top, "Lexical top")
+        resolve_candidate_limit(
+            query.lexical.scan_limit,
+            DEFAULT_LEXICAL_SCAN_LIMIT,
+            "Lexical scan limit",
+        )
+        if len(query.lexical.query) > MAX_SEARCH_TEXT_CHARS:
+            raise QueryValidationError(
+                f"Lexical query cannot exceed {MAX_SEARCH_TEXT_CHARS} characters."
+            )
 
 
 def _sqlite_json_path(path: str) -> str:
@@ -102,6 +177,10 @@ def _scalar(value: object) -> str | int | float | bool | None:
 def _scalar_list(value: object) -> tuple[str | int | float | bool | None, ...]:
     if not isinstance(value, (list, tuple)):
         raise QueryValidationError("The 'in' operator requires an array value.")
+    if len(value) > MAX_FILTER_IN_VALUES:
+        raise QueryValidationError(
+            f"Query filter 'in' supports at most {MAX_FILTER_IN_VALUES} values."
+        )
     return tuple(_scalar(item) for item in value)
 
 
@@ -361,16 +440,14 @@ def build_query_plan(
     query: QueryEnvelope,
     indexed_metadata: Iterable[str],
 ) -> QueryPlan:
-    validate_page_limit(query.limit, "Query page size")
+    validate_query_shape(query)
+    page_size = resolve_page_limit(query.limit, "Query page size")
     offset = decode_continuation_token(query.continuation_token)
     compiler = QueryCompiler(indexed_metadata)
     sql = "SELECT r.record_json FROM vyral_py_records r"
     sql += compiler.where(collection, query)
     sql += compiler.order(query.order_by)
-    if query.limit is not None:
-        sql += f" LIMIT {compiler.parameter(query.limit + 1)}"
-    elif offset > 0:
-        sql += " LIMIT -1"
+    sql += f" LIMIT {compiler.parameter(page_size + 1)}"
     if offset > 0:
         sql += f" OFFSET {compiler.parameter(offset)}"
     return QueryPlan(sql=sql, parameters=compiler.parameters)
@@ -381,6 +458,7 @@ def build_vector_candidate_plan(
     query: QueryEnvelope,
     indexed_metadata: Iterable[str],
     vector_field: str,
+    scan_limit: int,
 ) -> QueryPlan:
     compiler = QueryCompiler(indexed_metadata)
     sql = (
@@ -392,6 +470,7 @@ def build_vector_candidate_plan(
     sql += compiler.where(collection, query)
     sql += f" AND v.vector_name={compiler.parameter(vector_field)}"
     sql += " ORDER BY r.partition_key ASC,r.id ASC"
+    sql += f" LIMIT {compiler.parameter(scan_limit + 1)}"
     return QueryPlan(sql=sql, parameters=compiler.parameters)
 
 

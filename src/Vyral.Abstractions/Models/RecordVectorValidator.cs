@@ -34,10 +34,11 @@ public static class RecordVectorValidator
         {
             throw new InvalidOperationException($"Search vector for field '{vector.Field}' has dimensions {vector.Value.Length}, but policy expects {fieldPolicy.Dimensions}.");
         }
-        if (vector.Top <= 0)
-        {
-            throw new InvalidOperationException("Vector search top must be greater than zero.");
-        }
+        _ = QueryWorkLimits.ResolveSearchTop(vector.Top, "Vector search top");
+        _ = QueryWorkLimits.ResolveCandidateLimit(
+            vector.ScanLimit,
+            QueryWorkLimits.DefaultVectorScanLimit,
+            "Vector scan limit");
 
         return fieldPolicy;
     }

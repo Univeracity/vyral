@@ -21,6 +21,7 @@ from ..local import (
     RecordValidationError,
 )
 from ..runtime import VyralRuntime
+from ._http_authority import host_allowed, validate_allowed_hosts
 from .auth import HostAuthenticationError
 from .rest_operations import (
     RestNotFoundError,
@@ -71,12 +72,7 @@ class RestApplicationConfig:
                 raise ValueError(
                     f"{name} must be between one and {maximum}."
                 )
-        if not self.allowed_hosts or any(
-            not value.strip() for value in self.allowed_hosts
-        ):
-            raise ValueError(
-                "allowed_hosts must contain non-empty host names."
-            )
+        validate_allowed_hosts(self.allowed_hosts)
 
 
 @dataclass(frozen=True)
@@ -162,9 +158,8 @@ class VyralRestApplication:
             return
         headers = _headers(raw_headers)
         host = headers.get("host")
-        if (
-            host is not None
-            and not _host_allowed(host, self.config.allowed_hosts)
+        if host is None or not host_allowed(
+            host, self.config.allowed_hosts
         ):
             await _send_problem(
                 send,
@@ -580,26 +575,6 @@ def _parse_body(
 
 class _BodyTooLarge(Exception):
     pass
-
-
-def _host_allowed(
-    host: str,
-    allowed_hosts: frozenset[str],
-) -> bool:
-    normalized = host.strip().lower()
-    normalized_allowed = {
-        value.strip().lower() for value in allowed_hosts
-    }
-    if normalized in normalized_allowed:
-        return True
-    try:
-        parsed = urlsplit(f"//{normalized}")
-    except ValueError:
-        return False
-    hostname = parsed.hostname
-    return hostname is not None and hostname.lower() in {
-        value.strip("[]").lower() for value in normalized_allowed
-    }
 
 
 async def _read_body(

@@ -5,6 +5,28 @@ namespace Vyral.Tests.Providers;
 public class WorkspaceCodingAgentProviderTargetTests
 {
     [Fact]
+    public async Task Target_ProjectsOnlyKnownFailedObservationsWithinOutputBudget_WithoutReconciliationOrDeliveryClaims()
+    {
+        foreach (var mode in new[] { "valid", "unknown", "success", "validation", "output-budget" })
+        {
+            var runner = new CapturingWorkspaceRunner { Result = new WorkspaceCodingAgentExecution {
+                Status = mode == "success" ? ProviderRunStatus.Succeeded : ProviderRunStatus.Failed,
+                FailureClass = ProviderFailureClasses.Tool,
+                ProviderStatus = mode == "validation" ? "validation_failed" : "agent_process_failed",
+                AgentDiagnostic = new() { Reason = mode == "unknown" ? "secret-sentinel" : "input_limit" }
+            } };
+            var request = ProviderRunRequests.ForWorkspaceCodingAgent(CreateRequest());
+            if (mode == "output-budget") request.MaxOutputBytes = 2;
+            var result = await CreateTarget(runner).RunAsync(request);
+            Assert.Equal(mode == "valid", result.Output.ContainsKey("agentDiagnostic"));
+            Assert.False(result.Output.ContainsKey("agentDelivery"));
+            Assert.False(result.Output.ContainsKey("changeSetReconciled"));
+            Assert.DoesNotContain("secret-sentinel", result.Output.ToJsonString());
+            if (mode == "output-budget") Assert.Equal("{}", result.Output.ToJsonString());
+        }
+    }
+
+    [Fact]
     public async Task Target_RequiresHostEnforcedAutonomousWritePolicyAndReturnsReconciledChanges()
     {
         var runner = new CapturingWorkspaceRunner

@@ -7,6 +7,7 @@ import argparse
 import asyncio
 from contextlib import contextmanager
 from hashlib import sha256
+from importlib.metadata import version
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,7 @@ import platform
 from secrets import token_hex
 import socket
 import sqlite3
+import stat
 import subprocess
 import sys
 import tempfile
@@ -26,6 +28,7 @@ import venv
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def _interpreter(environment: Path) -> Path:
@@ -34,7 +37,11 @@ def _interpreter(environment: Path) -> Path:
     return environment / "bin" / "python"
 
 
-def _install(wheel: Path, destination: Path) -> Path:
+def _install(
+    wheel: Path,
+    destination: Path,
+    server_requirements: Path,
+) -> Path:
     venv.EnvBuilder(with_pip=True, clear=True).create(destination)
     python = _interpreter(destination)
     subprocess.run(
@@ -44,11 +51,57 @@ def _install(wheel: Path, destination: Path) -> Path:
             "pip",
             "install",
             "--disable-pip-version-check",
-            f"{wheel}[server]",
+            "--no-deps",
+            str(wheel),
+        ],
+        check=True,
+    )
+    locked_dependencies = destination / "server-dependencies.lock"
+    locked_dependencies.write_text(
+        _requirements_without_self(server_requirements),
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [
+            str(python),
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "--require-hashes",
+            "--requirement",
+            str(locked_dependencies),
         ],
         check=True,
     )
     return python
+
+
+def _requirements_without_self(path: Path) -> str:
+    if not path.is_file():
+        raise ValueError(f"Server requirements lock does not exist: {path}")
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            if current:
+                blocks.append(current)
+            current = [line]
+        elif current:
+            current.append(line)
+    if current:
+        blocks.append(current)
+    selected = [
+        block
+        for block in blocks
+        if not block[0].casefold().startswith("vyral==")
+    ]
+    if not selected or len(selected) == len(blocks):
+        raise ValueError(
+            "Server requirements lock must contain dependencies and one "
+            "vyral self-package block."
+        )
+    return "\n".join("\n".join(block) for block in selected) + "\n"
 
 
 def _unused_port() -> int:
@@ -373,6 +426,20 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
             "/health",
             headers={"Host": "attacker.invalid"},
         )
+        for malformed_host in (
+            "evil@localhost",
+            "localhost/path",
+            "localhost?target=evil",
+            "localhost#evil",
+            "localhost:invalid",
+        ):
+            _expect(
+                403,
+                base_url,
+                "GET",
+                "/health",
+                headers={"Host": malformed_host},
+            )
         _expect(
             403,
             base_url,
@@ -390,6 +457,7 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
         checks.extend(
             (
                 "rest-host-rebinding-denied",
+                "rest-malformed-host-authorities-denied",
                 "rest-origin-denied",
                 "rest-query-limit",
             )
@@ -470,6 +538,25 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
                 "Host": "attacker.invalid",
             },
         )
+        for malformed_host in (
+            "evil@localhost",
+            "localhost/path",
+            "localhost?target=evil",
+            "localhost#evil",
+            "localhost:invalid",
+        ):
+            _expect(
+                403,
+                base_url,
+                "POST",
+                "/mcp",
+                api_key=api_key,
+                payload=discover,
+                headers={
+                    **_mcp_headers("server/discover"),
+                    "Host": malformed_host,
+                },
+            )
         _expect(
             403,
             base_url,
@@ -516,6 +603,7 @@ def _network_probes(root: Path, api_key: str) -> list[str]:
         checks.extend(
             (
                 "mcp-host-rebinding-denied",
+                "mcp-malformed-host-authorities-denied",
                 "mcp-origin-denied",
                 "mcp-routing-header-mismatch",
                 "mcp-version-mismatch",
@@ -547,6 +635,8 @@ def _direct_probes(root: Path) -> list[str]:
         InMemoryExecutionWorkerTransport,
         MAX_ARCHIVE_CHUNKS,
         MAX_COLLECTION_SNAPSHOT_RECORDS,
+        ObjectListRequest,
+        ObjectReadRequest,
         ObjectWriteRequest,
         RecordValidationError,
         SQLiteCanonicalStore,
@@ -587,6 +677,84 @@ def _direct_probes(root: Path) -> list[str]:
                 "Object storage accepted a Windows-ambiguous object key."
             )
         checks.append("object-platform-ambiguous-paths-denied")
+        bounded = object_store.put_object(
+            ObjectWriteRequest("security", "bounded.bin", b"12345")
+        )
+        for operation in (
+            lambda: object_store.put_object(
+                ObjectWriteRequest("security", "\u00e9" * 513, b"x")
+            ),
+            lambda: object_store.get_object(
+                ObjectReadRequest(
+                    "security",
+                    bounded.key,
+                    max_content_bytes=4,
+                )
+            ),
+            lambda: object_store.list_objects(
+                ObjectListRequest("security", limit=5001)
+            ),
+            lambda: object_store.list_objects(
+                ObjectListRequest(
+                    "security",
+                    continuation_token="x" * 8193,
+                )
+            ),
+        ):
+            try:
+                operation()
+            except ValueError:
+                continue
+            raise RuntimeError("Object storage accepted work above a portable bound.")
+        checks.append("object-work-bounds-enforced")
+        original = object_store.put_object(
+            ObjectWriteRequest(
+                "security",
+                "victim.bin",
+                b"trusted",
+                metadata={"owner": "trusted"},
+            )
+        )
+        try:
+            object_store.put_object(
+                ObjectWriteRequest(
+                    "security",
+                    "victim.bin.metadata.json",
+                    b"replacement",
+                )
+            )
+        except ValueError:
+            pass
+        else:
+            raise RuntimeError(
+                "Object storage allowed metadata sidecar namespace collision."
+            )
+        loaded = object_store.get_object(
+            ObjectReadRequest("security", "victim.bin")
+        )
+        if loaded is None:
+            raise RuntimeError("Object collision probe removed trusted content.")
+        with loaded:
+            content = loaded.read()
+        if (
+            content != b"trusted"
+            or loaded.etag != original.etag
+            or loaded.metadata != {"owner": "trusted"}
+        ):
+            raise RuntimeError(
+                "Rejected object collision mutated trusted content or metadata."
+            )
+        checks.append("object-metadata-namespace-collision-denied")
+        if os.name == "posix":
+            for private_root in (
+                object_store.root_path,
+                object_store.lock_root_path,
+            ):
+                if stat.S_IMODE(private_root.stat().st_mode) != 0o700:
+                    raise RuntimeError(
+                        "Object storage state root is not private."
+                    )
+            checks.append("local-state-roots-private")
     finally:
         object_store.close()
 
@@ -806,6 +974,10 @@ def _probe(wheel: Path, output: Path | None) -> int:
             "pythonVersion": platform.python_version(),
             "platform": platform.platform(),
             "sqliteVersion": sqlite3.sqlite_version,
+            "serverDependencies": {
+                package: version(package)
+                for package in ("click", "h11", "uvicorn")
+            },
         },
         "checks": checks,
         "checkCount": len(checks),
@@ -844,6 +1016,12 @@ def main() -> int:
         type=Path,
         help="Optional JSON qualification receipt.",
     )
+    parser.add_argument(
+        "--server-requirements",
+        type=Path,
+        default=ROOT / "runtimes/python/requirements-server.lock",
+        help="Hash-pinned server dependency lock used by the candidate gate.",
+    )
     arguments = parser.parse_args()
     wheel = arguments.runtime_wheel.resolve()
     if not wheel.is_file() or wheel.suffix != ".whl":
@@ -851,7 +1029,11 @@ def main() -> int:
     with tempfile.TemporaryDirectory(
         prefix="vyral-python-security-environment-"
     ) as temporary:
-        python = _install(wheel, Path(temporary) / "environment")
+        python = _install(
+            wheel,
+            Path(temporary) / "environment",
+            arguments.server_requirements.resolve(),
+        )
         command = [
             str(python),
             str(Path(__file__).resolve()),

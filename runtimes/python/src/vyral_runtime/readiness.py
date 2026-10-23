@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from threading import Lock
 
 from ._version import CONTRACT_VERSION, FIXTURE_VERSION, RUNTIME_VERSION
 from .conformance import ConformanceError, run_bundled_goldens
@@ -51,7 +52,11 @@ class RuntimeReadiness:
         }
 
 
-def get_readiness() -> RuntimeReadiness:
+_READINESS_BASELINE_LOCK = Lock()
+_READINESS_BASELINE: RuntimeReadiness | None = None
+
+
+def _build_readiness_baseline() -> RuntimeReadiness:
     profiles = profile_statuses()
     checks: list[dict[str, JSONValue]] = []
     warnings: list[str] = []
@@ -184,4 +189,25 @@ def get_readiness() -> RuntimeReadiness:
         checks=tuple(checks),
         warnings=tuple(warnings),
         blockers=tuple(blockers),
+    )
+
+
+def get_readiness() -> RuntimeReadiness:
+    """Return immutable package readiness without rerunning static fixtures.
+
+    Contract resources and bundled conformance fixtures cannot change during a
+    process lifetime. Serialize their first evaluation so concurrent health
+    callers cannot multiply that work. Runtime-owned storage diagnostics remain
+    fresh because ``VyralRuntime.readiness`` adds them after this baseline.
+    """
+
+    global _READINESS_BASELINE
+    with _READINESS_BASELINE_LOCK:
+        if _READINESS_BASELINE is None:
+            _READINESS_BASELINE = _build_readiness_baseline()
+        baseline = _READINESS_BASELINE
+
+    return replace(
+        baseline,
+        checks=tuple(dict(check) for check in baseline.checks),
     )

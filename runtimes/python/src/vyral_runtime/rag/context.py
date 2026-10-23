@@ -615,9 +615,15 @@ def _validate_context_request(request: RagContextRequest) -> None:
         raise ValueError("RAG context retrieval.collections must not be empty.")
     if request.max_chars <= 0:
         raise ValueError("RAG context maxChars must be greater than zero.")
+    if request.max_chars > 1_000_000:
+        raise ValueError("RAG context maxChars cannot exceed 1000000.")
     if request.max_chars_per_chunk <= 0:
         raise ValueError(
             "RAG context maxCharsPerChunk must be greater than zero."
+        )
+    if request.max_chars_per_chunk > 100_000:
+        raise ValueError(
+            "RAG context maxCharsPerChunk cannot exceed 100000."
         )
     if (
         request.max_citations_per_chunk is not None
@@ -626,6 +632,13 @@ def _validate_context_request(request: RagContextRequest) -> None:
         raise ValueError(
             "RAG context maxCitationsPerChunk must be greater than zero "
             "when provided."
+        )
+    if (
+        request.max_citations_per_chunk is not None
+        and request.max_citations_per_chunk > 1000
+    ):
+        raise ValueError(
+            "RAG context maxCitationsPerChunk cannot exceed 1000."
         )
     if not request.content_field.strip():
         raise ValueError("RAG context contentField is required.")
@@ -650,16 +663,44 @@ def _validate_graph_expansion(
         )
     if options.max_seed_nodes <= 0:
         raise ValueError("RAG graphExpansion maxSeedNodes must be positive.")
+    if options.max_seed_nodes > 1000:
+        raise ValueError("RAG graphExpansion maxSeedNodes cannot exceed 1000.")
+    if len(options.seed_node_ids) > 1000:
+        raise ValueError("RAG graphExpansion seedNodeIds cannot exceed 1000 items.")
+    if len(options.seed_json_pointers) > 64:
+        raise ValueError("RAG graphExpansion seedJsonPointers cannot exceed 64 items.")
     if options.max_graph_context_chars <= 0:
         raise ValueError(
             "RAG graphExpansion maxGraphContextChars must be positive."
+        )
+    if options.max_graph_context_chars > 1_000_000:
+        raise ValueError(
+            "RAG graphExpansion maxGraphContextChars cannot exceed 1000000."
         )
     if options.max_graph_provenance_items < 0:
         raise ValueError(
             "RAG graphExpansion maxGraphProvenanceItems cannot be negative."
         )
+    if options.max_graph_provenance_items > 10_000:
+        raise ValueError(
+            "RAG graphExpansion maxGraphProvenanceItems cannot exceed 10000."
+        )
     if options.max_records is not None and options.max_records <= 0:
         raise ValueError("RAG graphExpansion maxRecords must be positive.")
+    if options.max_records is not None and options.max_records > 10_000:
+        raise ValueError("RAG graphExpansion maxRecords cannot exceed 10000.")
+    if not 0 <= options.profile.max_depth <= 16:
+        raise ValueError(
+            "RAG graphExpansion profile.maxDepth must be between 0 and 16."
+        )
+    if not 1 <= options.profile.limit <= 10_000:
+        raise ValueError(
+            "RAG graphExpansion profile.limit must be between 1 and 10000."
+        )
+    if not 1 <= options.profile.edge_limit <= 10_000:
+        raise ValueError(
+            "RAG graphExpansion profile.edgeLimit must be between 1 and 10000."
+        )
     for pointer in options.seed_json_pointers:
         if not pointer.startswith("/"):
             raise ValueError(
@@ -668,6 +709,8 @@ def _validate_graph_expansion(
 
 
 def _validate_assembly(options: RagContextAssemblyOptions) -> None:
+    if len(options.groups) > 256:
+        raise ValueError("RAG contextAssembly groups cannot exceed 256 items.")
     group_by = _normalize_group_by(options.group_by)
     effective = group_by
     has_budgets = bool(
@@ -701,6 +744,14 @@ def _validate_assembly(options: RagContextAssemblyOptions) -> None:
             raise ValueError(
                 f"RAG contextAssembly {name} must be greater than zero."
             )
+        if name == "defaultMaxChunksPerGroup" and value is not None and value > 10_000:
+            raise ValueError(
+                "RAG contextAssembly defaultMaxChunksPerGroup cannot exceed 10000."
+            )
+        if name == "defaultMaxCharsPerGroup" and value is not None and value > 1_000_000:
+            raise ValueError(
+                "RAG contextAssembly defaultMaxCharsPerGroup cannot exceed 1000000."
+            )
     keys: set[str] = set()
     for group in options.groups:
         if not group.key.strip():
@@ -719,6 +770,11 @@ def _validate_assembly(options: RagContextAssemblyOptions) -> None:
             if value is not None and value < 0:
                 raise ValueError(
                     f"RAG contextAssembly group {name} cannot be negative."
+                )
+            maximum = 10_000 if "Chunks" in name else 1_000_000
+            if value is not None and value > maximum:
+                raise ValueError(
+                    f"RAG contextAssembly group {name} cannot exceed {maximum}."
                 )
         if (
             group.min_chunks is not None

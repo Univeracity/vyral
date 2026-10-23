@@ -3961,6 +3961,35 @@
       },
       "headerSafeFields": [],
       "evidenceProfile": "public-sdk"
+    },
+    {
+      "id": "getProviderRunJobProgress",
+      "group": "providers",
+      "restOperationIds": [
+        "getProviderRunJobProgress"
+      ],
+      "stability": "public",
+      "authorizationClass": "provider-policy",
+      "mutation": "read",
+      "completionBoundary": "non-mutating",
+      "idempotency": "not-applicable",
+      "sdk": {
+        "python": "get_provider_run_job_progress",
+        "javascript": "getProviderRunJobProgress"
+      },
+      "contractRefs": [
+        "openapi:getProviderRunJobProgress"
+      ],
+      "schemaRefs": [
+        "#/components/schemas/ProviderRunJobProgress"
+      ],
+      "mcp": {
+        "exposure": "none",
+        "id": null,
+        "defaultEnabled": false
+      },
+      "headerSafeFields": [],
+      "evidenceProfile": "public-sdk"
     }
   ]
 }

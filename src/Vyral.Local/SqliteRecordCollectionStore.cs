@@ -446,19 +446,16 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
     public async Task<RecordQueryResult> QueryRecordsPageAsync(string collection, QueryEnvelope query, CancellationToken ct = default)
     {
         RecordIdentityValidator.ValidateCollectionName(collection);
-        ValidatePageLimit(query.Limit, "Query page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
 
         var policy = await GetCollectionPolicyAsync(collection, ct);
         if (policy == null) throw new InvalidOperationException($"Collection '{collection}' does not exist.");
 
         var queryBuilder = new SqliteQueryBuilder();
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit;
         var queryToExecute = CloneQuery(query);
-        if (pageSize.HasValue)
-        {
-            queryToExecute.Limit = pageSize.Value + 1;
-        }
+        queryToExecute.Limit = pageSize + 1;
 
         var (sql, parameters) = queryBuilder.BuildQuery(collection, queryToExecute, policy.IndexedMetadata);
 
@@ -504,12 +501,18 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
         var policy = await GetCollectionPolicyAsync(collection, ct);
         if (policy == null) throw new InvalidOperationException($"Collection '{collection}' does not exist.");
 
+        QueryWorkLimits.Validate(query);
         var fieldPolicy = RecordVectorValidator.ValidateSearchVector(collection, policy, query.Vector);
-        ValidatePageLimit(query.Limit, "Search page size");
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
+        var scanLimit = QueryWorkLimits.ResolveCandidateLimit(
+            query.Vector.ScanLimit,
+            QueryWorkLimits.DefaultVectorScanLimit,
+            "Vector scan limit");
 
         using var connection = await OpenConnectionAsync(ct);
 
         var results = new List<VyralRecordMatch>();
+        var scanned = 0;
 
         var queryBuilder = new SqliteQueryBuilder();
         var (sql, parameters) = queryBuilder.BuildVectorCandidateQuery(collection, query, policy.IndexedMetadata);
@@ -520,6 +523,11 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
         using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
+            scanned++;
+            if (scanned > scanLimit)
+            {
+                throw new InvalidOperationException($"Vector search exceeded the scan limit of {scanLimit} records. Narrow the query or increase scanLimit within the portable maximum.");
+            }
             var record = JsonSerializer.Deserialize<VyralRecord>(reader.GetString(0))!;
             var vectorBytes = (byte[])reader.GetValue(1);
             var storedDimensions = reader.GetInt32(2);
@@ -577,8 +585,6 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
         AddSearchTieBreakDiagnostics(ranked, collection, "vector", results.Count);
 
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit ?? query.Vector.Top;
-
         var pageItems = ranked.Skip(offset).Take(pageSize).ToList();
         var next = offset + pageItems.Count < ranked.Count ? EncodeContinuationToken(offset + pageItems.Count) : null;
         return new RecordSearchResult { Items = pageItems, ContinuationToken = next };
@@ -592,9 +598,12 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
             throw new InvalidOperationException("Lexical search query is required.");
         }
 
-        ValidatePageLimit(lexical.Top, "Lexical top");
-        ValidatePageLimit(lexical.ScanLimit, "Lexical scan limit");
-        ValidatePageLimit(query.Limit, "Search page size");
+        QueryWorkLimits.Validate(query);
+        var lexicalScanLimit = QueryWorkLimits.ResolveCandidateLimit(
+            lexical.ScanLimit,
+            QueryWorkLimits.DefaultLexicalScanLimit,
+            "Lexical scan limit");
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
 
         var policy = await GetCollectionPolicyAsync(collection, ct);
         if (policy == null) throw new InvalidOperationException($"Collection '{collection}' does not exist.");
@@ -604,7 +613,7 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
         candidateQuery.Lexical = null;
         candidateQuery.OrderBy = null;
         candidateQuery.ContinuationToken = null;
-        candidateQuery.Limit = lexical.ScanLimit;
+        candidateQuery.Limit = lexicalScanLimit;
 
         var candidateSource = "scan";
         var requiredPhraseGroups = LocalLexicalScorer.NormalizeRequiredPhraseGroups(lexical.RequiredPhraseGroups);
@@ -675,7 +684,6 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
         AddSearchTieBreakDiagnostics(ranked, collection, "lexical", records.Count);
 
         var offset = DecodeContinuationToken(query.ContinuationToken);
-        var pageSize = query.Limit ?? lexical.Top;
         var pageItems = ranked.Skip(offset).Take(pageSize).ToList();
         var next = offset + pageItems.Count < ranked.Count ? EncodeContinuationToken(offset + pageItems.Count) : null;
         return new RecordSearchResult { Items = pageItems, ContinuationToken = next };
@@ -858,24 +866,11 @@ public class SqliteRecordCollectionStore : IRecordCollectionStore
         }
     }
 
-    private static RecordQueryResult BuildRecordQueryResult(List<VyralRecord> records, int? pageSize, int offset)
+    private static RecordQueryResult BuildRecordQueryResult(List<VyralRecord> records, int pageSize, int offset)
     {
-        if (!pageSize.HasValue)
-        {
-            return new RecordQueryResult { Items = records };
-        }
-
-        var items = records.Take(pageSize.Value).ToList();
-        var next = records.Count > pageSize.Value ? EncodeContinuationToken(offset + pageSize.Value) : null;
+        var items = records.Take(pageSize).ToList();
+        var next = records.Count > pageSize ? EncodeContinuationToken(offset + pageSize) : null;
         return new RecordQueryResult { Items = items, ContinuationToken = next };
-    }
-
-    private static void ValidatePageLimit(int? limit, string description)
-    {
-        if (limit <= 0)
-        {
-            throw new InvalidOperationException($"{description} must be greater than zero.");
-        }
     }
 
     private static QueryEnvelope CloneQuery(QueryEnvelope query)

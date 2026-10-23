@@ -1,5 +1,9 @@
 # Consumer Handoff
 
+For pinned native local execution with SDK progress, crash/restart observation,
+bounded resources and application-owned edit validation, use the
+[isolated consumer example](../../examples/python/LOCAL_EXECUTION.md).
+
 This guide is for applications integrating with a local Vyral server through HTTP, Python, JavaScript, or .NET. It covers the stable local-development path: start the server, verify readiness, ingest records or RAG text, retrieve context, run provider-backed AI calls, and inspect failures.
 
 ## Start The Server
@@ -37,6 +41,10 @@ Useful startup variables:
 | `VYRAL_PROVIDER_ARTIFACT_DIR` | Provider run artifact directory. |
 | `VYRAL_API_KEY` | Enables API-key protection when set. Send as bearer token or `X-Vyral-Api-Key`. |
 | `VYRAL_ENABLE_LIVE_TARGETS` | Registers live CLI/API providers when true. Leave false for deterministic local-only use. |
+
+`VYRAL_URLS` may remain unauthenticated only for loopback bindings. A wildcard
+or non-loopback binding requires `VYRAL_API_KEY`, and a hosted deployment must
+set ASP.NET Core `AllowedHosts` to its exact ingress host names.
 
 Check the server:
 

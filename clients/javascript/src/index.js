@@ -1539,6 +1539,15 @@ export class VyralClient {
     }
   }
 
+  async getProviderRunJobProgress(id) {
+    try {
+      return await this.#json("GET", `/provider-jobs/${encodeURIComponent(id)}/progress`);
+    } catch (error) {
+      if (error instanceof VyralClientError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
   async cancelProviderJob(id) {
     try {
       return await this.#json("DELETE", `/provider-jobs/${encodeURIComponent(id)}`);

@@ -81,16 +81,7 @@ public sealed class ServerAccessOptions
 
     private string? GetSuppliedApiKey(HttpRequest request)
     {
-        if (request.Headers.TryGetValue(ApiKeyHeader, out var headerValue) && !string.IsNullOrWhiteSpace(headerValue.ToString()))
-        {
-            return headerValue.ToString();
-        }
-
-        var authorization = request.Headers.Authorization.ToString();
-        const string bearer = "Bearer ";
-        return authorization.StartsWith(bearer, StringComparison.OrdinalIgnoreCase)
-            ? authorization[bearer.Length..].Trim()
-            : null;
+        return RequestCredentialReader.ReadApiKey(request, ApiKeyHeader);
     }
 
     private static bool SecureEquals(string expected, string supplied)

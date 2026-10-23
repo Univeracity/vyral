@@ -133,9 +133,50 @@ class FileObjectStoreTests(unittest.TestCase):
             ("prefix/a.txt", "prefix/b.txt"),
             tuple(item.key for item in first.items),
         )
-        self.assertEqual("Mg==", first.continuation_token)
+        self.assertIsNotNone(first.continuation_token)
         self.assertEqual(("prefix/c.txt",), tuple(item.key for item in second.items))
         self.assertIsNone(second.continuation_token)
+
+        self.store.put_object(
+            ObjectWriteRequest("artifacts", "prefix/aa.txt", b"late")
+        )
+        continued = self.store.list_objects(
+            ObjectListRequest(
+                "artifacts",
+                prefix="prefix/",
+                limit=10,
+                continuation_token=first.continuation_token,
+            )
+        )
+        self.assertEqual(
+            ("prefix/c.txt",),
+            tuple(item.key for item in continued.items),
+        )
+
+    def test_read_rejects_content_above_portable_limit_before_opening(self) -> None:
+        self.store.put_object(
+            ObjectWriteRequest("artifacts", "large.bin", b"12345")
+        )
+
+        with self.assertRaisesRegex(ValueError, "exceeds.*read limit"):
+            self.store.get_object(
+                ObjectReadRequest(
+                    "artifacts",
+                    "large.bin",
+                    max_content_bytes=4,
+                )
+            )
+
+        for limit in (0, -1, 1024 * 1024 * 1024 + 1):
+            with self.subTest(limit=limit):
+                with self.assertRaises(ValueError):
+                    self.store.get_object(
+                        ObjectReadRequest(
+                            "artifacts",
+                            "large.bin",
+                            max_content_bytes=limit,
+                        )
+                    )
 
     def test_names_metadata_limits_and_traversal_are_rejected(self) -> None:
         invalid_writes = (
@@ -148,6 +189,7 @@ class FileObjectStoreTests(unittest.TestCase):
             ObjectWriteRequest("valid-name", "CON", b"x"),
             ObjectWriteRequest("valid-name", "nested/NUL.txt", b"x"),
             ObjectWriteRequest("valid-name", "result. ", b"x"),
+            ObjectWriteRequest("valid-name", "\u00e9" * 513, b"x"),
             ObjectWriteRequest("com1", "a", b"x"),
             ObjectWriteRequest(
                 "valid-name",
@@ -181,6 +223,27 @@ class FileObjectStoreTests(unittest.TestCase):
                     continuation_token="not-base64!",
                 )
             )
+        with self.assertRaises(ValueError):
+            self.store.list_objects(
+                ObjectListRequest(
+                    "artifacts",
+                    continuation_token="Mg==",
+                )
+            )
+        with self.assertRaises(ValueError):
+            self.store.list_objects(
+                ObjectListRequest(
+                    "artifacts",
+                    prefix="\u00e9" * 513,
+                )
+            )
+        with self.assertRaises(ValueError):
+            self.store.list_objects(
+                ObjectListRequest(
+                    "artifacts",
+                    continuation_token="x" * 8193,
+                )
+            )
 
     def test_missing_sidecar_recovers_content_info_and_reports_diagnostics(self) -> None:
         info = self.store.put_object(
@@ -205,6 +268,59 @@ class FileObjectStoreTests(unittest.TestCase):
         diagnostics = self.store.diagnostics()
         self.assertFalse(diagnostics.healthy)
         self.assertEqual(1, diagnostics.missing_metadata_count)
+
+    def test_metadata_sidecar_namespace_conflicts_fail_without_corruption(
+        self,
+    ) -> None:
+        original = self.store.put_object(
+            ObjectWriteRequest(
+                "artifacts",
+                "victim.bin",
+                b"original",
+                metadata={"owner": "victim"},
+            )
+        )
+        with self.assertRaisesRegex(ValueError, "conflicts with metadata"):
+            self.store.put_object(
+                ObjectWriteRequest(
+                    "artifacts",
+                    "victim.bin.metadata.json",
+                    b"replacement",
+                )
+            )
+        loaded = self.store.get_object(
+            ObjectReadRequest("artifacts", "victim.bin")
+        )
+        assert loaded is not None
+        with loaded:
+            self.assertEqual(b"original", loaded.read())
+        self.assertEqual(original.etag, loaded.etag)
+        self.assertEqual({"owner": "victim"}, loaded.metadata)
+
+        suffix = self.store.put_object(
+            ObjectWriteRequest(
+                "artifacts",
+                "standalone.metadata.json",
+                b"suffix-object",
+            )
+        )
+        with self.assertRaisesRegex(ValueError, "existing object key"):
+            self.store.put_object(
+                ObjectWriteRequest(
+                    "artifacts",
+                    "standalone",
+                    b"base-object",
+                )
+            )
+        loaded_suffix = self.store.get_object(
+            ObjectReadRequest(
+                "artifacts", "standalone.metadata.json"
+            )
+        )
+        assert loaded_suffix is not None
+        with loaded_suffix:
+            self.assertEqual(b"suffix-object", loaded_suffix.read())
+        self.assertEqual(suffix.etag, loaded_suffix.etag)
 
     def test_competing_if_none_match_writes_have_one_winner(self) -> None:
         barrier = Barrier(2)

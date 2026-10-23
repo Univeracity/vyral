@@ -64,11 +64,24 @@ public class AzureBlobObjectStore : IObjectStore
 
     public async Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
     {
+        var maxContentBytes = ObjectStoreLimits.ResolveMaxContentBytes(request.MaxContentBytes);
         var blobClient = GetBlobClient(request.Container, request.Key);
+        Response<BlobProperties> properties;
         try
         {
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: ct);
-            var download = await blobClient.DownloadStreamingAsync(cancellationToken: ct);
+            properties = await blobClient.GetPropertiesAsync(cancellationToken: ct);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            return null;
+        }
+
+        ObjectStoreLimits.EnsureContentLength(properties.Value.ContentLength, maxContentBytes);
+        try
+        {
+            var download = await blobClient.DownloadStreamingAsync(
+                BuildBoundedDownloadOptions(properties.Value.ETag),
+                ct);
             return new ObjectResult
             {
                 Container = request.Container,
@@ -82,9 +95,9 @@ public class AzureBlobObjectStore : IObjectStore
                 Content = download.Value.Content
             };
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+        catch (RequestFailedException ex) when (ex.Status is 404 or 412)
         {
-            return null;
+            throw new InvalidOperationException("Object changed during the bounded Azure Blob read; retry the read.", ex);
         }
     }
 
@@ -106,15 +119,14 @@ public class AzureBlobObjectStore : IObjectStore
 
     public async Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
     {
-        ValidateListLimit(request.Limit);
+        var pageSize = ObjectStoreLimits.ResolveListLimit(request.Limit);
+        ObjectStoreLimits.ValidateContinuationToken(request.ContinuationToken);
         ObjectNameValidator.ValidateContainer(request.Container);
         var prefix = string.IsNullOrEmpty(request.Prefix)
             ? null
             : ObjectNameValidator.NormalizeObjectKey(request.Prefix, allowTrailingSlash: true);
         var containerClient = _serviceClient.GetBlobContainerClient(request.Container);
         var items = new List<ObjectInfo>();
-        var pageSize = request.Limit.GetValueOrDefault(100);
-
         await foreach (var page in containerClient
             .GetBlobsAsync(traits: BlobTraits.Metadata, states: BlobStates.None, prefix: prefix, cancellationToken: ct)
             .AsPages(request.ContinuationToken, pageSize))
@@ -150,14 +162,6 @@ public class AzureBlobObjectStore : IObjectStore
         return _serviceClient.GetBlobContainerClient(container).GetBlobClient(ObjectNameValidator.NormalizeObjectKey(key));
     }
 
-    private static void ValidateListLimit(int? limit)
-    {
-        if (limit <= 0)
-        {
-            throw new InvalidOperationException("Object list limit must be greater than zero.");
-        }
-    }
-
     private async Task<ObjectInfo?> ReadInfoAsync(string container, string key, CancellationToken ct)
     {
         var result = await GetObjectAsync(new ObjectReadRequest { Container = container, Key = key }, ct);
@@ -173,6 +177,11 @@ public class AzureBlobObjectStore : IObjectStore
             string.Equals(exception.ErrorCode, BlobErrorCode.ConditionNotMet.ToString(), StringComparison.Ordinal) ||
             string.Equals(exception.ErrorCode, BlobErrorCode.BlobAlreadyExists.ToString(), StringComparison.Ordinal);
     }
+
+    internal static BlobDownloadOptions BuildBoundedDownloadOptions(ETag etag) => new()
+    {
+        Conditions = new BlobRequestConditions { IfMatch = etag }
+    };
 
     public static Dictionary<string, string> BuildMetadataWithContentHash(Dictionary<string, string>? metadata, string contentHash)
     {

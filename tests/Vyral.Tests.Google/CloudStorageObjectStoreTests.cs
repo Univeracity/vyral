@@ -69,4 +69,20 @@ public sealed class CloudStorageObjectStoreTests
             IfMatch = "\"missing\""
         }));
     }
+
+    [Fact]
+    public void BuildBoundedDownloadOptions_PinsTheCheckedGeneration()
+    {
+        var options = CloudStorageObjectStore.BuildBoundedDownloadOptions(42);
+
+        Assert.Equal(42L, options.Generation);
+        Assert.Equal(42L, options.IfGenerationMatch);
+    }
+
+    [Fact]
+    public void BuildBoundedDownloadOptions_RejectsMissingGeneration()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            CloudStorageObjectStore.BuildBoundedDownloadOptions(null));
+    }
 }

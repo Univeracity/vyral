@@ -20,6 +20,6 @@ uvicorn==0.52.3 \
     --hash=sha256:18857b9e6579300be55c91c0a1cfd37d9a2cf0cabea33b88275f199eb73b8b58
     # via vyral
 vyral==0.1.4 \
-    --hash=sha256:820e132d61c89de5261b3b8c01b96c36ce81b0379ea71f24f54f59ff93e1dc58 \
-    --hash=sha256:33b7f53f45a97adee36db7a5478a1284a9ae081fe0c123204b981c41bbaa9eeb
+    --hash=sha256:4f75ad60eceacb93a27ca09339f4daf7f6efbd78ff52bf4eff3a74434ee4c866 \
+    --hash=sha256:0d9f317366690d0543be41a9d2b6400509655687d01f13ed92700b569f3f7a9c
     # via -r runtimes/python/requirements-server.in

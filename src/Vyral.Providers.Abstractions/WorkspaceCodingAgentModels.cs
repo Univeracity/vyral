@@ -27,6 +27,24 @@ public sealed class WorkspaceCodingAgentRequest
     [JsonPropertyName("allowedPaths")]
     public List<string> AllowedPaths { get; set; } = new();
 
+    private List<string>? _newFilePaths;
+
+    /// <summary>
+    /// Opt-in exact files to create. Each must be an absent canonical relative
+    /// allowed path with an existing real parent. Omission keeps legacy scope.
+    /// A supporting host reconciles the whole private stage before validation.
+    /// </summary>
+    [JsonPropertyName("newFilePaths")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? NewFilePaths
+    {
+        get => _newFilePaths;
+        set { NewFilePathsSpecified = true; _newFilePaths = value; }
+    }
+
+    [JsonIgnore]
+    public bool NewFilePathsSpecified { get; private set; }
+
     /// <summary>Relative workspace paths the agent must not alter; these override allowed paths.</summary>
     [JsonPropertyName("avoidedPaths")]
     public List<string> AvoidedPaths { get; set; } = new();
@@ -154,6 +172,42 @@ public sealed class WorkspaceAgentDelivery
     public string OutcomeSha256 { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// A host-filtered observation from a failed agent's stderr. The reason is not
+/// independently verified and establishes no provider effects, usage, delivery,
+/// acceptance or permission to resend. Unknown reasons are not projected.
+/// </summary>
+public sealed class WorkspaceAgentDiagnostic
+{
+    public string SchemaVersion => "vyral.workspace-agent-diagnostic.v1";
+    public string Source => "agent_stderr";
+    public string State => "held";
+    public string Reason { get; init; } = string.Empty;
+    public bool ResendAuthorized => false;
+    public string ProviderEffects => "unresolved";
+
+    private static readonly HashSet<string> KnownReasons = new(StringComparer.Ordinal)
+    {
+        "absolute_private_path_required", "anchor_not_unique", "anchor_outside_context", "base_binding",
+        "context_binding", "context_limit", "context_read_manifest", "context_read_overlap", "context_window",
+        "context_window_scope", "credential_in_response", "deadline", "duplicate_json_key", "edit_limit",
+        "edit_precondition", "gateway_held_or_deadline", "host_input_limit", "input_limit", "invalid_binding",
+        "invalid_context", "invalid_context_read_scope", "invalid_credential", "invalid_digest", "invalid_edit",
+        "invalid_edits", "invalid_gateway_response", "invalid_invocation_deadline", "invalid_json", "invalid_limit",
+        "invalid_path", "invalid_profile", "invalid_response_framing", "invalid_scope", "invocation_binding",
+        "invocation_deadline_required", "invocation_not_admitted", "invocation_unresolved", "model_binding",
+        "overlapping_context", "overlapping_edits", "overlapping_replacements", "owner_binding", "path_ancestor",
+        "path_scope", "private_file_limit", "private_file_required", "private_socket_required", "provider_binding",
+        "provider_config_binding_required", "readable_prompt_requires_windows", "regular_file_required",
+        "reservation_limit", "response_binding", "response_limit", "symlink", "task_binding", "tcp_fallback_denied",
+        "unsupported_host_input", "unsupported_model_output", "unsupported_profile", "unsupported_prompt_format",
+        "unsupported_reservation", "unsupported_response_framing", "usage_bound", "usage_unknown",
+        "windowed_patch_required", "workspace_binding", "workspace_host_required", "private_ipc_or_input_failure"
+    };
+
+    public static bool IsKnownReason(string? reason) => reason is not null && KnownReasons.Contains(reason);
+}
+
 public sealed class WorkspaceChangedPath
 {
     /// <summary>Normalized relative path from the workspace root.</summary>
@@ -220,6 +274,7 @@ public static class WorkspaceCodingAgentContract
 
         var allowedPaths = request.AllowedPaths.Select(NormalizeRelativePath).ToList();
         var avoidedPaths = request.AvoidedPaths.Select(NormalizeRelativePath).ToList();
+        ValidateNewFilePaths(request);
         if (allowedPaths.Concat(avoidedPaths).Any(path => string.Equals(path, ".git", StringComparison.Ordinal) || path.StartsWith(".git/", StringComparison.Ordinal)))
         {
             throw new ArgumentException("The Git metadata directory is always protected and must not be declared.", nameof(request));
@@ -281,7 +336,7 @@ public static class WorkspaceCodingAgentContract
         {
             bool Digest(string value) => value is not null && value.Length == 71 && value.StartsWith("sha256:", StringComparison.Ordinal)
                 && value[7..].All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
-            var taskHash = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.Task)));
+            var taskHash = "sha256:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.Task))).ToLowerInvariant();
             if (delivery.SchemaVersion != "vyral.workspace-agent-delivery.v1" || delivery.Source != "agent_stdout" ||
                 delivery.State != "acknowledged" || !delivery.TaskBindingVerified || delivery.TaskSha256 != taskHash ||
                 !new[] { delivery.TaskSha256, delivery.ProfileSha256, delivery.RequestSha256, delivery.ResultSha256, delivery.OutcomeSha256 }.All(Digest))
@@ -324,7 +379,7 @@ public static class WorkspaceCodingAgentContract
                 throw new ArgumentException($"Workspace coding-agent result has unsupported changed-path kind '{changed.Kind}'.", nameof(result));
             }
 
-            if (!allowedPaths.Any(allowed => IsWithin(path, allowed)))
+            if (!allowedPaths.Any(allowed => request.NewFilePaths?.Contains(allowed, StringComparer.Ordinal) == true ? path == allowed : IsWithin(path, allowed)))
             {
                 throw new ArgumentException($"Workspace coding-agent changed path '{path}' is outside the allowed paths.", nameof(result));
             }
@@ -362,6 +417,26 @@ public static class WorkspaceCodingAgentContract
         if (!executedValidationIds.IsSubsetOf(result.ExecutedCommandIds))
         {
             throw new ArgumentException("Workspace coding-agent result must account for every non-skipped validation command as executed.", nameof(result));
+        }
+    }
+
+    /// <summary>Lexical authority check; absence and real parents belong to the concrete host.</summary>
+    public static void ValidateNewFilePaths(WorkspaceCodingAgentRequest request)
+    {
+        if (!request.NewFilePathsSpecified) return;
+        if (request.NewFilePaths is not { Count: >= 1 and <= 32 } paths)
+            throw new ArgumentException("newFilePaths must contain between one and 32 exact file paths.");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in paths)
+        {
+            if (path is null || System.Text.Encoding.UTF8.GetByteCount(path) > 512 || path.Any(char.IsControl) ||
+                path.Contains('\\') || path == "." || NormalizeRelativePath(path) != path ||
+                path.Split('/').Contains(".git", StringComparer.Ordinal) || !seen.Add(path) ||
+                request.AllowedPaths.Count(allowed => allowed == path) != 1 || request.AllowedPaths.Select(NormalizeRelativePath).Count(allowed => allowed == path) != 1)
+                throw new ArgumentException("newFilePaths requires unique canonical exact allowed file paths.");
+            if (request.AllowedPaths.Select(NormalizeRelativePath).Any(other => other != path && (IsWithin(path, other) || IsWithin(other, path))) ||
+                request.AvoidedPaths.Select(NormalizeRelativePath).Any(other => IsWithin(path, other) || IsWithin(other, path)))
+                throw new ArgumentException("newFilePaths must not overlap another allowed or avoided path.");
         }
     }
 

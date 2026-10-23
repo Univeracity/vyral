@@ -97,6 +97,7 @@ public class CloudStorageObjectStore : IObjectStore
 
     public async Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
     {
+        var maxContentBytes = ObjectStoreLimits.ResolveMaxContentBytes(request.MaxContentBytes);
         ObjectNameValidator.ValidateContainer(request.Container);
         var key = ObjectNameValidator.NormalizeObjectKey(request.Key);
 
@@ -110,8 +111,37 @@ public class CloudStorageObjectStore : IObjectStore
             return null;
         }
 
+        ObjectStoreLimits.EnsureContentLength((long)(gcsObject.Size ?? 0), maxContentBytes);
+        if (gcsObject.Generation is not > 0)
+        {
+            throw new InvalidOperationException("Google Cloud Storage did not return an object generation for a bounded read.");
+        }
+
         var ms = new MemoryStream();
-        await _storageClient.DownloadObjectAsync(gcsObject, ms, cancellationToken: ct);
+        try
+        {
+            await _storageClient.DownloadObjectAsync(
+                gcsObject,
+                ms,
+                BuildBoundedDownloadOptions(gcsObject.Generation),
+                ct);
+        }
+        catch (GoogleApiException ex) when (
+            ex.HttpStatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.PreconditionFailed)
+        {
+            ms.Dispose();
+            throw new InvalidOperationException("Object changed during the bounded Google Cloud Storage read; retry the read.", ex);
+        }
+
+        try
+        {
+            ObjectStoreLimits.EnsureContentLength(ms.Length, maxContentBytes);
+        }
+        catch
+        {
+            ms.Dispose();
+            throw;
+        }
         ms.Position = 0;
 
         var contentHash = ResolveContentHash(gcsObject.Metadata, gcsObject.Generation?.ToString() ?? string.Empty);
@@ -165,11 +195,9 @@ public class CloudStorageObjectStore : IObjectStore
 
     public async Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
     {
-        if (request.Limit <= 0 && request.Limit.HasValue)
-            throw new InvalidOperationException("Object list limit must be greater than zero.");
-
+        var pageSize = ObjectStoreLimits.ResolveListLimit(request.Limit);
+        ObjectStoreLimits.ValidateContinuationToken(request.ContinuationToken);
         ObjectNameValidator.ValidateContainer(request.Container);
-        var pageSize = request.Limit ?? 100;
         var prefix = string.IsNullOrEmpty(request.Prefix)
             ? null
             : ObjectNameValidator.NormalizeObjectKey(request.Prefix, allowTrailingSlash: true);
@@ -266,5 +294,19 @@ public class CloudStorageObjectStore : IObjectStore
         }
 
         return generation;
+    }
+
+    internal static DownloadObjectOptions BuildBoundedDownloadOptions(long? generation)
+    {
+        if (generation is not > 0)
+        {
+            throw new InvalidOperationException("Google Cloud Storage did not return an object generation for a bounded read.");
+        }
+
+        return new DownloadObjectOptions
+        {
+            Generation = generation,
+            IfGenerationMatch = generation
+        };
     }
 }

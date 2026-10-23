@@ -101,6 +101,7 @@ public class S3ObjectStore : IObjectStore
 
     public async Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
     {
+        var maxContentBytes = ObjectStoreLimits.ResolveMaxContentBytes(request.MaxContentBytes);
         ObjectNameValidator.ValidateContainer(request.Container);
         var key = ObjectNameValidator.NormalizeObjectKey(request.Key);
 
@@ -112,6 +113,7 @@ public class S3ObjectStore : IObjectStore
                 Key = key
             }, ct);
 
+            ObjectStoreLimits.EnsureContentLength(response.ContentLength, maxContentBytes);
             var contentHash = ResolveContentHash(response.Metadata, response.ETag);
             var content = new MemoryStream();
             await response.ResponseStream.CopyToAsync(content, ct);
@@ -163,16 +165,13 @@ public class S3ObjectStore : IObjectStore
 
     public async Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
     {
-        if (request.Limit <= 0 && request.Limit.HasValue)
-            throw new InvalidOperationException("Object list limit must be greater than zero.");
-
+        var pageSize = ObjectStoreLimits.ResolveListLimit(request.Limit);
+        ObjectStoreLimits.ValidateContinuationToken(request.ContinuationToken);
         ObjectNameValidator.ValidateContainer(request.Container);
 
         var prefix = string.IsNullOrEmpty(request.Prefix)
             ? null
             : ObjectNameValidator.NormalizeObjectKey(request.Prefix, allowTrailingSlash: true);
-
-        var pageSize = request.Limit ?? 100;
 
         var listRequest = new ListObjectsV2Request
         {

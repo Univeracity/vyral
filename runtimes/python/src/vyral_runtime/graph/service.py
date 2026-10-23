@@ -971,12 +971,38 @@ def _validate_maximum(value: int, name: str) -> None:
 def _validate_traversal(request: GraphTraversalRequest) -> None:
     if not request.start_node_ids:
         raise ValueError("Graph traversal requires at least one startNodeId.")
+    if len(request.start_node_ids) > 1000:
+        raise ValueError("Graph traversal supports at most 1000 startNodeIds.")
     if request.profile.direction not in {"outgoing", "incoming", "both", ""}:
         raise ValueError("Graph traversal direction is invalid.")
     if request.profile.max_depth < 0:
         raise ValueError("Graph traversal maxDepth cannot be negative.")
+    if request.profile.max_depth > 16:
+        raise ValueError("Graph traversal maxDepth cannot exceed 16.")
     if request.profile.limit <= 0 or request.profile.edge_limit <= 0:
         raise ValueError("Graph traversal limits must be greater than zero.")
+    if request.profile.limit > MAX_COLLECTION_SNAPSHOT_RECORDS:
+        raise ValueError(
+            "Graph traversal limit cannot exceed "
+            f"{MAX_COLLECTION_SNAPSHOT_RECORDS}."
+        )
+    if request.profile.edge_limit > MAX_COLLECTION_SNAPSHOT_RECORDS:
+        raise ValueError(
+            "Graph traversal edgeLimit cannot exceed "
+            f"{MAX_COLLECTION_SNAPSHOT_RECORDS}."
+        )
+    if any(
+        len(values) > 1000
+        for values in (
+            request.profile.predicates,
+            request.profile.node_types,
+            request.profile.review_statuses,
+            request.profile.assertion_statuses,
+        )
+    ):
+        raise ValueError(
+            "Graph traversal selector lists cannot exceed 1000 values each."
+        )
     _validate_maximum(
         request.max_records or MAX_COLLECTION_SNAPSHOT_RECORDS,
         "Graph traversal maxRecords",

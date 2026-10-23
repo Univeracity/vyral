@@ -50,7 +50,10 @@ For a network deployment, terminate TLS and apply request-rate and connection
 limits at a reverse proxy or gateway. Keep the runtime directory writable only
 by the host identity; filesystem permissions are the security boundary for its
 SQLite data, objects, and local secrets. The SQLite/filesystem composition is
-a single-node deployment, not a multi-instance shared state store.
+a single-node deployment, not a multi-instance shared state store. On POSIX,
+Vyral creates and tightens the runtime root and object lock directories to
+mode `0700`; place the root under a trusted parent and do not relax those
+permissions for a network host.
 
 The CLI disables Uvicorn request access logs by default. Vyral host code does
 not log request bodies, authorization headers, or worker lease tokens. If
@@ -80,8 +83,9 @@ their normal authorization.
 ## Limits, errors, and diagnostics
 
 The REST host bounds request bodies at 64 MiB; the MCP endpoint uses a 1 MiB
-body limit. Both bound headers and reject untrusted Host values. Apply stricter
-gateway limits when the workload needs them.
+body limit. Both bound headers and reject untrusted or malformed Host
+authorities, including URL userinfo, paths, queries, fragments, and invalid
+ports. Apply stricter gateway limits when the workload needs them.
 
 REST failures use stable `https://openvyral.com/problems/...` type URIs and
 generic public details rather than exception text. MCP request and

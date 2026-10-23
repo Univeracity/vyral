@@ -34,10 +34,10 @@ class DeadlineTests(unittest.TestCase):
             return agent.load_profile(self.root / "profile.json")
 
     def test_long_profile_accepts_only_frozen_deadline_and_closed_limits(self):
-        for maximum in (240, 600):
+        for maximum in (240, 600, 1500, 1800, 3600):
             self.profile["maxExecutionSeconds"] = maximum
             self.assertEqual(self.loaded()["maxExecutionSeconds"], maximum)
-        for maximum in (0, 601, True):
+        for maximum in (0, 3601, True):
             self.profile["maxExecutionSeconds"] = maximum
             with self.assertRaisesRegex(agent.Held, "invalid_limit"): self.loaded()
         self.profile["maxExecutionSeconds"] = 240
@@ -93,7 +93,7 @@ class DeadlineTests(unittest.TestCase):
         with patch.object(agent, "Gateway") as gateway:
             for recover in (False, True):
                 with self.assertRaisesRegex(agent.Held, "deadline"): agent.run(self.profile, self.envelope, self.root, recover)
-            self.envelope["remainingMilliseconds"] = 600001
+            self.envelope["remainingMilliseconds"] = 3600001
             with self.assertRaisesRegex(agent.Held, "invalid_limit"): agent.run(self.profile, self.envelope, self.root)
             gateway.assert_not_called()
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,25 @@ namespace Vyral.Tests.Local;
 
 public class FileObjectStoreTests
 {
+    [Fact]
+    public void Constructor_MakesObjectAndLockRootsPrivateOnUnix()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var parent = Path.Combine(Path.GetTempPath(), $"vyral-objects-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(parent);
+        var root = Path.Combine(parent, "objects");
+
+        _ = new FileObjectStore(root);
+
+        var privateMode = UnixFileMode.UserRead |
+            UnixFileMode.UserWrite |
+            UnixFileMode.UserExecute;
+        Assert.Equal(privateMode, File.GetUnixFileMode(root));
+        Assert.Equal(
+            privateMode,
+            File.GetUnixFileMode(root + ".vyral-locks"));
+    }
+
     [Fact]
     public async Task ContentAddressedWrite_IsImmutableAndReplaySafe()
     {
@@ -218,6 +238,71 @@ public class FileObjectStoreTests
 
         var item = Assert.Single(listed.Items);
         Assert.Equal("docs/report.metadata.json", item.Key);
+    }
+
+    [Fact]
+    public async Task MetadataSidecarNamespaceConflictsFailWithoutCorruption()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"vyral-objects-{Guid.NewGuid():N}");
+        var store = new FileObjectStore(root);
+
+        var original = await store.PutObjectAsync(new ObjectWriteRequest
+        {
+            Container = "objects",
+            Key = "docs/victim.bin",
+            Content = new MemoryStream(Encoding.UTF8.GetBytes("original")),
+            Metadata = new Dictionary<string, string> { ["owner"] = "victim" }
+        });
+        var suffixConflict = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            store.PutObjectAsync(new ObjectWriteRequest
+            {
+                Container = "objects",
+                Key = "docs/victim.bin.metadata.json",
+                Content = new MemoryStream(Encoding.UTF8.GetBytes("replacement"))
+            }));
+        Assert.Contains("conflicts with metadata", suffixConflict.Message, StringComparison.Ordinal);
+
+        var loaded = await store.GetObjectAsync(new ObjectReadRequest
+        {
+            Container = "objects",
+            Key = "docs/victim.bin"
+        });
+        Assert.NotNull(loaded);
+        await using (loaded!.Content)
+        using (var reader = new StreamReader(loaded.Content))
+        {
+            Assert.Equal("original", await reader.ReadToEndAsync());
+        }
+        Assert.Equal(original.Etag, loaded.Etag);
+        Assert.Equal("victim", loaded.Metadata["owner"]);
+
+        var suffix = await store.PutObjectAsync(new ObjectWriteRequest
+        {
+            Container = "objects",
+            Key = "docs/standalone.metadata.json",
+            Content = new MemoryStream(Encoding.UTF8.GetBytes("suffix-object"))
+        });
+        var baseConflict = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            store.PutObjectAsync(new ObjectWriteRequest
+            {
+                Container = "objects",
+                Key = "docs/standalone",
+                Content = new MemoryStream(Encoding.UTF8.GetBytes("base-object"))
+            }));
+        Assert.Contains("existing object key", baseConflict.Message, StringComparison.Ordinal);
+
+        var loadedSuffix = await store.GetObjectAsync(new ObjectReadRequest
+        {
+            Container = "objects",
+            Key = "docs/standalone.metadata.json"
+        });
+        Assert.NotNull(loadedSuffix);
+        await using (loadedSuffix!.Content)
+        using (var reader = new StreamReader(loadedSuffix.Content))
+        {
+            Assert.Equal("suffix-object", await reader.ReadToEndAsync());
+        }
+        Assert.Equal(suffix.Etag, loadedSuffix.Etag);
     }
 
     [Fact]

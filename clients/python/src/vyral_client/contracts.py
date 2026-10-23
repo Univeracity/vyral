@@ -440,6 +440,7 @@ class _VectorSearchOptionsRequired(TypedDict):
 
 class VectorSearchOptions(_VectorSearchOptionsRequired, total=False):
     top: int
+    scanLimit: int | None
     minScore: float | None
 
 class LexicalSearchOptions(TypedDict, total=False):
@@ -3303,3 +3304,19 @@ class _AiJudgeResultRequired(TypedDict):
 
 class AiJudgeResult(_AiJudgeResultRequired, total=False):
     modelId: str | None
+
+class _ProviderRunJobProgressRequired(TypedDict):
+    id: str
+    status: Literal['Succeeded', 'Failed', 'TimedOut', 'Rejected', 'Unsupported', 'NotConfigured', 'Cancelled', 'Queued', 'Running']
+    phase: Literal['queued', 'unknown', 'terminal', 'runtime_binding', 'prompt_preparation', 'prompt_prepared', 'completion_pending', 'completion_validation']
+    createdAt: str
+    startedAt: str | None
+    completedAt: str | None
+    cancellationRequested: bool
+    nativePhaseAvailable: bool
+    observation: dict[str, JSONValue] | None
+    invocation: dict[str, JSONValue] | None
+    reconciliationRequired: bool
+
+class ProviderRunJobProgress(_ProviderRunJobProgressRequired, total=False):
+    pass

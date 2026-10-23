@@ -152,6 +152,14 @@ public class GoogleObjectStoreConformanceTests : ObjectStoreConformanceTests
     [GoogleGcsLiveFact]
     public Task ObjectStore_RejectsInvalidListLimit() =>
         RunObjectStore_RejectsInvalidListLimit();
+
+    [Fact]
+    public Task ObjectStore_RejectsOversizedContinuationToken() =>
+        RunObjectStore_RejectsOversizedContinuationToken();
+
+    [Fact]
+    public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
+        RunObjectStore_RejectsReadsAbovePortableContentLimit();
 }
 
 // ---------------------------------------------------------------------------

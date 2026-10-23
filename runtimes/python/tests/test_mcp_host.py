@@ -92,6 +92,7 @@ async def _request(
         "accept": "application/json, text/event-stream",
         "content-type": "application/json",
         "content-length": str(len(body)),
+        "host": "localhost",
     }
     if message is not None:
         headers["mcp-protocol-version"] = MCP_PROTOCOL_VERSION
@@ -773,6 +774,35 @@ class StatelessMcpHostTests(unittest.IsolatedAsyncioTestCase):
             },
         )
         self.assertEqual(200, status)
+
+    async def test_malformed_host_authorities_are_rejected(self) -> None:
+        app = StatelessMcpApplication(self.runtime)
+        for malformed_host in (
+            "evil@localhost",
+            "localhost/path",
+            "localhost?target=evil",
+            "localhost#evil",
+            "localhost:invalid",
+        ):
+            with self.subTest(host=malformed_host):
+                status, _, _ = await _request(
+                    app,
+                    _rpc("server/discover"),
+                    header_overrides={"host": malformed_host},
+                )
+                self.assertEqual(403, status)
+
+        status, _, _ = await _request(
+            app,
+            _rpc("server/discover"),
+            header_overrides={"host": None},
+        )
+        self.assertEqual(403, status)
+
+        with self.assertRaisesRegex(ValueError, "valid HTTP"):
+            McpApplicationConfig(
+                allowed_hosts=frozenset({"localhost:invalid"})
+            )
 
     async def test_explicit_origin_mode_rejects_same_host_fallback(self) -> None:
         app = StatelessMcpApplication(

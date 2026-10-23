@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Vyral.Tests.Providers" />
     <ProjectReference Include="..\Vyral.Providers.Abstractions\Vyral.Providers.Abstractions.csproj" />
   </ItemGroup>
 

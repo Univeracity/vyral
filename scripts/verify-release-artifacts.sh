@@ -102,6 +102,9 @@ scripts/test-validate-azure-durable-functions-live.sh
 python3 scripts/verify-version-policy.py
 python3 scripts/verify-public-sdk-surface.py
 python3 scripts/verify-public-contract-schemas.py
+python3 scripts/verify-local-execution-qualification.py
+PYTHONPATH="$ROOT/clients/python/src:$ROOT${PYTHONPATH:+:$PYTHONPATH}" \
+  python3 -m unittest discover -s tests/consumer_local -p 'test_*.py'
 python3 scripts/verify-markdown-links.py
 python3 scripts/generate-sdk-types.py
 VYRAL_FRESH_DEVELOPER_ARTIFACT_DIR="$QUALIFICATION_DIR/fresh-developer" \

@@ -51,6 +51,7 @@ async def _request(
     selected_headers = {
         "accept": "application/json",
         "content-length": str(len(encoded)),
+        "host": "localhost",
     }
     if content_type is not None:
         selected_headers["content-type"] = content_type
@@ -174,7 +175,7 @@ class RestHostTests(unittest.IsolatedAsyncioTestCase):
             for method, operation in path.items()
             if method in {"get", "post", "put", "patch", "delete"}
         }
-        self.assertEqual(133, len(expected))
+        self.assertEqual(134, len(expected))
         self.assertEqual(expected, set(self.app.operation_ids))
 
     async def test_operation_registry_has_one_owner_for_every_route(
@@ -1001,6 +1002,35 @@ class RestHostTests(unittest.IsolatedAsyncioTestCase):
             headers={"host": "127.0.0.1:5220"},
         )
         self.assertEqual(200, status)
+
+        for malformed_host in (
+            "evil@localhost",
+            "localhost/path",
+            "localhost?target=evil",
+            "localhost#evil",
+            "localhost:invalid",
+        ):
+            with self.subTest(host=malformed_host):
+                status, _, _ = await _request(
+                    app,
+                    "GET",
+                    "/health",
+                    headers={"host": malformed_host},
+                )
+                self.assertEqual(403, status)
+
+        status, _, _ = await _request(
+            app,
+            "GET",
+            "/health",
+            headers={"host": ""},
+        )
+        self.assertEqual(403, status)
+
+        with self.assertRaisesRegex(ValueError, "valid HTTP"):
+            RestApplicationConfig(
+                allowed_hosts=frozenset({"localhost:invalid"})
+            )
 
         status, _, _ = await _request(
             app,

@@ -1,0 +1,254 @@
+{
+  "schemaVersion": "vyral.local-execution-qualification.v1",
+  "level": "bounded-local-native",
+  "observedAtUtc": "2026-10-22",
+  "platform": "Linux x86_64 CPU",
+  "model": "Qwen3-1.7B-Q8_0.gguf",
+  "profile": {
+    "modelSha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "buildInfo": "b1-4c5957c",
+    "templateSha256": "57f1fd00f0013a2be96aa79b857391f27e23df5b5f847072b524c897e24d0361",
+    "contextTokens": 2048,
+    "maxOutputTokens": 128,
+    "templateProbeSha256": "323214ed1434eb18d9d20cd120d363b3364184c1790b3116228e9a7c55dc23e9",
+    "maxResponseBytes": 1048576,
+    "chatOutputFormat": "json-object-v1",
+    "enableThinking": false
+  },
+  "runtimeFiles": [
+    {
+      "name": "libggml-base.so",
+      "sha256": "sha256:0015c6661c5763ab9d5f22d66c226ce69f638a0558499e94701478ccadb5f25e"
+    },
+    {
+      "name": "libggml-base.so.0",
+      "sha256": "sha256:0015c6661c5763ab9d5f22d66c226ce69f638a0558499e94701478ccadb5f25e"
+    },
+    {
+      "name": "libggml-base.so.0.25.1",
+      "sha256": "sha256:0015c6661c5763ab9d5f22d66c226ce69f638a0558499e94701478ccadb5f25e"
+    },
+    {
+      "name": "libggml-cpu.so",
+      "sha256": "sha256:2039be98c6ee0d1cee1d3793a95f2deb061706e8ef39c9dd33a1cc3941227d92"
+    },
+    {
+      "name": "libggml-cpu.so.0",
+      "sha256": "sha256:2039be98c6ee0d1cee1d3793a95f2deb061706e8ef39c9dd33a1cc3941227d92"
+    },
+    {
+      "name": "libggml-cpu.so.0.25.1",
+      "sha256": "sha256:2039be98c6ee0d1cee1d3793a95f2deb061706e8ef39c9dd33a1cc3941227d92"
+    },
+    {
+      "name": "libggml.so",
+      "sha256": "sha256:dea80d51796e35a29860f7ed0727a9461e6f0c9b1647be09eb877a2cb1aa856a"
+    },
+    {
+      "name": "libggml.so.0",
+      "sha256": "sha256:dea80d51796e35a29860f7ed0727a9461e6f0c9b1647be09eb877a2cb1aa856a"
+    },
+    {
+      "name": "libggml.so.0.25.1",
+      "sha256": "sha256:dea80d51796e35a29860f7ed0727a9461e6f0c9b1647be09eb877a2cb1aa856a"
+    },
+    {
+      "name": "libllama-cli-impl.so",
+      "sha256": "sha256:ec277578883ed08cd981178a7f3a6c317a3cab8bb52f58b6f7270128423203ca"
+    },
+    {
+      "name": "libllama-common.so",
+      "sha256": "sha256:a492f075d9555e332901409a25df359b5a4981ebfc3172f552080d57039621d1"
+    },
+    {
+      "name": "libllama-common.so.0",
+      "sha256": "sha256:a492f075d9555e332901409a25df359b5a4981ebfc3172f552080d57039621d1"
+    },
+    {
+      "name": "libllama-common.so.0.5.0",
+      "sha256": "sha256:a492f075d9555e332901409a25df359b5a4981ebfc3172f552080d57039621d1"
+    },
+    {
+      "name": "libllama-server-impl.so",
+      "sha256": "sha256:26bc3756d41f06fabb25c39ab9441d5905878ada1798f8691fd058df5313e35d"
+    },
+    {
+      "name": "libllama.so",
+      "sha256": "sha256:01c93d2cb0f3716eddca46ba438c5135a252211236f079bc7161862863e94fc5"
+    },
+    {
+      "name": "libllama.so.0",
+      "sha256": "sha256:01c93d2cb0f3716eddca46ba438c5135a252211236f079bc7161862863e94fc5"
+    },
+    {
+      "name": "libllama.so.0.5.0",
+      "sha256": "sha256:01c93d2cb0f3716eddca46ba438c5135a252211236f079bc7161862863e94fc5"
+    },
+    {
+      "name": "libmtmd.so",
+      "sha256": "sha256:9ad8161b860a5deaac9d0dc3d10ed5f3fb3162981d9455c8862fd96ee8f5f71c"
+    },
+    {
+      "name": "libmtmd.so.0",
+      "sha256": "sha256:9ad8161b860a5deaac9d0dc3d10ed5f3fb3162981d9455c8862fd96ee8f5f71c"
+    },
+    {
+      "name": "libmtmd.so.0.5.0",
+      "sha256": "sha256:9ad8161b860a5deaac9d0dc3d10ed5f3fb3162981d9455c8862fd96ee8f5f71c"
+    },
+    {
+      "name": "llama-server",
+      "sha256": "sha256:5ed18fe1236449aa2001f68f4e5fc56828a13d42c76b6f2335848e533f095d33"
+    }
+  ],
+  "nativeCommandSha256": "sha256:5ed18fe1236449aa2001f68f4e5fc56828a13d42c76b6f2335848e533f095d33",
+  "implementationFiles": [
+    {
+      "path": "examples/python/local_execution_consumer.py",
+      "sha256": "8486166af143fa5a76beadba9d42e45b6bdb60c840f02625eb648b4a1df6c04a"
+    },
+    {
+      "path": "scripts/verify-local-execution-qualification.py",
+      "sha256": "60647feb32a6ce8246fd2b0aa9c9471f75791ef04c50d717c9e64c88fdb7338c"
+    },
+    {
+      "path": "src/Vyral.Providers.Abstractions/IProviderProgressTarget.cs",
+      "sha256": "67527f6ab1c94f31fd03c103c212e27b9e681deba10b8bafac0862890237a0a0"
+    },
+    {
+      "path": "src/Vyral.Providers.Local/LocalLlamaCppProviderTarget.cs",
+      "sha256": "a15ffe18645b4914fb253a7c3bc7769b6f148905cf47056f39c5fccde52eb3d4"
+    },
+    {
+      "path": "src/Vyral.Providers.Local/LlamaCppRuntimeSessionFactory.cs",
+      "sha256": "c86c586b4aeaf9c1edac30d5672281c749c3a1e5be13dd8198f0f412308503be"
+    },
+    {
+      "path": "src/Vyral.Providers.Local/NativeJsonObjectOutput.cs",
+      "sha256": "13469e45782352b466fb67fbb928310ad2c8b123205dbc35bcf37872dba16a42"
+    },
+    {
+      "path": "src/Vyral.Server/ExecutionRuntimeProviderRunJobAdapter.cs",
+      "sha256": "8c8296fe0f6d07f2a528ab1a9840fe464316ead6c5a659918f701ff67b1d68e3"
+    },
+    {
+      "path": "src/Vyral.Server/ProviderInvocationJournal.cs",
+      "sha256": "c917f51a883eca0a25e02748b091efe2bbef0e232b453cd4cee76646be7b6a79"
+    },
+    {
+      "path": "src/Vyral.Server/ProviderProgressSnapshot.cs",
+      "sha256": "b344c6162b2bc0b5d4908e66b6b2d313ebaf0988382c5f612f8f99de6cfa8a80"
+    },
+    {
+      "path": "src/Vyral.Server/ProviderRunGuard.cs",
+      "sha256": "68e14b96a618a189c63ebb351e9fc04873ed0f1ca8245e7c749d3e48fd27d654"
+    },
+    {
+      "path": "src/Vyral.Server/Program.cs",
+      "sha256": "6506e79eeef77d3d8382d8082b3e1bad33a270a97324ff5f8a88453263c55128"
+    },
+    {
+      "path": "src/Vyral.Execution.Local/LocalExecutionRuntime.cs",
+      "sha256": "757407372f96ab0c55eade8d6acf645f9cafabf919cd555676e5ccadedb32ec2"
+    },
+    {
+      "path": "src/Vyral.Providers.Cli/CliWorkspaceCodingAgentRunner.cs",
+      "sha256": "dc2b07fb4ba36af31894e0d5e0b9cf65dc2a0f470023a7c482be41e59e6ca610"
+    },
+    {
+      "path": "workers/owned-native-runtime/Program.cs",
+      "sha256": "63c99b1d5806db9a772c822c46a80fffa19c3c191ef55c0a759a7b0c9ae2ad99"
+    },
+    {
+      "path": "workers/owned-native-runtime/OwnedNativeProfile.cs",
+      "sha256": "cc586024f326e5e18fc1fc105db0fbdd972fdee50b10b5ad67dd7fad92df6632"
+    },
+    {
+      "path": "workers/owned-native-runtime/OwnedNativeDeadline.cs",
+      "sha256": "10a1556c952bf2254ca955a981b753adbe073c7e808c67f834ac111dc077e6f2"
+    },
+    {
+      "path": "workers/owned-native-runtime/OwnedNativeFailure.cs",
+      "sha256": "bc133d4c78d97caca1ce0eff04cb22acc12a4faaffb3adea37733446a05ea69b"
+    }
+  ],
+  "builds": [
+    {
+      "component": "server",
+      "sha256": "30edb950774fa7e83145eed740381dbd49f87274e8d26eb86c2ebff16aeb9a6b"
+    },
+    {
+      "component": "owner",
+      "sha256": "dacafc4bfaecfb50ad3d11c7f4858cbbab11534b0863732154c58f3ea47fd392"
+    }
+  ],
+  "privateReceiptSha256": "ef1b2ff97037478915e323a609459679fbb479adf1b1b93f24ecd9ccb14d5fd2",
+  "limits": {
+    "ownerSeconds": 300,
+    "modelThreads": 4,
+    "httpThreads": 2,
+    "addressSpaceBytesPerProcess": 4294967296,
+    "cpuSecondsPerProcess": 1200,
+    "hostAggregateLimit": false
+  },
+  "cases": [
+    {
+      "case": "workspace-calculator",
+      "status": "Succeeded",
+      "completionRequests": 1,
+      "reconciliationRequired": false
+    },
+    {
+      "case": "schema-array-refusal",
+      "status": "Succeeded",
+      "completionRequests": 1,
+      "reconciliationRequired": false
+    },
+    {
+      "case": "context-refusal",
+      "status": "Rejected",
+      "completionRequests": 0,
+      "reconciliationRequired": false
+    },
+    {
+      "case": "api-crash-after-native-response",
+      "status": "Failed",
+      "completionRequests": 1,
+      "reconciliationRequired": true
+    },
+    {
+      "case": "cancel-after-dispatch",
+      "status": "Cancelled",
+      "completionRequests": 1,
+      "reconciliationRequired": true
+    },
+    {
+      "case": "deadline-after-dispatch",
+      "status": "TimedOut",
+      "completionRequests": 1,
+      "reconciliationRequired": true
+    },
+    {
+      "case": "owner-death-during-native-processing",
+      "status": "Failed",
+      "completionRequests": 1,
+      "reconciliationRequired": true
+    }
+  ],
+  "cleanup": {
+    "allObservedDescendantsStopped": true
+  },
+  "claims": [
+    "Bounded observed pipeline phases, immutable deadlines and no duplicate completion requests in tested fault windows",
+    "Native JSON object constraint and actual templated context refusal for this exact profile",
+    "Application-owned anchored calculator edit with four arithmetic checks",
+    "Effective per-process kernel resource limits and observed namespace cleanup"
+  ],
+  "exclusions": [
+    "General semantic accuracy or calibrated judgment",
+    "Exactly-once effects across arbitrary providers or power loss",
+    "Malicious-host isolation, production multi-host custody or aggregate host resource limits",
+    "Independent consumer-environment qualification"
+  ],
+  "reproduce": "examples/python/LOCAL_EXECUTION.md"
+}

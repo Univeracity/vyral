@@ -58,6 +58,82 @@ public class JevProviderTargetTests
         Assert.Contains(doctor.Checks, check => check.Id == "auth.api_key" && check.Status == ProviderDoctorStatuses.Failed);
     }
 
+    [Theory]
+    [InlineData("http://jev.test/")]
+    [InlineData("https://user:secret@jev.test/")]
+    [InlineData("https://jev.test/?redirect=elsewhere")]
+    [InlineData("https://jev.test/#fragment")]
+    public void JevProvider_RejectsUnsafeCredentialTargets(string baseUri)
+    {
+        var options = new JevProviderOptions { ApiKey = "test-key", BaseUri = new Uri(baseUri) };
+
+        Assert.Throws<ArgumentException>(() => new JevProviderTarget(options));
+    }
+
+    [Fact]
+    public async Task RunAsync_EnforcesModeInputAndExecutionLimits()
+    {
+        var handler = new CapturingHttpHandler(new HttpResponseMessage(HttpStatusCode.OK));
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://jev.test/") };
+        var policies = new[]
+        {
+            new ProviderModePolicy { Id = "tiny", MaxInputBytes = 8, MaxOutputBytes = 7, TimeoutSeconds = 3, AllowNetwork = true }
+        };
+        var provider = new JevProviderTarget(new JevProviderOptions { ApiKey = "test-key" }, client, policies);
+
+        var oversized = await provider.RunAsync(new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Operation = "judge",
+            Mode = "tiny",
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Questions = new List<AiJudgeQuestion> { new() { Id = "q1", Type = AiJudgeQuestionTypes.Noul, Prompt = "too large" } }
+            })
+        });
+        var invalidTimeout = await provider.RunAsync(new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Operation = "judge",
+            Mode = "tiny",
+            TimeoutSeconds = 0,
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Questions = new List<AiJudgeQuestion> { new() { Id = "q1", Type = AiJudgeQuestionTypes.Noul, Prompt = "x" } }
+            })
+        });
+
+        Assert.Equal("input_limit", oversized.ProviderStatus);
+        Assert.Equal("invalid_timeout", invalidTimeout.ProviderStatus);
+        Assert.Null(handler.LastRequest);
+    }
+
+    [Fact]
+    public async Task RunAsync_RejectsDuplicateQuestionIdsBeforeHttpExecution()
+    {
+        var handler = new CapturingHttpHandler(new HttpResponseMessage(HttpStatusCode.OK));
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://jev.test/") };
+        var provider = new JevProviderTarget(new JevProviderOptions { ApiKey = "test-key" }, client);
+
+        var result = await provider.RunAsync(new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiJudge,
+            Operation = "judge",
+            Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+            {
+                Questions = new List<AiJudgeQuestion>
+                {
+                    new() { Id = "q1", Type = AiJudgeQuestionTypes.Noul, Prompt = "first" },
+                    new() { Id = "q1", Type = AiJudgeQuestionTypes.Noul, Prompt = "second" }
+                }
+            })
+        });
+
+        Assert.Equal(ProviderRunStatus.Rejected, result.Status);
+        Assert.Equal("invalid_request", result.ProviderStatus);
+        Assert.Null(handler.LastRequest);
+    }
+
     [Fact]
     public void JevProvider_CreatesConservativeQualificationSmokeRequest()
     {

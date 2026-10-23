@@ -145,7 +145,12 @@ hot-tenant p95 and throughput budgets and is deliberately scoped to its recorded
 operators must rerun it against their target topology. Configure
 MySQL's `max_allowed_packet` and the connector command timeout for the largest tenant state or
 archive being moved; individual canonical documents and ordinary snapshots retain their portable
-limits.
+limits. The provider also enforces a 16 MiB tenant-state ceiling by default. It checks
+`OCTET_LENGTH(state_json)` in MySQL before returning the JSON value and rejects an oversized write
+before issuing its update. Set `CanonicalStore:MySql:MaxTenantStateBytes` only after measuring the
+tenant workload; accepted values are 1 byte through 1 GiB. This ceiling bounds transfer and
+deserialization, but the MySQL provider still allocates and rewrites one complete tenant snapshot
+for each mutation. Use PostgreSQL or a consumer-owned normalized schema when that cost is unsafe.
 
 The application enforces tenant isolation; PostgreSQL does not automatically install row-level
 security policies because their role model is deployment-specific. Grant the CanonicalStore database
@@ -223,6 +228,7 @@ For Cloud SQL for MySQL, configure the same server surface with MySqlConnector s
 ```text
 CanonicalStore:Provider=mysql
 CanonicalStore:ConnectionString=Server=/cloudsql/PROJECT:REGION:INSTANCE;Database=vyral;User ID=vyral;Password=...;ConnectionProtocol=UnixSocket
+CanonicalStore:MySql:MaxTenantStateBytes=16777216
 ```
 
 ### MySQL-to-PostgreSQL upgrade path

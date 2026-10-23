@@ -2142,6 +2142,7 @@ test("provider job helpers use job routes", async () => {
   const started = await client.startProviderJob("local-deterministic-ai", { capability: "ai.chat" });
   const listed = await client.listProviderJobs({ provider: "local-deterministic-ai", limit: 5, includeResult: true });
   const fetched = await client.getProviderJob("job-1");
+  await client.getProviderRunJobProgress("job-1");
   const cancelled = await client.cancelProviderJob("job-1");
 
   assert.equal(started.id, "job-1");
@@ -2164,6 +2165,7 @@ test("provider job helpers use job routes", async () => {
       method: "GET",
       body: undefined
     },
+    { url: "http://vyral.local/provider-jobs/job-1/progress", method: "GET", body: undefined },
     {
       url: "http://vyral.local/provider-jobs/job-1",
       method: "DELETE",

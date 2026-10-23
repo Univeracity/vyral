@@ -20,14 +20,31 @@ public sealed class CanonicalStoreServerTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["CanonicalStore:Provider"] = "cloud-sql-mysql",
-            ["CanonicalStore:MySql:ConnectionString"] = "Server=localhost;Database=vyral;User ID=test;Password=test"
+            ["CanonicalStore:MySql:ConnectionString"] = "Server=localhost;Database=vyral;User ID=test;Password=test",
+            ["CanonicalStore:MySql:MaxTenantStateBytes"] = "1048576"
         }).Build();
 
         var options = CanonicalStoreOptions.FromConfiguration(configuration, "vyral.sqlite");
 
         Assert.Equal(CanonicalStoreOptions.MySql, options.Provider);
         Assert.Equal("Server=localhost;Database=vyral;User ID=test;Password=test", options.ConnectionString);
+        Assert.Equal(1_048_576, options.MySqlMaxTenantStateBytes);
         Assert.Equal("provider=mysql; connectionString=configured", options.Describe());
+    }
+
+    [Fact]
+    public void CanonicalStoreOptions_RejectInvalidMySqlTenantStateLimit()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CanonicalStore:Provider"] = "mysql",
+            ["CanonicalStore:ConnectionString"] = "Server=localhost;Database=vyral;User ID=test;Password=test",
+            ["CanonicalStore:MySql:MaxTenantStateBytes"] = "0"
+        }).Build();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => CanonicalStoreOptions.FromConfiguration(configuration, "vyral.sqlite"));
+
+        Assert.Contains("MaxTenantStateBytes", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

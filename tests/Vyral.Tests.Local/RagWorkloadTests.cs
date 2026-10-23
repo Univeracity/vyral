@@ -1698,6 +1698,36 @@ public class RagWorkloadTests
         Assert.Contains("does not exist", missingCollection.Message);
         Assert.Contains("not defined in policy", missingField.Message);
         Assert.Contains("does not define a vector policy", noVectorPolicy.Message);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            retrieval.SearchAsync(new RetrievalRequest
+            {
+                Query = "retention",
+                Collections = new List<string> { "knowledge" },
+                Limit = RetrievalWorkLimits.MaxResultLimit + 1
+            }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            retrieval.SearchAsync(new RetrievalRequest
+            {
+                Query = "retention",
+                Collections = new List<string> { "knowledge" },
+                Limit = 1,
+                Hybrid = new HybridSearchOptions
+                {
+                    CandidateMultiplier = RetrievalWorkLimits.MaxHybridCandidateMultiplier + 1
+                }
+            }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            retrieval.SearchAsync(new RetrievalRequest
+            {
+                Query = "retention",
+                Collections = new List<string> { "knowledge" },
+                Limit = 1,
+                Rerank = new RerankOptions
+                {
+                    CandidateLimit = RetrievalWorkLimits.MaxCandidateLimit + 1
+                }
+            }));
     }
 
     private static async Task<(SqliteRecordCollectionStore Store, SqliteTraceStore Traces, KeywordEmbeddingProvider Provider)> CreateRagStoreAsync()

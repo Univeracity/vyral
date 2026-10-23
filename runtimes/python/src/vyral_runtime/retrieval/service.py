@@ -22,6 +22,7 @@ from ..local import (
     VectorSearchOptions,
     VyralRecord,
 )
+from ..local.query_engine import validate_query_shape
 from .models import (
     EmbeddingOptions,
     HybridSearchOptions,
@@ -35,6 +36,14 @@ from .profiles import apply_retrieval_profile
 
 
 MAX_VECTOR_FIELDS = 8
+MAX_RETRIEVAL_RESULTS = 1000
+MAX_RETRIEVAL_CANDIDATES = 10_000
+MAX_RETRIEVAL_COLLECTIONS = 16
+MAX_RETRIEVAL_QUERY_CHARS = 32_768
+MAX_HYBRID_CANDIDATE_MULTIPLIER = 100
+MAX_RERANK_CANDIDATE_CHARS = 32_768
+MAX_RERANK_OUTPUT_BYTES = 16 * 1024 * 1024
+MAX_RERANK_TIMEOUT_SECONDS = 600
 
 
 def _f32(value: float) -> float:
@@ -144,9 +153,12 @@ class RetrievalService:
         search_mode = _search_mode(normalized)
         rerank = _validate_rerank(normalized.rerank)
         candidate_limit = (
-            max(
-                normalized.limit,
-                rerank.candidate_limit or normalized.limit * 4,
+            _bounded_candidate_limit(
+                max(
+                    normalized.limit,
+                    rerank.candidate_limit or normalized.limit * 4,
+                ),
+                "Rerank candidate limit",
             )
             if rerank is not None and rerank.enabled
             else normalized.limit
@@ -461,10 +473,33 @@ class RetrievalService:
 def _validate_request(request: RetrievalRequest) -> None:
     if not request.query.strip():
         raise ValueError("Retrieval query is required.")
+    if len(request.query) > MAX_RETRIEVAL_QUERY_CHARS:
+        raise ValueError(
+            f"Retrieval query cannot exceed {MAX_RETRIEVAL_QUERY_CHARS} characters."
+        )
     if not request.collections:
         raise ValueError("At least one retrieval collection is required.")
+    if len(request.collections) > MAX_RETRIEVAL_COLLECTIONS:
+        raise ValueError(
+            "Retrieval supports at most "
+            f"{MAX_RETRIEVAL_COLLECTIONS} collections."
+        )
+    if len(set(request.collections)) != len(request.collections):
+        raise ValueError("Retrieval collections must be unique.")
     if request.limit <= 0:
         raise ValueError("Retrieval limit must be greater than zero.")
+    if request.limit > MAX_RETRIEVAL_RESULTS:
+        raise ValueError(
+            f"Retrieval limit cannot exceed {MAX_RETRIEVAL_RESULTS}."
+        )
+    validate_query_shape(
+        QueryEnvelope(
+            partition_keys=request.partition_keys,
+            filter=request.filter,
+            lexical=request.lexical,
+            limit=request.limit,
+        )
+    )
     _search_mode(request)
     if request.vector_fields is not None:
         if len(request.vector_fields) > MAX_VECTOR_FIELDS:
@@ -491,6 +526,19 @@ def _validate_request(request: RetrievalRequest) -> None:
                 raise ValueError(
                     "Retrieval vectorFields candidateLimit must be greater than zero."
                 )
+            if (
+                item.candidate_limit is not None
+                and item.candidate_limit > MAX_RETRIEVAL_CANDIDATES
+            ):
+                raise ValueError(
+                    "Retrieval vectorFields candidateLimit cannot exceed "
+                    f"{MAX_RETRIEVAL_CANDIDATES}."
+                )
+            if item.query is not None and len(item.query) > MAX_RETRIEVAL_QUERY_CHARS:
+                raise ValueError(
+                    "Retrieval vectorFields query cannot exceed "
+                    f"{MAX_RETRIEVAL_QUERY_CHARS} characters."
+                )
         if request.vector_fields and total <= 0:
             raise ValueError(
                 "Retrieval vectorFields requires at least one positive weight."
@@ -505,12 +553,33 @@ def _validate_request(request: RetrievalRequest) -> None:
             raise ValueError(
                 "Hybrid candidateMultiplier must be greater than zero."
             )
+        if hybrid.candidate_multiplier > MAX_HYBRID_CANDIDATE_MULTIPLIER:
+            raise ValueError(
+                "Hybrid candidateMultiplier cannot exceed "
+                f"{MAX_HYBRID_CANDIDATE_MULTIPLIER}."
+            )
+        for name, value in (
+            ("vectorCandidateLimit", hybrid.vector_candidate_limit),
+            ("lexicalCandidateLimit", hybrid.lexical_candidate_limit),
+        ):
+            if value is not None:
+                _bounded_candidate_limit(value, f"Hybrid {name}")
         if hybrid.rrf_k <= 0:
             raise ValueError("Hybrid rrfK must be greater than zero.")
         if hybrid.fusion.strip().lower() not in {"weighted", "rrf"}:
             raise ValueError(
                 f"Hybrid fusion {hybrid.fusion!r} is not supported."
             )
+        _candidate_limit(
+            request.limit,
+            hybrid,
+            hybrid.vector_candidate_limit,
+        )
+        _candidate_limit(
+            request.limit,
+            hybrid,
+            hybrid.lexical_candidate_limit,
+        )
 
 
 def _validate_rerank(options: RerankOptions | None) -> RerankOptions | None:
@@ -518,16 +587,39 @@ def _validate_rerank(options: RerankOptions | None) -> RerankOptions | None:
         return options
     if options.candidate_limit is not None and options.candidate_limit <= 0:
         raise ValueError("Rerank candidateLimit must be greater than zero.")
+    if options.candidate_limit is not None:
+        _bounded_candidate_limit(options.candidate_limit, "Rerank candidateLimit")
     if options.max_candidate_chars <= 0:
         raise ValueError("Rerank maxCandidateChars must be greater than zero.")
+    if options.max_candidate_chars > MAX_RERANK_CANDIDATE_CHARS:
+        raise ValueError(
+            "Rerank maxCandidateChars cannot exceed "
+            f"{MAX_RERANK_CANDIDATE_CHARS}."
+        )
     if options.rerank_score_weight < 0 or options.original_score_weight < 0:
         raise ValueError("Rerank score weights must be non-negative.")
     if options.rerank_score_weight + options.original_score_weight <= 0:
         raise ValueError("Rerank requires at least one positive score weight.")
     if options.timeout_seconds is not None and options.timeout_seconds <= 0:
         raise ValueError("Rerank timeoutSeconds must be greater than zero.")
+    if (
+        options.timeout_seconds is not None
+        and options.timeout_seconds > MAX_RERANK_TIMEOUT_SECONDS
+    ):
+        raise ValueError(
+            "Rerank timeoutSeconds cannot exceed "
+            f"{MAX_RERANK_TIMEOUT_SECONDS}."
+        )
     if options.max_output_bytes is not None and options.max_output_bytes <= 0:
         raise ValueError("Rerank maxOutputBytes must be greater than zero.")
+    if (
+        options.max_output_bytes is not None
+        and options.max_output_bytes > MAX_RERANK_OUTPUT_BYTES
+    ):
+        raise ValueError(
+            "Rerank maxOutputBytes cannot exceed "
+            f"{MAX_RERANK_OUTPUT_BYTES}."
+        )
     if options.content_field and any(
         character in options.content_field for character in "/\\."
     ):
@@ -558,9 +650,25 @@ def _candidate_limit(
     explicit: int | None,
 ) -> int:
     if explicit is not None:
-        return max(result_limit, explicit)
+        return _bounded_candidate_limit(
+            max(result_limit, explicit),
+            "Hybrid candidate limit",
+        )
     multiplier = hybrid.candidate_multiplier if hybrid is not None else 8
-    return max(result_limit * multiplier, result_limit, 50)
+    return _bounded_candidate_limit(
+        max(result_limit * multiplier, result_limit, 50),
+        "Hybrid candidate limit",
+    )
+
+
+def _bounded_candidate_limit(value: int, description: str) -> int:
+    if value <= 0:
+        raise ValueError(f"{description} must be greater than zero.")
+    if value > MAX_RETRIEVAL_CANDIDATES:
+        raise ValueError(
+            f"{description} cannot exceed {MAX_RETRIEVAL_CANDIDATES}."
+        )
+    return value
 
 
 def _resolve_vector_specs(
@@ -613,11 +721,14 @@ def _resolve_vector_specs(
                 weight=item.weight,
                 query=item.query if item.query and item.query.strip() else request.query,
                 embedding=embedding,
-                candidate_limit=max(
-                    result_limit,
-                    item.candidate_limit
-                    if item.candidate_limit is not None
-                    else default_limit,
+                candidate_limit=_bounded_candidate_limit(
+                    max(
+                        result_limit,
+                        item.candidate_limit
+                        if item.candidate_limit is not None
+                        else default_limit,
+                    ),
+                    "Retrieval vector candidate limit",
                 ),
                 min_score=(
                     item.min_score

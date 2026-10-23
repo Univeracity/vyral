@@ -1,7 +1,125 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Vyral.Abstractions.Models;
+
+public static class QueryWorkLimits
+{
+    public const int DefaultPageSize = 100;
+    public const int MaxPageSize = 5_000;
+    public const int DefaultVectorScanLimit = 10_000;
+    public const int DefaultLexicalScanLimit = 5_000;
+    public const int MaxCandidateLimit = 100_000;
+    public const int MaxSearchTop = 10_000;
+    public const int MaxPartitionKeys = 1_000;
+    public const int MaxOrderExpressions = 8;
+    public const int MaxFilterDepth = 16;
+    public const int MaxFilterNodes = 100;
+    public const int MaxFilterInValues = 1_000;
+    public const int MaxContinuationTokenChars = 8_192;
+    public const int MaxSearchTextChars = 32_768;
+
+    public static int ResolvePageSize(int? limit, string description = "Query page size") =>
+        ResolvePositiveLimit(limit, DefaultPageSize, MaxPageSize, description);
+
+    public static int ResolveSearchTop(int top, string description) =>
+        ResolvePositiveLimit(top, top, MaxSearchTop, description);
+
+    public static int ResolveCandidateLimit(int? limit, int defaultLimit, string description) =>
+        ResolvePositiveLimit(limit, defaultLimit, MaxCandidateLimit, description);
+
+    public static void Validate(QueryEnvelope query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        _ = ResolvePageSize(query.Limit);
+        if (query.PartitionKeys is { Count: > MaxPartitionKeys })
+        {
+            throw new InvalidOperationException($"Query partitionKeys supports at most {MaxPartitionKeys} values.");
+        }
+        if (query.OrderBy is { Count: > MaxOrderExpressions })
+        {
+            throw new InvalidOperationException($"Query orderBy supports at most {MaxOrderExpressions} expressions.");
+        }
+        if (query.ContinuationToken is { Length: > MaxContinuationTokenChars })
+        {
+            throw new InvalidOperationException($"Query continuationToken cannot exceed {MaxContinuationTokenChars} characters.");
+        }
+
+        ValidateFilter(query.Filter);
+        if (query.Vector is not null)
+        {
+            _ = ResolveSearchTop(query.Vector.Top, "Vector search top");
+            _ = ResolveCandidateLimit(query.Vector.ScanLimit, DefaultVectorScanLimit, "Vector scan limit");
+        }
+        if (query.Lexical is not null)
+        {
+            _ = ResolveSearchTop(query.Lexical.Top, "Lexical top");
+            _ = ResolveCandidateLimit(query.Lexical.ScanLimit, DefaultLexicalScanLimit, "Lexical scan limit");
+            if (query.Lexical.Query.Length > MaxSearchTextChars)
+            {
+                throw new InvalidOperationException($"Lexical query cannot exceed {MaxSearchTextChars} characters.");
+            }
+        }
+    }
+
+    private static int ResolvePositiveLimit(int? limit, int defaultLimit, int maximum, string description)
+    {
+        if (limit is <= 0)
+        {
+            throw new InvalidOperationException($"{description} must be greater than zero.");
+        }
+        var selected = limit ?? defaultLimit;
+        if (selected > maximum)
+        {
+            throw new InvalidOperationException($"{description} cannot exceed {maximum}.");
+        }
+        return selected;
+    }
+
+    private static void ValidateFilter(FilterNode? root)
+    {
+        if (root is null) return;
+        var pending = new Stack<(FilterNode Node, int Depth)>();
+        var visited = new HashSet<FilterNode>(ReferenceEqualityComparer.Instance);
+        pending.Push((root, 1));
+        var count = 0;
+        while (pending.Count > 0)
+        {
+            var (node, depth) = pending.Pop();
+            if (!visited.Add(node))
+            {
+                throw new InvalidOperationException("Query filter cannot contain cycles or reuse the same node instance.");
+            }
+            count++;
+            if (count > MaxFilterNodes)
+            {
+                throw new InvalidOperationException($"Query filter supports at most {MaxFilterNodes} nodes.");
+            }
+            if (depth > MaxFilterDepth)
+            {
+                throw new InvalidOperationException($"Query filter supports at most {MaxFilterDepth} levels.");
+            }
+            if (string.Equals(node.Op, FilterOps.In, StringComparison.OrdinalIgnoreCase) &&
+                FilterValueCount(node.Value) is > MaxFilterInValues)
+            {
+                throw new InvalidOperationException($"Query filter 'in' supports at most {MaxFilterInValues} values.");
+            }
+            if (node.Children is null) continue;
+            for (var index = node.Children.Count - 1; index >= 0; index--)
+            {
+                pending.Push((node.Children[index], depth + 1));
+            }
+        }
+    }
+
+    private static int? FilterValueCount(object? value) => value switch
+    {
+        JsonElement { ValueKind: JsonValueKind.Array } element => element.GetArrayLength(),
+        System.Collections.ICollection collection => collection.Count,
+        _ => null
+    };
+}
 
 public class QueryEnvelope
 {
@@ -115,6 +233,9 @@ public class VectorSearchOptions
 
     [JsonPropertyName("top")]
     public int Top { get; set; } = 10;
+
+    [JsonPropertyName("scanLimit")]
+    public int? ScanLimit { get; set; } = QueryWorkLimits.DefaultVectorScanLimit;
 
     [JsonPropertyName("minScore")]
     public float? MinScore { get; set; }

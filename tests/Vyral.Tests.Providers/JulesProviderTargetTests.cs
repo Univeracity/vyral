@@ -8,6 +8,18 @@ namespace Vyral.Tests.Providers;
 
 public class JulesProviderTargetTests
 {
+    [Theory]
+    [InlineData("http://jules.test/")]
+    [InlineData("https://user:secret@jules.test/")]
+    [InlineData("https://jules.test/?redirect=elsewhere")]
+    [InlineData("https://jules.test/#fragment")]
+    public void JulesProvider_RejectsUnsafeCredentialTargets(string baseUri)
+    {
+        var options = new JulesProviderOptions { ApiKey = "test-key", BaseUri = new Uri(baseUri) };
+
+        Assert.Throws<ArgumentException>(() => new JulesProviderTarget(options));
+    }
+
     [Fact]
     public void JulesProvider_ExposesModePoliciesOnCapabilities()
     {

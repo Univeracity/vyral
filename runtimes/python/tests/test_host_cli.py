@@ -263,6 +263,20 @@ class HostCliTests(unittest.TestCase):
                 main(["--root", root, option, value])
             self.assertEqual(2, raised.exception.code)
 
+    def test_malformed_allowed_host_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as root, patch.dict(
+            os.environ, {}, clear=True
+        ), self.assertRaises(SystemExit) as raised:
+            main(
+                [
+                    "--root",
+                    root,
+                    "--allowed-host",
+                    "evil@localhost",
+                ]
+            )
+        self.assertEqual(2, raised.exception.code)
+
     def test_server_extra_error_is_actionable(self) -> None:
         with tempfile.TemporaryDirectory() as root, patch.dict(
             os.environ, {}, clear=True

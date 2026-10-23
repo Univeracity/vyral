@@ -20,9 +20,20 @@ public sealed class JulesProviderTarget : IProviderTarget, IProviderDoctor, IPro
 
     public JulesProviderTarget(JulesProviderOptions options, HttpClient? client = null, IEnumerable<ProviderModePolicy>? policies = null)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.TimeoutSeconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Jules provider timeout must be positive.");
+        }
+        if (options.MaxOutputBytes <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Jules provider output limit must be positive.");
+        }
+
+        options.BaseUri = RequireSecureBaseUri(options.BaseUri, nameof(options.BaseUri));
         _options = options;
-        _client = client ?? new HttpClient { BaseAddress = options.BaseUri };
-        _client.BaseAddress ??= options.BaseUri;
+        _client = client ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+        _client.BaseAddress = RequireSecureBaseUri(_client.BaseAddress ?? options.BaseUri, nameof(client));
         _policies = ProviderModePolicies.Index(policies ?? ProviderModePolicies.Defaults(allowNetwork: true));
 
         Profile = new ProviderProfile
@@ -249,9 +260,19 @@ public sealed class JulesProviderTarget : IProviderTarget, IProviderDoctor, IPro
         {
             return CreateResult(request, trace, ProviderRunStatus.Rejected, stopwatch.Elapsed, "Requested output limit is invalid.", ProviderFailureClasses.Policy, outputLimitStatus);
         }
+        if (request.TimeoutSeconds is <= 0)
+        {
+            return CreateResult(request, trace, ProviderRunStatus.Rejected, stopwatch.Elapsed, "Requested timeout is invalid.", ProviderFailureClasses.Policy, "invalid_timeout");
+        }
+        if (Encoding.UTF8.GetByteCount(request.Payload.ToJsonString(ProviderJson.Options)) > policy.MaxInputBytes)
+        {
+            return CreateResult(request, trace, ProviderRunStatus.Rejected, stopwatch.Elapsed, "Payload exceeds mode input limit.", ProviderFailureClasses.Policy, "input_limit");
+        }
 
         var modeOutputLimit = Math.Min(policy.MaxOutputBytes, _options.MaxOutputBytes);
         request.MaxOutputBytes = Math.Min(request.MaxOutputBytes ?? modeOutputLimit, modeOutputLimit);
+        var modeTimeout = Math.Min(policy.TimeoutSeconds, _options.TimeoutSeconds);
+        request.TimeoutSeconds = Math.Min(request.TimeoutSeconds ?? modeTimeout, modeTimeout);
 
         try
         {
@@ -322,6 +343,25 @@ public sealed class JulesProviderTarget : IProviderTarget, IProviderDoctor, IPro
         }
 
         return null;
+    }
+
+    private static Uri RequireSecureBaseUri(Uri? baseUri, string parameterName)
+    {
+        if (baseUri is null || !baseUri.IsAbsoluteUri ||
+            !string.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            !string.IsNullOrEmpty(baseUri.UserInfo) ||
+            !string.IsNullOrEmpty(baseUri.Query) ||
+            !string.IsNullOrEmpty(baseUri.Fragment))
+        {
+            throw new ArgumentException("Jules provider base URI must be an absolute HTTPS URI without userinfo, a query, or a fragment.", parameterName);
+        }
+
+        var builder = new UriBuilder(baseUri);
+        if (!builder.Path.EndsWith("/", StringComparison.Ordinal))
+        {
+            builder.Path += "/";
+        }
+        return builder.Uri;
     }
 
     private async Task<ProviderRunResult> SendMessageAsync(ProviderRunRequest request, ProviderTraceEvent trace, Stopwatch stopwatch, CancellationToken ct)

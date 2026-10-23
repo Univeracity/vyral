@@ -53,8 +53,16 @@ class RuntimeExecutor:
             if semaphore is None:
                 semaphore = asyncio.Semaphore(self.max_pending)
                 self._semaphores[loop] = semaphore
-        async with semaphore:
-            return await loop.run_in_executor(self._executor, operation)
+        await semaphore.acquire()
+        try:
+            future = loop.run_in_executor(self._executor, operation)
+        except BaseException:
+            semaphore.release()
+            raise
+        # Cancelling a caller cannot stop an already running blocking call.
+        # Keep its queue permit until completion, including after cancellation.
+        future.add_done_callback(lambda _: semaphore.release())
+        return await asyncio.shield(future)
 
     def close(self, *, wait: bool = True) -> None:
         with self._lock:

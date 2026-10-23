@@ -1,0 +1,43 @@
+{
+  "schema": "vyral.workspace-ipc-preflight-render-fixtures.v1",
+  "reference_source_sha256": "sha256:737ebd574c88ce93b29d2026e6b4316f18246497333e49fa7f78b0938b7a5aae",
+  "reference_source_commit": "d6d35fe1d2795a4f5373c19c3ed8b8e46646bd5d",
+  "method": "Offline synthetic fixture counts and digests derived from accepted worker renderer; no raw prompt retained. Test-only evidence, never a consumer production API.",
+  "cases": {
+    "structured-omitted": {
+      "promptUtf8Bytes": 1063,
+      "promptSha256": "sha256:4c572da9bc963d69fc9875a0f2cd396dbe44b7c68ca96cf050d3cee7f840e799",
+      "requestJsonBytes": 1221,
+      "requestSha256": "sha256:6d75ddc69b4cbeed9b2d953f1f833be4b1bf947ea23efa4e6439b1b268cbf948",
+      "calculatedReservationTokens": 4096
+    },
+    "structured-explicit": {
+      "promptUtf8Bytes": 1063,
+      "promptSha256": "sha256:4c572da9bc963d69fc9875a0f2cd396dbe44b7c68ca96cf050d3cee7f840e799",
+      "requestJsonBytes": 1221,
+      "requestSha256": "sha256:6d75ddc69b4cbeed9b2d953f1f833be4b1bf947ea23efa4e6439b1b268cbf948",
+      "calculatedReservationTokens": 4096
+    },
+    "readable": {
+      "promptUtf8Bytes": 2404,
+      "promptSha256": "sha256:3feb37d59d0135b70f19f1e098d07f7214380a6b9379867fc121b0d3fa8b80c0",
+      "requestJsonBytes": 2601,
+      "requestSha256": "sha256:2c9c3fd79585644f91606456604f321e2916bc584ce76d2f311c01cc73b92cf4",
+      "calculatedReservationTokens": 4096
+    },
+    "readonly-context": {
+      "promptUtf8Bytes": 874,
+      "promptSha256": "sha256:4aee3958ec3aa975674526f65f4929332d465caadf945bb12fd5bc12302710a0",
+      "requestJsonBytes": 1032,
+      "requestSha256": "sha256:72c7f75cbd94a612dc4f3b0f1faec8de1352444ae3a5fa28751777d675283e50",
+      "calculatedReservationTokens": 4096
+    },
+    "legacy-v1": {
+      "promptUtf8Bytes": 647,
+      "promptSha256": "sha256:85e1d6ae714e0527912011105f10bfe85e1eedc2b7479012b781548409e62660",
+      "requestJsonBytes": 758,
+      "requestSha256": "sha256:417dda945dd7da28185afbc7712a71589a2eb808e2adbea758dcf2853a2e0eb1",
+      "calculatedReservationTokens": 777
+    }
+  }
+}

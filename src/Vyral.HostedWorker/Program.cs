@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Vyral.Execution;
 using Vyral.Execution.WorkerClient;
@@ -110,9 +112,43 @@ internal sealed class HostedWorkerTaskAuthenticator
 
     private static string? GetBearerToken(HttpRequest request)
     {
-        var value = request.Headers["X-Serverless-Authorization"].ToString();
-        if (string.IsNullOrWhiteSpace(value)) value = request.Headers.Authorization.ToString();
+        var hasServerless = request.Headers.TryGetValue(
+            "X-Serverless-Authorization",
+            out var serverlessValue);
+        var hasAuthorization = request.Headers.TryGetValue(
+            "Authorization",
+            out var authorizationValue);
+        var serverless = hasServerless
+            ? ParseBearer(serverlessValue.ToString())
+            : null;
+        var authorization = hasAuthorization
+            ? ParseBearer(authorizationValue.ToString())
+            : null;
+        if (hasServerless && hasAuthorization)
+        {
+            return serverless is not null &&
+                authorization is not null &&
+                SecureEquals(serverless, authorization)
+                    ? serverless
+                    : null;
+        }
+
+        return hasServerless ? serverless : authorization;
+    }
+
+    private static string? ParseBearer(string value)
+    {
         const string prefix = "Bearer ";
-        return value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? value[prefix.Length..].Trim() : null;
+        if (!value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
+        var token = value[prefix.Length..].Trim();
+        return token.Length > 0 ? token : null;
+    }
+
+    private static bool SecureEquals(string left, string right)
+    {
+        var leftBytes = Encoding.UTF8.GetBytes(left);
+        var rightBytes = Encoding.UTF8.GetBytes(right);
+        return leftBytes.Length == rightBytes.Length &&
+            CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
     }
 }

@@ -117,7 +117,7 @@ _PROFILE_STATUSES: ProfileTuple = (
         Maturity.PROTOTYPE,
         True,
         True,
-        "The optional ASGI host derives all 133 routes from OpenAPI and passes the "
+        "The optional ASGI host derives all 134 routes from OpenAPI and passes the "
         "maintained Python and JavaScript package-consumer programs.",
     ),
     ProfileStatus(

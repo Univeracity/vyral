@@ -15,6 +15,27 @@ namespace Vyral.Tests.Local;
 public class ExecutionRuntimeConformanceTests
 {
     [Fact]
+    public async Task ScopedRestartRecoveryDoesNotReexecuteOtherRunningHandlers()
+    {
+        var runtime = CreateRuntime();
+        var selected = new CountingHandler();
+        var unrelated = new BlockingHandler();
+        runtime.RegisterHandler(selected);
+        runtime.RegisterHandler(unrelated);
+        var runs = new[] { selected.Descriptor.HandlerId, unrelated.Descriptor.HandlerId }
+            .Select(handler => new ExecutionRun { Id = Guid.NewGuid().ToString("N"), HandlerId = handler,
+                Status = ExecutionRunStatuses.Running, Attempt = 1, MaxAttempts = 1,
+                PayloadHash = "scoped-recovery-fixture", Payload = new JsonObject { ["items"] = new JsonArray("a") } }).ToArray();
+        foreach (var run in runs) await InsertRunAsync(runtime.Options.DatabasePath, run);
+        await runtime.RecoverInterruptedHandlerAsync(selected.Descriptor.HandlerId);
+        await WaitForRunAsync(runtime, runs[0].Id, ExecutionRunStatuses.Succeeded);
+        var untouched = (await runtime.GetRunAsync(runs[1].Id))!;
+        Assert.Equal(ExecutionRunStatuses.Running, untouched.Status);
+        Assert.Equal(1, untouched.Attempt);
+        Assert.DoesNotContain(await runtime.GetHistoryAsync(runs[1].Id), item => item.Type == ExecutionEventTypes.RunStarted);
+    }
+
+    [Fact]
     public async Task LocalRuntime_RunsPluginRecordsProgressArtifactsHistoryAndIdempotency()
     {
         var runtime = CreateRuntime();

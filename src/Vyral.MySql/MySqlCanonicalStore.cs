@@ -9,6 +9,17 @@ using Vyral.Abstractions.Models;
 
 namespace Vyral.MySql;
 
+public sealed class MySqlCanonicalTenantStateLimitExceededException(
+    string tenantId,
+    long contentLength,
+    long maxContentLength)
+    : InvalidOperationException($"MySQL canonical tenant '{tenantId}' state is {contentLength} bytes, exceeding the configured {maxContentLength}-byte limit.")
+{
+    public string TenantId { get; } = tenantId;
+    public long ContentLength { get; } = contentLength;
+    public long MaxContentLength { get; } = maxContentLength;
+}
+
 /// <summary>
 /// MySQL 8/InnoDB implementation of the strong CanonicalStore profile. One InnoDB row stores a
 /// tenant's canonical state and is locked for every tenant mutation. That deliberate granularity
@@ -18,15 +29,22 @@ namespace Vyral.MySql;
 /// </summary>
 public sealed class MySqlCanonicalStore : ICanonicalStore
 {
+    public const long DefaultMaxTenantStateBytes = 16L * 1024 * 1024;
+    public const long AbsoluteMaxTenantStateBytes = 1024L * 1024 * 1024;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = false };
     private readonly string _connectionString;
+    private readonly long _maxTenantStateBytes;
     private readonly SemaphoreSlim _initializationGate = new(1, 1);
     private bool _initialized;
 
-    public MySqlCanonicalStore(string connectionString)
+    public MySqlCanonicalStore(string connectionString, long maxTenantStateBytes = DefaultMaxTenantStateBytes)
     {
         if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentException("MySQL connection string is required.", nameof(connectionString));
+        if (maxTenantStateBytes is < 1 or > AbsoluteMaxTenantStateBytes)
+            throw new ArgumentOutOfRangeException(nameof(maxTenantStateBytes), $"MySQL canonical tenant-state limit must be between 1 and {AbsoluteMaxTenantStateBytes} bytes.");
         _connectionString = connectionString;
+        _maxTenantStateBytes = maxTenantStateBytes;
     }
 
     public async Task ApplyMigrationsAsync(IReadOnlyList<CanonicalMigration> migrations, CancellationToken ct = default)
@@ -130,7 +148,7 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
                 Result = Clone(result), CommittedAtUtc = now
             });
             return result;
-        }, ct);
+        }, ct, result => !result.Replayed);
     }
 
     public async Task<CanonicalDocument?> GetDocumentAsync(string tenantId, string documentType, string id, bool includeDeleted = false, CancellationToken ct = default)
@@ -195,7 +213,7 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
                 leases.Add(new CanonicalOutboxLease { Event = Clone(item), LeaseToken = token, ExpiresAtUtc = expiresAt });
             }
             return (IReadOnlyList<CanonicalOutboxLease>)leases;
-        }, ct);
+        }, ct, leases => leases.Count > 0);
     }
 
     public async Task<CanonicalOutboxQueryResult> QueryOutboxAsync(CanonicalOutboxQuery query, CancellationToken ct = default)
@@ -208,9 +226,10 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
             .Where(item => string.IsNullOrWhiteSpace(query.Topic) || string.Equals(item.Topic, query.Topic.Trim(), StringComparison.Ordinal))
             .Where(item => OutboxStateMatches(item, query.State, now)).OrderBy(item => item.Id, StringComparer.Ordinal).ToList();
         var limit = query.Limit ?? 100;
-        var continuation = items.Count > limit ? EncodeOutboxContinuation(items[limit - 1].Id) : null;
-        if (items.Count > limit) items.RemoveAt(items.Count - 1);
-        return new CanonicalOutboxQueryResult { Items = items.Select(Clone).ToList(), ContinuationToken = continuation };
+        var hasMore = items.Count > limit;
+        var page = items.Take(limit).ToList();
+        var continuation = hasMore ? EncodeOutboxContinuation(page[^1].Id) : null;
+        return new CanonicalOutboxQueryResult { Items = page.Select(Clone).ToList(), ContinuationToken = continuation };
     }
 
     public async Task<CanonicalOutboxLeaseRenewal> RenewOutboxLeaseAsync(CanonicalOutboxLeaseRenewalRequest request, CancellationToken ct = default)
@@ -237,11 +256,12 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
             var validDeliveredRetry = item.DeliveredAtUtc is not null && state.LeaseTokenHashes.TryGetValue(item.Id, out var deliveredHash) && string.Equals(deliveredHash, tokenHash, StringComparison.Ordinal);
             var validActiveLease = item.DeliveredAtUtc is null && item.LeaseExpiresAtUtc > DateTime.UtcNow && state.LeaseTokenHashes.TryGetValue(item.Id, out var activeHash) && string.Equals(activeHash, tokenHash, StringComparison.Ordinal);
             if (!validDeliveredRetry && !validActiveLease) throw new InvalidOperationException("Canonical outbox lease is not active for this acknowledgement.");
+            var changed = item.DeliveredAtUtc is null;
             item.DeliveredAtUtc ??= DateTime.UtcNow;
             item.LeaseOwner = null;
             item.LeaseExpiresAtUtc = null;
-            return 0;
-        }, ct);
+            return changed;
+        }, ct, changed => changed);
     }
 
     public async Task NackOutboxAsync(CanonicalOutboxNackRequest request, CancellationToken ct = default)
@@ -487,7 +507,11 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
         catch (FormatException exception) { throw new InvalidOperationException("Canonical outbox continuation token is invalid.", exception); }
     }
 
-    private async Task<T> MutateTenantAsync<T>(string tenantId, Func<TenantState, T> mutation, CancellationToken ct)
+    private async Task<T> MutateTenantAsync<T>(
+        string tenantId,
+        Func<TenantState, T> mutation,
+        CancellationToken ct,
+        Func<T, bool>? shouldPersist = null)
     {
         CanonicalContractValidator.ValidateTenantId(tenantId);
         await EnsureInitializedAsync(ct);
@@ -497,7 +521,8 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
         {
             var state = await LoadTenantAsync(connection, transaction, tenantId, lockForWrite: true, ct);
             var result = mutation(state);
-            await SaveTenantAsync(connection, transaction, tenantId, state, ct);
+            if (shouldPersist?.Invoke(result) ?? true)
+                await SaveTenantAsync(connection, transaction, tenantId, state, ct);
             await transaction.CommitAsync(ct);
             return result;
         }
@@ -520,21 +545,47 @@ public sealed class MySqlCanonicalStore : ICanonicalStore
     {
         if (lockForWrite)
         {
+            var emptyState = SerializeAndValidate(new TenantState());
             await ExecuteAsync(connection, transaction!, """
                 INSERT INTO vyral_mysql_canonical_tenants (tenant_id, state_json, updated_at_utc)
                 VALUES (@tenant_id, @state_json, UTC_TIMESTAMP(6))
                 ON DUPLICATE KEY UPDATE tenant_id = VALUES(tenant_id);
-                """, ct, ("@tenant_id", tenantId), ("@state_json", Serialize(new TenantState())));
+                """, ct, ("@tenant_id", tenantId), ("@state_json", emptyState));
         }
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = $"SELECT state_json FROM vyral_mysql_canonical_tenants WHERE tenant_id = @tenant_id{(lockForWrite ? " FOR UPDATE" : string.Empty)}";
+        command.CommandText = $"""
+            SELECT
+                CASE WHEN OCTET_LENGTH(state_json) <= @max_tenant_state_bytes THEN state_json ELSE NULL END,
+                OCTET_LENGTH(state_json)
+            FROM vyral_mysql_canonical_tenants
+            WHERE tenant_id = @tenant_id{(lockForWrite ? " FOR UPDATE" : string.Empty)}
+            """;
         Add(command, "@tenant_id", tenantId);
-        var value = await command.ExecuteScalarAsync(ct);
-        return value is null || value is DBNull ? new TenantState() : Deserialize<TenantState>(Convert.ToString(value)!);
+        Add(command, "@max_tenant_state_bytes", _maxTenantStateBytes);
+        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
+        if (!await reader.ReadAsync(ct)) return new TenantState();
+        var contentLength = reader.GetInt64(1);
+        if (contentLength > _maxTenantStateBytes)
+            throw new MySqlCanonicalTenantStateLimitExceededException(tenantId, contentLength, _maxTenantStateBytes);
+        if (reader.IsDBNull(0)) throw new InvalidOperationException("MySQL canonical tenant state is unexpectedly null.");
+        return Deserialize<TenantState>(reader.GetString(0));
     }
 
-    private static Task SaveTenantAsync(MySqlConnection connection, MySqlTransaction transaction, string tenantId, TenantState state, CancellationToken ct) => ExecuteAsync(connection, transaction, "UPDATE vyral_mysql_canonical_tenants SET state_json = @state_json, updated_at_utc = UTC_TIMESTAMP(6) WHERE tenant_id = @tenant_id", ct, ("@tenant_id", tenantId), ("@state_json", Serialize(state)));
+    private Task SaveTenantAsync(MySqlConnection connection, MySqlTransaction transaction, string tenantId, TenantState state, CancellationToken ct)
+    {
+        var serialized = SerializeAndValidate(state, tenantId);
+        return ExecuteAsync(connection, transaction, "UPDATE vyral_mysql_canonical_tenants SET state_json = @state_json, updated_at_utc = UTC_TIMESTAMP(6) WHERE tenant_id = @tenant_id", ct, ("@tenant_id", tenantId), ("@state_json", serialized));
+    }
+
+    private string SerializeAndValidate(TenantState state, string tenantId = "new tenant")
+    {
+        var serialized = Serialize(state);
+        var contentLength = Encoding.UTF8.GetByteCount(serialized);
+        if (contentLength > _maxTenantStateBytes)
+            throw new MySqlCanonicalTenantStateLimitExceededException(tenantId, contentLength, _maxTenantStateBytes);
+        return serialized;
+    }
 
     private async Task EnsureInitializedAsync(CancellationToken ct)
     {

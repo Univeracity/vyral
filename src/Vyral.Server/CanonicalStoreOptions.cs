@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Vyral.MySql;
 
 namespace Vyral.Server;
 
@@ -18,6 +19,7 @@ public sealed class CanonicalStoreOptions
     public string Provider { get; init; } = LocalSqlite;
     public string DatabasePath { get; init; } = "vyral.canonical.sqlite";
     public string? ConnectionString { get; init; }
+    public long MySqlMaxTenantStateBytes { get; init; } = MySqlCanonicalStore.DefaultMaxTenantStateBytes;
 
     public static CanonicalStoreOptions FromConfiguration(IConfiguration configuration, string defaultDatabasePath)
     {
@@ -54,7 +56,15 @@ public sealed class CanonicalStoreOptions
                 configuration["CanonicalStore:MySql:ConnectionString"],
                 configuration["Google:CloudSql:ConnectionString"],
                 configuration["VYRAL_CANONICAL_CONNECTION_STRING"],
-                null)
+                null),
+            MySqlMaxTenantStateBytes = ReadLong(
+                FirstNonEmpty(
+                    configuration["CanonicalStore:MySql:MaxTenantStateBytes"],
+                    configuration["Vyral:CanonicalStore:MySql:MaxTenantStateBytes"],
+                    configuration["VYRAL_MYSQL_MAX_TENANT_STATE_BYTES"],
+                    null),
+                MySqlCanonicalStore.DefaultMaxTenantStateBytes,
+                "CanonicalStore:MySql:MaxTenantStateBytes")
         };
         options.Validate();
         return options;
@@ -69,6 +79,8 @@ public sealed class CanonicalStoreOptions
             throw new InvalidOperationException("CanonicalStore:DatabasePath is required for the local SQLite provider.");
         if (Provider is PostgreSql or MySql && string.IsNullOrWhiteSpace(ConnectionString))
             throw new InvalidOperationException("CanonicalStore:ConnectionString is required for the configured remote SQL provider.");
+        if (MySqlMaxTenantStateBytes is < 1 or > MySqlCanonicalStore.AbsoluteMaxTenantStateBytes)
+            throw new InvalidOperationException($"CanonicalStore:MySql:MaxTenantStateBytes must be between 1 and {MySqlCanonicalStore.AbsoluteMaxTenantStateBytes} bytes.");
     }
 
     public string Describe() => !Enabled
@@ -84,5 +96,12 @@ public sealed class CanonicalStoreOptions
         if (string.IsNullOrWhiteSpace(value)) return true;
         if (bool.TryParse(value, out var enabled)) return enabled;
         throw new InvalidOperationException("CanonicalStore:Enabled must be true or false.");
+    }
+
+    private static long ReadLong(string? value, long defaultValue, string name)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return defaultValue;
+        if (long.TryParse(value, out var parsed)) return parsed;
+        throw new InvalidOperationException($"{name} must be an integer.");
     }
 }

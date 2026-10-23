@@ -429,16 +429,40 @@ public class LocalRetrievalService : IRetrievalService
         {
             throw new InvalidOperationException("Retrieval query is required.");
         }
+        if (request.Query.Length > RetrievalWorkLimits.MaxQueryChars)
+        {
+            throw new InvalidOperationException($"Retrieval query cannot exceed {RetrievalWorkLimits.MaxQueryChars} characters.");
+        }
 
         if (request.Collections == null || request.Collections.Count == 0)
         {
             throw new InvalidOperationException("At least one retrieval collection is required.");
+        }
+        if (request.Collections.Count > RetrievalWorkLimits.MaxCollections)
+        {
+            throw new InvalidOperationException($"Retrieval supports at most {RetrievalWorkLimits.MaxCollections} collections.");
+        }
+        if (request.Collections.Distinct(StringComparer.Ordinal).Count() != request.Collections.Count)
+        {
+            throw new InvalidOperationException("Retrieval collections must be unique.");
         }
 
         if (request.Limit <= 0)
         {
             throw new InvalidOperationException("Retrieval limit must be greater than zero.");
         }
+        if (request.Limit > RetrievalWorkLimits.MaxResultLimit)
+        {
+            throw new InvalidOperationException($"Retrieval limit cannot exceed {RetrievalWorkLimits.MaxResultLimit}.");
+        }
+
+        QueryWorkLimits.Validate(new QueryEnvelope
+        {
+            PartitionKeys = request.PartitionKeys,
+            Filter = request.Filter,
+            Lexical = request.Lexical,
+            Limit = request.Limit
+        });
 
         _ = NormalizeSearchMode(request);
         if (!string.IsNullOrWhiteSpace(request.Embedding?.Purpose))
@@ -478,6 +502,14 @@ public class LocalRetrievalService : IRetrievalService
                 {
                     throw new InvalidOperationException("Retrieval vectorFields candidateLimit must be greater than zero when provided.");
                 }
+                if (vectorField.CandidateLimit > RetrievalWorkLimits.MaxCandidateLimit)
+                {
+                    throw new InvalidOperationException($"Retrieval vectorFields candidateLimit cannot exceed {RetrievalWorkLimits.MaxCandidateLimit}.");
+                }
+                if (vectorField.Query is { Length: > RetrievalWorkLimits.MaxQueryChars })
+                {
+                    throw new InvalidOperationException($"Retrieval vectorFields query cannot exceed {RetrievalWorkLimits.MaxQueryChars} characters.");
+                }
 
                 if (!string.IsNullOrWhiteSpace(vectorField.Embedding?.Purpose))
                 {
@@ -507,6 +539,12 @@ public class LocalRetrievalService : IRetrievalService
             {
                 throw new InvalidOperationException("Hybrid candidateMultiplier must be greater than zero.");
             }
+            if (request.Hybrid.CandidateMultiplier > RetrievalWorkLimits.MaxHybridCandidateMultiplier)
+            {
+                throw new InvalidOperationException($"Hybrid candidateMultiplier cannot exceed {RetrievalWorkLimits.MaxHybridCandidateMultiplier}.");
+            }
+            ValidateCandidateLimit(request.Hybrid.VectorCandidateLimit, "Hybrid vectorCandidateLimit");
+            ValidateCandidateLimit(request.Hybrid.LexicalCandidateLimit, "Hybrid lexicalCandidateLimit");
 
             if (request.Hybrid.RrfK <= 0)
             {
@@ -514,6 +552,16 @@ public class LocalRetrievalService : IRetrievalService
             }
 
             _ = NormalizeHybridFusion(request.Hybrid.Fusion);
+        }
+
+        if (request.Rerank?.Enabled == true)
+        {
+            _ = ComputeRerankCandidateLimit(request.Limit, request.Rerank);
+        }
+        if (request.Hybrid is not null)
+        {
+            _ = ComputeCandidateLimit(request.Limit, request.Hybrid, request.Hybrid.VectorCandidateLimit);
+            _ = ComputeCandidateLimit(request.Limit, request.Hybrid, request.Hybrid.LexicalCandidateLimit);
         }
     }
 
@@ -690,10 +738,15 @@ public class LocalRetrievalService : IRetrievalService
         {
             throw new InvalidOperationException("Rerank candidateLimit must be greater than zero when provided.");
         }
+        ValidateCandidateLimit(options.CandidateLimit, "Rerank candidateLimit");
 
         if (options.MaxCandidateChars <= 0)
         {
             throw new InvalidOperationException("Rerank maxCandidateChars must be greater than zero.");
+        }
+        if (options.MaxCandidateChars > RetrievalWorkLimits.MaxRerankCandidateChars)
+        {
+            throw new InvalidOperationException($"Rerank maxCandidateChars cannot exceed {RetrievalWorkLimits.MaxRerankCandidateChars}.");
         }
 
         if (options.RerankScoreWeight < 0 || options.OriginalScoreWeight < 0)
@@ -710,10 +763,18 @@ public class LocalRetrievalService : IRetrievalService
         {
             throw new InvalidOperationException("Rerank timeoutSeconds must be greater than zero when provided.");
         }
+        if (options.TimeoutSeconds > RetrievalWorkLimits.MaxRerankTimeoutSeconds)
+        {
+            throw new InvalidOperationException($"Rerank timeoutSeconds cannot exceed {RetrievalWorkLimits.MaxRerankTimeoutSeconds}.");
+        }
 
         if (options.MaxOutputBytes.HasValue && options.MaxOutputBytes.Value <= 0)
         {
             throw new InvalidOperationException("Rerank maxOutputBytes must be greater than zero when provided.");
+        }
+        if (options.MaxOutputBytes > RetrievalWorkLimits.MaxRerankOutputBytes)
+        {
+            throw new InvalidOperationException($"Rerank maxOutputBytes cannot exceed {RetrievalWorkLimits.MaxRerankOutputBytes}.");
         }
 
         if (!string.IsNullOrWhiteSpace(options.ContentField) &&
@@ -729,21 +790,44 @@ public class LocalRetrievalService : IRetrievalService
     {
         if (options.CandidateLimit.HasValue)
         {
-            return Math.Max(resultLimit, options.CandidateLimit.Value);
+            return EnsureCandidateLimit(Math.Max(resultLimit, options.CandidateLimit.Value), "Rerank candidate limit");
         }
 
-        return Math.Max(resultLimit * 4, resultLimit);
+        return EnsureCandidateLimit(Math.Max((long)resultLimit * 4, resultLimit), "Rerank candidate limit");
     }
 
     private static int ComputeCandidateLimit(int resultLimit, HybridSearchOptions? hybrid, int? explicitLimit)
     {
         if (explicitLimit.HasValue)
         {
-            return Math.Max(resultLimit, explicitLimit.Value);
+            return EnsureCandidateLimit(Math.Max(resultLimit, explicitLimit.Value), "Hybrid candidate limit");
         }
 
         var multiplier = hybrid?.CandidateMultiplier > 0 ? hybrid.CandidateMultiplier : 8;
-        return Math.Max(Math.Max(resultLimit * multiplier, resultLimit), 50);
+        return EnsureCandidateLimit(
+            Math.Max(Math.Max((long)resultLimit * multiplier, resultLimit), 50),
+            "Hybrid candidate limit");
+    }
+
+    private static void ValidateCandidateLimit(int? limit, string description)
+    {
+        if (limit is <= 0)
+        {
+            throw new InvalidOperationException($"{description} must be greater than zero when provided.");
+        }
+        if (limit > RetrievalWorkLimits.MaxCandidateLimit)
+        {
+            throw new InvalidOperationException($"{description} cannot exceed {RetrievalWorkLimits.MaxCandidateLimit}.");
+        }
+    }
+
+    private static int EnsureCandidateLimit(long limit, string description)
+    {
+        if (limit > RetrievalWorkLimits.MaxCandidateLimit)
+        {
+            throw new InvalidOperationException($"{description} cannot exceed {RetrievalWorkLimits.MaxCandidateLimit}.");
+        }
+        return checked((int)limit);
     }
 
     private static RetrievalCandidate GetCandidate(Dictionary<string, RetrievalCandidate> candidates, string collection, VyralRecord record)

@@ -17,6 +17,7 @@ from .._local_experience import (
     run_local_quickstart_sync,
 )
 from .application import create_host_application
+from ._http_authority import validate_allowed_hosts
 from .mcp import McpApplicationConfig
 from .rest import RestApplicationConfig
 
@@ -193,6 +194,10 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
         allowed_hosts.add(arguments.host.strip())
     if any(not value for value in allowed_hosts):
         parser.error("--allowed-host values must be non-empty.")
+    try:
+        validate_allowed_hosts(frozenset(allowed_hosts))
+    except ValueError as error:
+        parser.error(str(error))
     allowed_origins = frozenset(
         value.strip() for value in arguments.allowed_origin
     )

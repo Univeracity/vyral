@@ -215,7 +215,8 @@ public class CosmosRecordCollectionStore : IRecordCollectionStore
     public async Task<RecordQueryResult> QueryRecordsPageAsync(string collection, QueryEnvelope query, CancellationToken ct = default)
     {
         RecordIdentityValidator.ValidateCollectionName(collection);
-        ValidatePageLimit(query.Limit, "Query page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
 
         var container = _database.GetContainer(collection);
         var plan = _queryBuilder.BuildRecordQuery(query);
@@ -224,7 +225,7 @@ public class CosmosRecordCollectionStore : IRecordCollectionStore
         var iterator = container.GetItemQueryStreamIterator(
             queryDefinition,
             continuationToken: query.ContinuationToken,
-            requestOptions: new QueryRequestOptions { MaxItemCount = query.Limit });
+            requestOptions: new QueryRequestOptions { MaxItemCount = pageSize });
         if (iterator.HasMoreResults)
         {
             using var response = await iterator.ReadNextAsync(ct);
@@ -255,7 +256,8 @@ public class CosmosRecordCollectionStore : IRecordCollectionStore
         var policy = await GetCollectionPolicyAsync(collection, ct);
         if (policy == null) throw new InvalidOperationException($"Collection '{collection}' does not exist.");
         var fieldPolicy = RecordVectorValidator.ValidateSearchVector(collection, policy, query.Vector);
-        ValidatePageLimit(query.Limit, "Search page size");
+        QueryWorkLimits.Validate(query);
+        var pageSize = QueryWorkLimits.ResolvePageSize(query.Limit);
 
         var container = _database.GetContainer(collection);
         var plan = _queryBuilder.BuildVectorSearchQuery(query);
@@ -298,7 +300,6 @@ public class CosmosRecordCollectionStore : IRecordCollectionStore
                 .ThenBy(match => match.Record.Id, StringComparer.Ordinal)
                 .ToList();
             var offset = DecodeVectorContinuationToken(query.ContinuationToken);
-            var pageSize = query.Limit ?? query.Vector.Top;
             var items = ranked.Skip(offset).Take(pageSize).ToList();
             var next = offset + items.Count < ranked.Count
                 ? EncodeVectorContinuationToken(offset + items.Count)
@@ -342,12 +343,6 @@ public class CosmosRecordCollectionStore : IRecordCollectionStore
         record.CreatedAt = existing?.CreatedAt ?? record.CreatedAt ?? now;
         record.Revision = (existing?.Revision ?? 0) + 1;
         record.Etag = $"rev:{record.Revision}";
-    }
-
-    private static void ValidatePageLimit(int? limit, string description)
-    {
-        if (limit <= 0)
-            throw new InvalidOperationException($"{description} must be greater than zero.");
     }
 
     private static string EncodeVectorContinuationToken(int offset) =>

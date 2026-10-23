@@ -55,6 +55,14 @@ public class CloudflareR2ObjectStoreConformanceTests : ObjectStoreConformanceTes
     public Task ObjectStore_RejectsInvalidListLimit() =>
         RunObjectStore_RejectsInvalidListLimit();
 
+    [Fact]
+    public Task ObjectStore_RejectsOversizedContinuationToken() =>
+        RunObjectStore_RejectsOversizedContinuationToken();
+
+    [Fact]
+    public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
+        RunObjectStore_RejectsReadsAbovePortableContentLimit();
+
     [CloudflareR2LiveFact]
     public async Task ObjectStore_PreCancelledWriteLeavesNoObject()
     {

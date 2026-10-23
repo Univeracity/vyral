@@ -69,4 +69,14 @@ public class AzureBlobObjectStoreTests
 
         Assert.Equal(expected, AzureBlobObjectStore.IsPreconditionFailure(exception));
     }
+
+    [Fact]
+    public void BuildBoundedDownloadOptions_PinsTheCheckedEtag()
+    {
+        var etag = new ETag("\"checked-version\"");
+
+        var options = AzureBlobObjectStore.BuildBoundedDownloadOptions(etag);
+
+        Assert.Equal(etag, options.Conditions.IfMatch);
+    }
 }

@@ -91,29 +91,33 @@ public class PgvectorObjectStore : IObjectStore
 
     public async Task<ObjectResult?> GetObjectAsync(ObjectReadRequest request, CancellationToken ct = default)
     {
+        var maxContentBytes = ObjectStoreLimits.ResolveMaxContentBytes(request.MaxContentBytes);
         ObjectNameValidator.ValidateContainer(request.Container);
         var key = ObjectNameValidator.NormalizeObjectKey(request.Key);
 
         await using var conn = await OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT content, content_type, content_hash, etag, metadata_json, updated_at,
+            SELECT CASE WHEN octet_length(content) <= $3 THEN content ELSE NULL END,
+                   content_type, content_hash, etag, metadata_json, updated_at,
                    octet_length(content) AS content_length
             FROM vyral_objects
             WHERE container = $1 AND key = $2";
         cmd.Parameters.AddWithValue(request.Container);
         cmd.Parameters.AddWithValue(key);
+        cmd.Parameters.AddWithValue(maxContentBytes);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct)) return null;
 
+        var length = reader.GetInt64(6);
+        ObjectStoreLimits.EnsureContentLength(length, maxContentBytes);
         var bytes = (byte[])reader.GetValue(0);
         var contentType = reader.IsDBNull(1) ? null : reader.GetString(1);
         var contentHash = reader.GetString(2);
         var etag = reader.GetString(3);
         var metadata = DeserializeMetadata(reader.IsDBNull(4) ? "{}" : reader.GetString(4));
         var updatedAt = reader.GetDateTime(5);
-        var length = reader.GetInt64(6);
 
         return new ObjectResult
         {
@@ -152,11 +156,9 @@ public class PgvectorObjectStore : IObjectStore
 
     public async Task<ObjectListResult> ListObjectsAsync(ObjectListRequest request, CancellationToken ct = default)
     {
-        if (request.Limit <= 0 && request.Limit.HasValue)
-            throw new InvalidOperationException("Object list limit must be greater than zero.");
-
+        var pageSize = ObjectStoreLimits.ResolveListLimit(request.Limit);
+        ObjectStoreLimits.ValidateContinuationToken(request.ContinuationToken);
         ObjectNameValidator.ValidateContainer(request.Container);
-        var pageSize = request.Limit ?? 100;
         var offset = DecodeContinuationToken(request.ContinuationToken);
 
         await using var conn = await OpenAsync(ct);

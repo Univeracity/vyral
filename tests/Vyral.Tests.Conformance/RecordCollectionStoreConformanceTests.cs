@@ -759,6 +759,18 @@ public abstract class RecordCollectionStoreConformanceTests
                 store.QueryRecordsPageAsync("records", new QueryEnvelope { Limit = 0 }));
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 store.QueryRecordsPageAsync("records", new QueryEnvelope { Limit = -1 }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.QueryRecordsPageAsync("records", new QueryEnvelope
+                {
+                    Limit = QueryWorkLimits.MaxPageSize + 1
+                }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.QueryRecordsPageAsync("records", new QueryEnvelope
+                {
+                    PartitionKeys = Enumerable.Range(0, QueryWorkLimits.MaxPartitionKeys + 1)
+                        .Select(index => $"tenant-{index}")
+                        .ToList()
+                }));
         });
     }
 
@@ -786,6 +798,29 @@ public abstract class RecordCollectionStoreConformanceTests
                 store.SearchRecordsPageAsync("records", new QueryEnvelope
                 {
                     Vector = new VectorSearchOptions { Field = "contentEmbedding", Value = new float[] { 1, 0 }, Top = 0 }
+                }));
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.SearchRecordsPageAsync("records", new QueryEnvelope
+                {
+                    Vector = new VectorSearchOptions
+                    {
+                        Field = "contentEmbedding",
+                        Value = new float[] { 1, 0 },
+                        Top = QueryWorkLimits.MaxSearchTop + 1
+                    }
+                }));
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                store.SearchRecordsPageAsync("records", new QueryEnvelope
+                {
+                    Vector = new VectorSearchOptions
+                    {
+                        Field = "contentEmbedding",
+                        Value = new float[] { 1, 0 },
+                        Top = 5,
+                        ScanLimit = QueryWorkLimits.MaxCandidateLimit + 1
+                    }
                 }));
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>

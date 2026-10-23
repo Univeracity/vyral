@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from base64 import b64decode, b64encode
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
+import heapq
 from importlib import import_module
 from io import BytesIO
 import json
@@ -49,6 +50,10 @@ _msvcrt = cast(_MsvcrtModule | None, _optional_module("msvcrt"))
 
 DEFAULT_OBJECT_LIST_LIMIT = 100
 MAX_OBJECT_LIST_LIMIT = 5000
+MAX_OBJECT_KEY_UTF8_BYTES = 1024
+DEFAULT_OBJECT_READ_MAX_BYTES = 64 * 1024 * 1024
+MAX_OBJECT_READ_MAX_BYTES = 1024 * 1024 * 1024
+MAX_CONTINUATION_TOKEN_CHARS = 8192
 METADATA_SUFFIX = ".metadata.json"
 TEMP_DIRECTORY_NAME = ".vyral-tmp"
 _WINDOWS_RESERVED_COMPONENTS = frozenset(
@@ -78,6 +83,7 @@ class ObjectWriteRequest:
 class ObjectReadRequest:
     container: str
     key: str
+    max_content_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -224,6 +230,16 @@ class FileObjectStoreDiagnostics:
         }
 
 
+class _DescendingKey:
+    __slots__ = ("key",)
+
+    def __init__(self, key: str) -> None:
+        self.key = key
+
+    def __lt__(self, other: _DescendingKey) -> bool:
+        return self.key > other.key
+
+
 class _FileLock:
     def __init__(self, path: Path, thread_lock: RLock) -> None:
         self._path = path
@@ -302,8 +318,8 @@ class FileObjectStore:
             raise ValueError("Root path is required.")
         self.root_path = Path(root_path).resolve()
         self.lock_root_path = Path(str(self.root_path).rstrip(os.sep) + ".vyral-locks")
-        self.root_path.mkdir(parents=True, exist_ok=True)
-        self.lock_root_path.mkdir(parents=True, exist_ok=True)
+        _ensure_private_directory(self.root_path)
+        _ensure_private_directory(self.lock_root_path)
         self._guard = Lock()
         self._thread_locks: dict[str, RLock] = {}
         self.executor = executor or RuntimeExecutor()
@@ -316,6 +332,11 @@ class FileObjectStore:
         full_path = self._resolve_path(request.container, normalized_key)
         full_path.parent.mkdir(parents=True, exist_ok=True)
         with self._lock(full_path):
+            self._ensure_metadata_namespace_available(
+                request.container,
+                normalized_key,
+                full_path,
+            )
             existing = self._resolve_info(
                 request.container,
                 normalized_key,
@@ -369,6 +390,7 @@ class FileObjectStore:
         return await self.executor.run(lambda: self.put_object(request))
 
     def get_object(self, request: ObjectReadRequest) -> ObjectResult | None:
+        max_content_bytes = _read_max_content_bytes(request.max_content_bytes)
         full_path = self._resolve_path(request.container, request.key)
         with self._lock(full_path):
             if not full_path.is_file():
@@ -378,6 +400,7 @@ class FileObjectStore:
                 raise ValueError(
                     "Object content exists but metadata could not be resolved."
                 )
+            _ensure_content_length(info.content_length, max_content_bytes)
             content = full_path.open("rb")
         return ObjectResult(
             container=info.container,
@@ -428,16 +451,25 @@ class FileObjectStore:
         container_path = self._container_path(request.container)
         if not container_path.exists():
             return ObjectListResult(())
-        keys = sorted(
-            key
-            for path in container_path.rglob("*")
-            if path.is_file()
-            and not self._is_metadata_sidecar(path)
-            for key in (path.relative_to(container_path).as_posix(),)
-            if key.startswith(prefix)
-        )
-        offset = _decode_token(request.continuation_token)
-        page_keys = keys[offset : offset + limit]
+        after_key = _decode_token(request.continuation_token)
+        selected: list[_DescendingKey] = []
+        candidate_limit = limit + 1
+        for path in container_path.rglob("*"):
+            if not path.is_file() or self._is_metadata_sidecar(path):
+                continue
+            key = path.relative_to(container_path).as_posix()
+            if not key.startswith(prefix) or (
+                after_key is not None and key <= after_key
+            ):
+                continue
+            candidate = _DescendingKey(key)
+            if len(selected) < candidate_limit:
+                heapq.heappush(selected, candidate)
+            elif key < selected[0].key:
+                heapq.heapreplace(selected, candidate)
+
+        candidates = sorted(item.key for item in selected)
+        page_keys = candidates[:limit]
         items: list[ObjectInfo] = []
         for key in page_keys:
             path = self._resolve_path(request.container, key)
@@ -446,8 +478,8 @@ class FileObjectStore:
             if info is not None:
                 items.append(info)
         next_token = (
-            _encode_token(offset + len(page_keys))
-            if offset + len(page_keys) < len(keys)
+            _encode_token(page_keys[-1])
+            if len(candidates) > limit and page_keys
             else None
         )
         return ObjectListResult(tuple(items), next_token)
@@ -524,17 +556,39 @@ class FileObjectStore:
     def _metadata_path(self, full_path: Path) -> Path:
         return Path(str(full_path) + METADATA_SUFFIX)
 
-    def _read_info(self, full_path: Path) -> ObjectInfo | None:
-        sidecar = self._metadata_path(full_path)
-        if not sidecar.is_file():
+    def _read_info_document(self, path: Path) -> ObjectInfo | None:
+        if not path.is_file():
             return None
         try:
-            material = json.loads(sidecar.read_text(encoding="utf-8"))
+            material = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(material, Mapping):
                 return None
             return ObjectInfo.from_dict(material)
         except (OSError, TypeError, ValueError, json.JSONDecodeError):
             return None
+
+    def _read_info(
+        self,
+        container: str,
+        key: str,
+        full_path: Path,
+    ) -> ObjectInfo | None:
+        normalized_key = _normalize_key(key)
+        sidecar = self._metadata_path(full_path)
+        if self._path_has_registered_object(
+            container,
+            normalized_key + METADATA_SUFFIX,
+            sidecar,
+        ):
+            return None
+        info = self._read_info_document(sidecar)
+        if (
+            info is None
+            or info.container != container
+            or info.key != normalized_key
+        ):
+            return None
+        return info
 
     def _resolve_info(
         self,
@@ -542,7 +596,8 @@ class FileObjectStore:
         key: str,
         full_path: Path,
     ) -> ObjectInfo | None:
-        info = self._read_info(full_path)
+        normalized_key = _normalize_key(key)
+        info = self._read_info(container, normalized_key, full_path)
         if info is not None:
             return info
         if not full_path.is_file():
@@ -554,7 +609,7 @@ class FileObjectStore:
         content_hash = "sha256:" + digest.hexdigest()
         return ObjectInfo(
             container=container,
-            key=_normalize_key(key),
+            key=normalized_key,
             content_type=None,
             content_length=full_path.stat().st_size,
             etag=content_hash,
@@ -578,6 +633,49 @@ class FileObjectStore:
         finally:
             temp_path.unlink(missing_ok=True)
 
+    def _ensure_metadata_namespace_available(
+        self,
+        container: str,
+        key: str,
+        full_path: Path,
+    ) -> None:
+        if key.casefold().endswith(METADATA_SUFFIX):
+            base_path = Path(str(full_path)[: -len(METADATA_SUFFIX)])
+            if base_path.is_file():
+                raise ValueError(
+                    "Object key conflicts with metadata for an existing object."
+                )
+
+        sidecar = self._metadata_path(full_path)
+        if not sidecar.is_file():
+            return
+        if self._path_has_registered_object(
+            container,
+            key + METADATA_SUFFIX,
+            sidecar,
+        ):
+            raise ValueError(
+                "Object metadata conflicts with an existing object key."
+            )
+        info = self._read_info_document(sidecar)
+        if info is None or info.container != container or info.key != key:
+            raise ValueError(
+                "Object metadata conflicts with an existing object key."
+            )
+
+    def _path_has_registered_object(
+        self,
+        container: str,
+        key: str,
+        path: Path,
+    ) -> bool:
+        info = self._read_info_document(self._metadata_path(path))
+        return (
+            info is not None
+            and info.container == container
+            and info.key == key
+        )
+
     def _temp_path(self) -> Path:
         directory = self.root_path / TEMP_DIRECTORY_NAME
         directory.mkdir(parents=True, exist_ok=True)
@@ -588,7 +686,12 @@ class FileObjectStore:
         return path
 
     def _lock(self, full_path: Path) -> _FileLock:
-        identifier = sha256(str(full_path).encode("utf-8")).hexdigest()
+        namespace_path = full_path
+        while str(namespace_path).casefold().endswith(METADATA_SUFFIX):
+            namespace_path = Path(
+                str(namespace_path)[: -len(METADATA_SUFFIX)]
+            )
+        identifier = sha256(str(namespace_path).encode("utf-8")).hexdigest()
         with self._guard:
             thread_lock = self._thread_locks.setdefault(identifier, RLock())
         return _FileLock(self.lock_root_path / (identifier + ".lock"), thread_lock)
@@ -642,6 +745,12 @@ def _validate_container(container: str) -> None:
         raise ValueError("Container uses a Windows-reserved device name.")
 
 
+def _ensure_private_directory(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "posix":
+        path.chmod(0o700)
+
+
 def _normalize_key(key: str, allow_trailing_slash: bool = False) -> str:
     if not key.strip():
         raise ValueError("Object key is required.")
@@ -661,6 +770,10 @@ def _normalize_key(key: str, allow_trailing_slash: bool = False) -> str:
     ):
         raise ValueError(
             "Object key cannot contain Windows-reserved device names."
+        )
+    if len(normalized.encode("utf-8")) > MAX_OBJECT_KEY_UTF8_BYTES:
+        raise ValueError(
+            f"Object key cannot exceed {MAX_OBJECT_KEY_UTF8_BYTES} UTF-8 bytes."
         )
     return normalized
 
@@ -738,21 +851,54 @@ def _list_limit(limit: int | None) -> int:
     return selected
 
 
-def _encode_token(offset: int) -> str:
-    return b64encode(str(offset).encode("utf-8")).decode("ascii")
+def _read_max_content_bytes(max_content_bytes: int | None) -> int:
+    if max_content_bytes is not None and max_content_bytes <= 0:
+        raise ValueError("Object read maxContentBytes must be greater than zero.")
+    selected = (
+        max_content_bytes
+        if max_content_bytes is not None
+        else DEFAULT_OBJECT_READ_MAX_BYTES
+    )
+    if selected > MAX_OBJECT_READ_MAX_BYTES:
+        raise ValueError(
+            "Object read maxContentBytes cannot exceed "
+            f"{MAX_OBJECT_READ_MAX_BYTES}."
+        )
+    return selected
 
 
-def _decode_token(token: str | None) -> int:
+def _ensure_content_length(content_length: int, max_content_bytes: int) -> None:
+    if content_length < 0:
+        raise ValueError("Object content length cannot be negative.")
+    if content_length > max_content_bytes:
+        raise ValueError(
+            f"Object content length {content_length} exceeds the configured "
+            f"read limit of {max_content_bytes} bytes."
+        )
+
+
+def _encode_token(after_key: str) -> str:
+    payload = ("v1\n" + after_key).encode("utf-8")
+    return urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+
+def _decode_token(token: str | None) -> str | None:
     if token is None or not token.strip():
-        return 0
+        return None
+    if len(token) > MAX_CONTINUATION_TOKEN_CHARS:
+        raise ValueError("Object continuationToken is invalid.")
     try:
-        decoded = b64decode(token, validate=True).decode("utf-8")
-        offset = int(decoded)
+        padding = "=" * (-len(token) % 4)
+        decoded = urlsafe_b64decode(token + padding).decode("utf-8")
+        version, after_key = decoded.split("\n", 1)
+        if version != "v1" or not after_key:
+            raise ValueError
+        normalized = _normalize_key(after_key)
+        if normalized != after_key:
+            raise ValueError
     except (ValueError, UnicodeDecodeError) as exc:
         raise ValueError("Object continuationToken is invalid.") from exc
-    if offset < 0:
-        raise ValueError("Object continuationToken is invalid.")
-    return offset
+    return after_key
 
 
 def _ensure_inside(path: Path, root: Path) -> None:

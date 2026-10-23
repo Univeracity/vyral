@@ -213,14 +213,14 @@ public sealed class GoogleOidcObjectIdentityAuthenticator : IObjectIdentityAuthe
     public async Task<string> AuthenticateAsync(HttpContext context, VyralObjectAccessOptions options,
         IHostEnvironment environment, CancellationToken ct = default)
     {
-        var token = context.Request.Headers["X-Serverless-Authorization"].ToString();
-        if (string.IsNullOrWhiteSpace(token)) token = context.Request.Headers.Authorization.ToString();
-        const string bearer = "Bearer ";
-        if (!token.StartsWith(bearer, StringComparison.OrdinalIgnoreCase))
+        var token = RequestCredentialReader.ReadBearer(
+            context.Request,
+            "X-Serverless-Authorization");
+        if (string.IsNullOrWhiteSpace(token))
             throw new ObjectAccessDeniedException("A Google OIDC identity token is required for object storage.");
         try
         {
-            return await _validator.ValidateAsync(token[bearer.Length..].Trim(), options.AllowedAudiences, ct);
+            return await _validator.ValidateAsync(token, options.AllowedAudiences, ct);
         }
         catch (CanonicalAccessDeniedException ex)
         {

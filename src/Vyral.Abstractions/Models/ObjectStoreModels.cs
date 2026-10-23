@@ -5,6 +5,77 @@ using System.Text.Json.Serialization;
 
 namespace Vyral.Abstractions.Models;
 
+public static class ObjectStoreLimits
+{
+    public const int DefaultListLimit = 100;
+    public const int MaxListLimit = 5_000;
+    public const int MaxContinuationTokenChars = 8_192;
+    public const long DefaultMaxContentBytes = 64L * 1024 * 1024;
+    public const long MaxContentBytes = 1024L * 1024 * 1024;
+
+    public static int ResolveListLimit(int? limit)
+    {
+        if (limit is <= 0)
+        {
+            throw new InvalidOperationException("Object list limit must be greater than zero.");
+        }
+
+        var selected = limit ?? DefaultListLimit;
+        if (selected > MaxListLimit)
+        {
+            throw new InvalidOperationException($"Object list limit cannot exceed {MaxListLimit}.");
+        }
+
+        return selected;
+    }
+
+    public static long ResolveMaxContentBytes(long? maxContentBytes)
+    {
+        if (maxContentBytes is <= 0)
+        {
+            throw new InvalidOperationException("Object read maxContentBytes must be greater than zero.");
+        }
+
+        var selected = maxContentBytes ?? DefaultMaxContentBytes;
+        if (selected > MaxContentBytes)
+        {
+            throw new InvalidOperationException($"Object read maxContentBytes cannot exceed {MaxContentBytes}.");
+        }
+
+        return selected;
+    }
+
+    public static void ValidateContinuationToken(string? continuationToken)
+    {
+        if (continuationToken?.Length > MaxContinuationTokenChars)
+        {
+            throw new InvalidOperationException(
+                $"Object continuationToken cannot exceed {MaxContinuationTokenChars} characters.");
+        }
+    }
+
+    public static void EnsureContentLength(long contentLength, long maxContentBytes)
+    {
+        if (contentLength < 0)
+        {
+            throw new InvalidOperationException("Object content length cannot be negative.");
+        }
+
+        if (contentLength > maxContentBytes)
+        {
+            throw new ObjectContentLimitExceededException(contentLength, maxContentBytes);
+        }
+    }
+}
+
+public sealed class ObjectContentLimitExceededException(long contentLength, long maxContentBytes)
+    : InvalidOperationException($"Object content length {contentLength} exceeds the configured read limit of {maxContentBytes} bytes.")
+{
+    public long ContentLength { get; } = contentLength;
+
+    public long MaxContentBytes { get; } = maxContentBytes;
+}
+
 public class ObjectWriteRequest
 {
     [JsonPropertyName("container")]
@@ -36,6 +107,9 @@ public class ObjectReadRequest
 
     [JsonPropertyName("key")]
     public string Key { get; set; } = string.Empty;
+
+    [JsonPropertyName("maxContentBytes")]
+    public long? MaxContentBytes { get; set; }
 }
 
 public class ObjectDeleteRequest

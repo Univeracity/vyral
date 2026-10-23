@@ -133,6 +133,14 @@ public class LocalObjectStoreConformanceTests : ObjectStoreConformanceTests
     public Task ObjectStore_RejectsInvalidListLimit() =>
         RunObjectStore_RejectsInvalidListLimit();
 
+    [Fact]
+    public Task ObjectStore_RejectsOversizedContinuationToken() =>
+        RunObjectStore_RejectsOversizedContinuationToken();
+
+    [Fact]
+    public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
+        RunObjectStore_RejectsReadsAbovePortableContentLimit();
+
     protected override IObjectStore CreateObjectStore()
     {
         var rootPath = Path.Combine(Path.GetTempPath(), $"vyral-objects-conformance-{Guid.NewGuid():N}");

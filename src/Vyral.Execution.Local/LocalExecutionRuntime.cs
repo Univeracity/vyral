@@ -365,7 +365,14 @@ public sealed class LocalExecutionRuntime : IExecutionRuntimeAdapter, IExecution
         return Clone(run);
     }
 
-    public async Task<int> DispatchReadyRunsAsync(bool recoverInterruptedRuns = false, CancellationToken ct = default)
+    public Task<int> DispatchReadyRunsAsync(bool recoverInterruptedRuns = false, CancellationToken ct = default)
+        => DispatchReadyRunsCoreAsync(recoverInterruptedRuns, null, ct);
+
+    /// <summary>Recover one plugin's interrupted handlers without opting unrelated work into replay.</summary>
+    public Task<int> RecoverInterruptedHandlerAsync(string handlerId, CancellationToken ct = default)
+        => DispatchReadyRunsCoreAsync(true, NormalizeRequired(handlerId, "Handler id"), ct);
+
+    private async Task<int> DispatchReadyRunsCoreAsync(bool recoverInterruptedRuns, string? recoveryHandlerId, CancellationToken ct)
     {
         var runs = await LoadActiveRunsAsync(ct);
         var dispatched = 0;
@@ -377,7 +384,8 @@ public sealed class LocalExecutionRuntime : IExecutionRuntimeAdapter, IExecution
                 continue;
             }
 
-            if (run.Status == ExecutionRunStatuses.Running && recoverInterruptedRuns)
+            if (run.Status == ExecutionRunStatuses.Running && recoverInterruptedRuns
+                && (recoveryHandlerId is null || run.HandlerId == recoveryHandlerId))
             {
                 ExecutionRunLifecycle.EnsureTransition(run.Status, ExecutionRunStatuses.Queued, ExecutionTransitionKind.Recovery);
                 run.Status = ExecutionRunStatuses.Queued;

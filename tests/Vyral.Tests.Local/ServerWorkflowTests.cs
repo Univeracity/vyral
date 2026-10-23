@@ -3856,6 +3856,40 @@ public class ServerWorkflowTests
         Assert.Equal(completedResult.Trace!.TraceId, completedJob.TraceId);
         Assert.True(completedJob.DurationMs >= 0);
 
+        for (var poll = 0; poll < 3; poll++)
+        {
+            var progressResponse = await client.GetAsync($"/provider-jobs/{job.Id}/progress");
+            Assert.Equal(HttpStatusCode.OK, progressResponse.StatusCode);
+            var progress = JsonNode.Parse(await progressResponse.Content.ReadAsStringAsync())!.AsObject();
+            Assert.Equal(new[] { "cancellationRequested", "completedAt", "createdAt", "id", "invocation", "nativePhaseAvailable", "observation", "phase", "reconciliationRequired", "startedAt", "status" }, progress.Select(item => item.Key).Order().ToArray());
+            Assert.Equal(job.Id, progress["id"]!.GetValue<string>());
+            Assert.Equal("terminal", progress["phase"]!.GetValue<string>());
+            Assert.Equal("Succeeded", progress["status"]!.GetValue<string>());
+            Assert.False(progress["nativePhaseAvailable"]!.GetValue<bool>());
+            Assert.Equal(completedJob.StartedAt, progress["startedAt"]!.GetValue<DateTime>());
+        }
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/provider-jobs/missing/progress")).StatusCode);
+        var afterProgressPolls = await client.GetFromJsonAsync<ProviderRunJob>($"/provider-jobs/{job.Id}");
+        Assert.Equal(completedJob.TraceId, afterProgressPolls!.TraceId);
+        Assert.Equal(completedJob.Result!.Metering.Count, afterProgressPolls.Result!.Metering.Count);
+
+        var unsupportedResponse = await client.PostAsJsonAsync($"/providers/{DeterministicAiProviderTarget.ProviderId}/jobs", new ProviderRunRequest
+        {
+            Capability = "ai.unsupported", Operation = "run", Mode = "advisory"
+        });
+        Assert.Equal(HttpStatusCode.Accepted, unsupportedResponse.StatusCode);
+        var unsupportedJob = (await unsupportedResponse.Content.ReadFromJsonAsync<ProviderRunJob>())!;
+        JsonObject? unsupportedProgress = null;
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            unsupportedProgress = (await client.GetFromJsonAsync<JsonObject>($"/provider-jobs/{unsupportedJob.Id}/progress"))!;
+            if (unsupportedProgress["phase"]!.GetValue<string>() == "terminal") break;
+            await Task.Delay(25);
+        }
+        // Without a result body the execution's coarse Failed status must not hide Unsupported.
+        Assert.Equal("Unsupported", unsupportedProgress!["status"]!.GetValue<string>());
+        Assert.Equal("terminal", unsupportedProgress["phase"]!.GetValue<string>());
+
         var jobs = await client.GetFromJsonAsync<List<ProviderRunJob>>($"/provider-jobs?provider={DeterministicAiProviderTarget.ProviderId}");
         Assert.NotNull(jobs);
         Assert.Contains(jobs, item => item.Id == job.Id);

@@ -1688,7 +1688,8 @@
           ],
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 1000
         },
         "filter": {
           "$ref": "#/$defs/FilterNode"
@@ -1706,7 +1707,8 @@
           ],
           "items": {
             "$ref": "#/$defs/OrderExpression"
-          }
+          },
+          "maxItems": 8
         },
         "limit": {
           "type": [
@@ -1714,13 +1716,16 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 5000,
+          "default": 100
         },
         "continuationToken": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 8192
         }
       }
     },
@@ -1798,7 +1803,18 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 10000,
           "default": 10
+        },
+        "scanLimit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32",
+          "minimum": 1,
+          "maximum": 100000,
+          "default": 10000
         },
         "minScore": {
           "type": [
@@ -1813,7 +1829,8 @@
       "type": "object",
       "properties": {
         "query": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 32768
         },
         "fields": {
           "type": [
@@ -1828,6 +1845,7 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 10000,
           "default": 50
         },
         "scanLimit": {
@@ -1837,6 +1855,7 @@
           ],
           "format": "int32",
           "minimum": 1,
+          "maximum": 100000,
           "default": 5000
         },
         "minScore": {
@@ -1948,6 +1967,7 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 100,
           "default": 8
         },
         "vectorCandidateLimit": {
@@ -1956,7 +1976,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
         "lexicalCandidateLimit": {
           "type": [
@@ -1964,7 +1985,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
         "fusion": {
           "type": "string",
@@ -2007,12 +2029,14 @@
           ],
           "format": "int32",
           "minimum": 1,
+          "maximum": 10000,
           "description": "Number of initially retrieved candidates to pass to the reranker before the final retrieval limit is applied."
         },
         "maxCandidateChars": {
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 32768,
           "default": 2000
         },
         "contentField": {
@@ -2040,7 +2064,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 600
         },
         "maxOutputBytes": {
           "type": [
@@ -2048,7 +2073,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 16777216
         },
         "fallbackOnFailure": {
           "type": "boolean",
@@ -2538,30 +2564,35 @@
           "type": "integer",
           "format": "int32",
           "minimum": 0,
+          "maximum": 16,
           "default": 1
         },
         "predicates": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 1000
         },
         "nodeTypes": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 1000
         },
         "limit": {
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 10000,
           "default": 100
         },
         "edgeLimit": {
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 10000,
           "default": 100
         },
         "includeStart": {
@@ -2572,13 +2603,15 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 1000
         },
         "assertionStatuses": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 1000
         },
         "requireSourceGrounding": {
           "type": "boolean",
@@ -3362,6 +3395,7 @@
             "integer",
             "null"
           ],
+          "maxLength": 32768,
           "format": "int32",
           "minimum": 1,
           "maximum": 10000,
@@ -4273,13 +4307,16 @@
           "description": "Optional retrieval profile id. Built-in profiles are discoverable at /retrieval/profiles and apply local R&D defaults for omitted request fields."
         },
         "query": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 32768
         },
         "collections": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 16,
+          "uniqueItems": true
         },
         "partitionKeys": {
           "type": [
@@ -4288,7 +4325,8 @@
           ],
           "items": {
             "type": "string"
-          }
+          },
+          "maxItems": 1000
         },
         "filter": {
           "$ref": "#/$defs/FilterNode"
@@ -4330,6 +4368,7 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 1000,
           "default": 10
         },
         "minScore": {
@@ -6337,6 +6376,7 @@
             "string",
             "null"
           ],
+          "maxLength": 32768,
           "description": "Optional field-specific query text. Defaults to the parent retrieval query."
         },
         "embedding": {
@@ -6349,7 +6389,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
         "minScore": {
           "type": [
@@ -6378,12 +6419,14 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 1000000,
           "default": 8000
         },
         "maxCharsPerChunk": {
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 100000,
           "default": 1200
         },
         "maxCitationsPerChunk": {
@@ -6393,6 +6436,7 @@
           ],
           "format": "int32",
           "minimum": 1,
+          "maximum": 1000,
           "description": "Optional cap on source citations emitted per returned chunk. Omitted citations are counted in omittedCitationCount."
         },
         "contextAssembly": {
@@ -6808,6 +6852,7 @@
           "items": {
             "type": "string"
           },
+          "maxItems": 1000,
           "description": "Explicit graph node ids to use in addition to ids resolved from retrieved records."
         },
         "seedJsonPointers": {
@@ -6815,6 +6860,7 @@
           "items": {
             "type": "string"
           },
+          "maxItems": 64,
           "description": "Record JSON pointers used to derive graph seed node ids from retrieval hits.",
           "default": [
             "/metadata/graphNodeId",
@@ -6827,6 +6873,7 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 1000,
           "default": 16
         },
         "profile": {
@@ -6853,6 +6900,7 @@
           "type": "integer",
           "format": "int32",
           "minimum": 1,
+          "maximum": 1000000,
           "default": 1200
         },
         "includeGraphProvenance": {
@@ -6863,6 +6911,7 @@
           "type": "integer",
           "format": "int32",
           "minimum": 0,
+          "maximum": 10000,
           "default": 64
         },
         "fallbackOnFailure": {
@@ -6901,7 +6950,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
         "defaultMaxCharsPerGroup": {
           "type": [
@@ -6909,7 +6959,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 1000000
         },
         "failOnUnsatisfiedRequiredGroups": {
           "type": "boolean",
@@ -6917,6 +6968,7 @@
         },
         "groups": {
           "type": "array",
+          "maxItems": 256,
           "items": {
             "$ref": "#/$defs/RagContextGroupBudget"
           }
@@ -6950,7 +7002,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
         "maxChunks": {
           "type": [
@@ -6958,7 +7011,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
         "minChars": {
           "type": [
@@ -6966,7 +7020,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 1000000
         },
         "maxChars": {
           "type": [
@@ -6974,7 +7029,8 @@
             "null"
           ],
           "format": "int32",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 1000000
         }
       }
     },
@@ -14372,6 +14428,202 @@
             "string",
             "null"
           ]
+        }
+      }
+    },
+    "ProviderRunJobProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "phase",
+        "createdAt",
+        "startedAt",
+        "completedAt",
+        "cancellationRequested",
+        "nativePhaseAvailable",
+        "observation",
+        "invocation",
+        "reconciliationRequired"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "TimedOut",
+            "Rejected",
+            "Unsupported",
+            "NotConfigured",
+            "Cancelled",
+            "Queued",
+            "Running"
+          ]
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "unknown",
+            "terminal",
+            "runtime_binding",
+            "prompt_preparation",
+            "prompt_prepared",
+            "completion_pending",
+            "completion_validation"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "cancellationRequested": {
+          "type": "boolean"
+        },
+        "nativePhaseAvailable": {
+          "type": "boolean"
+        },
+        "observation": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "phase",
+            "attempt",
+            "sequence",
+            "observedAt",
+            "startedAt",
+            "deadlineUtc",
+            "runtimeContextTokens",
+            "promptTokens",
+            "reservedOutputTokens",
+            "promptFitsContext",
+            "isCurrent"
+          ],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "enum": [
+                "runtime_binding",
+                "prompt_preparation",
+                "prompt_prepared",
+                "completion_pending",
+                "completion_validation"
+              ]
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "observedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "deadlineUtc": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "runtimeContextTokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 2
+            },
+            "promptTokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "reservedOutputTokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "promptFitsContext": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "isCurrent": {
+              "type": "boolean"
+            }
+          }
+        },
+        "invocation": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "originalAttempt",
+            "startedAt",
+            "deadlineUtc",
+            "effectsUnresolved"
+          ],
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "intent",
+                "completed"
+              ]
+            },
+            "originalAttempt": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "deadlineUtc": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "effectsUnresolved": {
+              "type": "boolean"
+            }
+          }
+        },
+        "reconciliationRequired": {
+          "type": "boolean"
         }
       }
     }

@@ -1314,15 +1314,27 @@ public class LocalRagContextService : IRagContextService
         {
             throw new InvalidOperationException("RAG context maxChars must be greater than zero.");
         }
+        if (request.MaxChars > RagContextWorkLimits.MaxChars)
+        {
+            throw new InvalidOperationException($"RAG context maxChars cannot exceed {RagContextWorkLimits.MaxChars}.");
+        }
 
         if (request.MaxCharsPerChunk <= 0)
         {
             throw new InvalidOperationException("RAG context maxCharsPerChunk must be greater than zero.");
         }
+        if (request.MaxCharsPerChunk > RagContextWorkLimits.MaxCharsPerChunk)
+        {
+            throw new InvalidOperationException($"RAG context maxCharsPerChunk cannot exceed {RagContextWorkLimits.MaxCharsPerChunk}.");
+        }
 
         if (request.MaxCitationsPerChunk is <= 0)
         {
             throw new InvalidOperationException("RAG context maxCitationsPerChunk must be greater than zero when provided.");
+        }
+        if (request.MaxCitationsPerChunk > RagContextWorkLimits.MaxCitationsPerChunk)
+        {
+            throw new InvalidOperationException($"RAG context maxCitationsPerChunk cannot exceed {RagContextWorkLimits.MaxCitationsPerChunk}.");
         }
 
         if (string.IsNullOrWhiteSpace(request.ContentField))
@@ -1440,20 +1452,56 @@ public class LocalRagContextService : IRagContextService
         {
             throw new InvalidOperationException("RAG graphExpansion maxSeedNodes must be greater than zero.");
         }
+        if (graph.MaxSeedNodes > RagContextWorkLimits.MaxSeedNodes)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion maxSeedNodes cannot exceed {RagContextWorkLimits.MaxSeedNodes}.");
+        }
+        if (graph.SeedNodeIds.Count > RagContextWorkLimits.MaxSeedNodeIds)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion seedNodeIds cannot exceed {RagContextWorkLimits.MaxSeedNodeIds} items.");
+        }
+        if (graph.SeedJsonPointers.Count > RagContextWorkLimits.MaxSeedJsonPointers)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion seedJsonPointers cannot exceed {RagContextWorkLimits.MaxSeedJsonPointers} items.");
+        }
 
         if (graph.MaxGraphContextChars <= 0)
         {
             throw new InvalidOperationException("RAG graphExpansion maxGraphContextChars must be greater than zero.");
+        }
+        if (graph.MaxGraphContextChars > RagContextWorkLimits.MaxGraphContextChars)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion maxGraphContextChars cannot exceed {RagContextWorkLimits.MaxGraphContextChars}.");
         }
 
         if (graph.MaxGraphProvenanceItems < 0)
         {
             throw new InvalidOperationException("RAG graphExpansion maxGraphProvenanceItems cannot be negative.");
         }
+        if (graph.MaxGraphProvenanceItems > RagContextWorkLimits.MaxGraphProvenanceItems)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion maxGraphProvenanceItems cannot exceed {RagContextWorkLimits.MaxGraphProvenanceItems}.");
+        }
 
         if (graph.MaxRecords.HasValue && graph.MaxRecords.Value <= 0)
         {
             throw new InvalidOperationException("RAG graphExpansion maxRecords must be greater than zero when provided.");
+        }
+        if (graph.MaxRecords > VyralGraphCollectionLimits.MaxRecords)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion maxRecords cannot exceed {VyralGraphCollectionLimits.MaxRecords}.");
+        }
+        if (graph.Profile.MaxDepth < 0 || graph.Profile.MaxDepth > VyralGraphTraversalLimits.MaxDepth)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion profile.maxDepth must be between 0 and {VyralGraphTraversalLimits.MaxDepth}.");
+        }
+        if (graph.Profile.Limit <= 0 || graph.Profile.Limit > VyralGraphTraversalLimits.MaxNodeLimit)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion profile.limit must be between 1 and {VyralGraphTraversalLimits.MaxNodeLimit}.");
+        }
+        if (graph.Profile.EdgeLimit <= 0 || graph.Profile.EdgeLimit > VyralGraphTraversalLimits.MaxEdgeLimit)
+        {
+            throw new InvalidOperationException($"RAG graphExpansion profile.edgeLimit must be between 1 and {VyralGraphTraversalLimits.MaxEdgeLimit}.");
         }
 
         foreach (var pointer in graph.SeedJsonPointers)
@@ -1467,6 +1515,10 @@ public class LocalRagContextService : IRagContextService
 
     private static void ValidateContextAssembly(RagContextAssemblyOptions assembly)
     {
+        if (assembly.Groups.Count > RagContextWorkLimits.MaxAssemblyGroups)
+        {
+            throw new InvalidOperationException($"RAG contextAssembly groups cannot exceed {RagContextWorkLimits.MaxAssemblyGroups} items.");
+        }
         var groupBy = NormalizeGroupBy(assembly.GroupBy);
         if (!string.IsNullOrWhiteSpace(groupBy) && groupBy is not "collection" and not "sourceKind" and not "metadata" and not "jsonPointer")
         {
@@ -1477,10 +1529,18 @@ public class LocalRagContextService : IRagContextService
         {
             throw new InvalidOperationException("RAG contextAssembly defaultMaxChunksPerGroup must be greater than zero when provided.");
         }
+        if (assembly.DefaultMaxChunksPerGroup > RagContextWorkLimits.MaxChunksPerGroup)
+        {
+            throw new InvalidOperationException($"RAG contextAssembly defaultMaxChunksPerGroup cannot exceed {RagContextWorkLimits.MaxChunksPerGroup}.");
+        }
 
         if (assembly.DefaultMaxCharsPerGroup.HasValue && assembly.DefaultMaxCharsPerGroup.Value <= 0)
         {
             throw new InvalidOperationException("RAG contextAssembly defaultMaxCharsPerGroup must be greater than zero when provided.");
+        }
+        if (assembly.DefaultMaxCharsPerGroup > RagContextWorkLimits.MaxChars)
+        {
+            throw new InvalidOperationException($"RAG contextAssembly defaultMaxCharsPerGroup cannot exceed {RagContextWorkLimits.MaxChars}.");
         }
 
         foreach (var group in assembly.Groups)
@@ -1499,6 +1559,11 @@ public class LocalRagContextService : IRagContextService
             {
                 throw new InvalidOperationException("RAG contextAssembly group maxChunks must be greater than zero when provided.");
             }
+            if (group.MaxChunks > RagContextWorkLimits.MaxChunksPerGroup ||
+                group.MinChunks > RagContextWorkLimits.MaxChunksPerGroup)
+            {
+                throw new InvalidOperationException($"RAG contextAssembly group chunk budgets cannot exceed {RagContextWorkLimits.MaxChunksPerGroup}.");
+            }
 
             if (group.MinChars.HasValue && group.MinChars.Value <= 0)
             {
@@ -1508,6 +1573,11 @@ public class LocalRagContextService : IRagContextService
             if (group.MaxChars.HasValue && group.MaxChars.Value <= 0)
             {
                 throw new InvalidOperationException("RAG contextAssembly group maxChars must be greater than zero when provided.");
+            }
+            if (group.MaxChars > RagContextWorkLimits.MaxChars ||
+                group.MinChars > RagContextWorkLimits.MaxChars)
+            {
+                throw new InvalidOperationException($"RAG contextAssembly group character budgets cannot exceed {RagContextWorkLimits.MaxChars}.");
             }
 
             if (group.MinChunks.HasValue && group.MaxChunks.HasValue && group.MinChunks.Value > group.MaxChunks.Value)

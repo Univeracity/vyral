@@ -71,6 +71,13 @@ public class SqliteQueryBuilder
         sql.Append(" AND v.vector_name = $vectorName");
         parameters.Add(new SqliteParameter("$vectorName", query.Vector.Field));
         sql.Append(" ORDER BY r.partitionKey, r.id");
+        sql.Append(" LIMIT $vectorScanLimit");
+        parameters.Add(new SqliteParameter(
+            "$vectorScanLimit",
+            QueryWorkLimits.ResolveCandidateLimit(
+                query.Vector.ScanLimit,
+                QueryWorkLimits.DefaultVectorScanLimit,
+                "Vector scan limit") + 1));
         return (sql.ToString(), parameters);
     }
 

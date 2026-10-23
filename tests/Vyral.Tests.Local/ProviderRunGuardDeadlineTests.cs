@@ -43,4 +43,23 @@ public class ProviderRunGuardDeadlineTests
         owner.Cancel(); Assert.True(inherited.CancellationToken.IsCancellationRequested);
         Assert.Equal(270, request.TimeoutSeconds);
     }
+
+    [Theory]
+    [InlineData(1800)] [InlineData(3600)]
+    public async Task ExplicitTaskSizedHostConfigurationPreservesDefaultAndSelectedCeiling(int maximum)
+    {
+        var configured = ProviderRunGuardOptions.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string,string?> { ["Providers:MaxRunTimeoutSeconds"] = maximum.ToString() }).Build());
+        var guard = new ProviderRunGuard(configured);
+        Assert.Equal(120,configured.DefaultTimeoutSeconds);
+        Assert.Equal(maximum,guard.ToOperationalLimits(true)["maxTimeoutSeconds"]);
+        using var owner = new CancellationTokenSource();
+        var request = new ProviderRunRequest { Capability=ProviderCapabilityIds.AiChat,Operation="run",Mode=ProviderModes.Advisory,
+            TimeoutSeconds=maximum };
+        await using var admitted = await guard.TryEnterAsync("no-launch-task-sized",request,owner.Token);
+        Assert.True(admitted.Accepted);owner.Cancel();Assert.True(admitted.CancellationToken.IsCancellationRequested);
+        request.TimeoutSeconds=maximum+1;
+        await using var held = await guard.TryEnterAsync("no-launch-task-sized",request,CancellationToken.None);
+        Assert.False(held.Accepted);Assert.Equal("timeout_exceeds_policy",held.RejectionResult!.ProviderStatus);
+    }
 }

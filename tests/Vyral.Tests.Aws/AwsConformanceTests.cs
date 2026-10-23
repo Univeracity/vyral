@@ -145,6 +145,14 @@ public class AwsObjectStoreConformanceTests : ObjectStoreConformanceTests
     public Task ObjectStore_RejectsInvalidListLimit() =>
         RunObjectStore_RejectsInvalidListLimit();
 
+    [Fact]
+    public Task ObjectStore_RejectsOversizedContinuationToken() =>
+        RunObjectStore_RejectsOversizedContinuationToken();
+
+    [Fact]
+    public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
+        RunObjectStore_RejectsReadsAbovePortableContentLimit();
+
     protected override IObjectStore CreateObjectStore()
     {
         var bucket = AwsLiveSettings.S3Bucket!;

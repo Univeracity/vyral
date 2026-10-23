@@ -206,10 +206,7 @@ public sealed class VyralExecutionAccess : IVyralMcpExecutionAuthorizer
 
     internal static string? GetBearerToken(HttpRequest request)
     {
-        var candidate = request.Headers["X-Serverless-Authorization"].ToString();
-        if (string.IsNullOrWhiteSpace(candidate)) candidate = request.Headers.Authorization.ToString();
-        const string prefix = "Bearer ";
-        return candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? candidate[prefix.Length..].Trim() : null;
+        return RequestCredentialReader.ReadBearer(request, "X-Serverless-Authorization");
     }
 }
 
