@@ -234,7 +234,7 @@ public partial class CliWorkspaceCodingAgentRunnerTests
             Assert.Equal("sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("delayed-write"))), delivery.TaskSha256);
             Assert.DoesNotContain("privateContent", result.Output.ToJsonString());
             Assert.DoesNotContain("do not return", result.Output.ToJsonString());
-            Assert.Equal(validation == "verify", File.Exists(Path.Combine(fixture.Workspace,"src/generated.txt")));
+            Assert.Equal(validation == "verify", File.Exists(Path.Combine(fixture.Workspace, "src/generated.txt")));
         }
     }
 
@@ -250,7 +250,7 @@ public partial class CliWorkspaceCodingAgentRunnerTests
             Assert.Equal(ProviderRunStatus.Rejected, result.Status);
             Assert.Equal("agent_delivery_mismatch", result.ProviderStatus);
             Assert.False(result.Output.ContainsKey("agentDelivery"));
-            Assert.False(File.Exists(Path.Combine(fixture.Workspace,"src/generated.txt")));
+            Assert.False(File.Exists(Path.Combine(fixture.Workspace, "src/generated.txt")));
         }
     }
 
@@ -372,7 +372,12 @@ public partial class CliWorkspaceCodingAgentRunnerTests
     [SupportedOSPlatform("linux")]
     public async Task Runner_RejectsWorkspaceWithoutPrivateHostOwnedAncestor()
     {
-        await using var fixture = await WorkspaceFixture.CreateAsync("write-untracked");
+        // scripts/run-dotnet-tests.sh deliberately places TMPDIR beneath a
+        // mode-0700 boundary. This negative fixture must bypass that valid
+        // boundary or it does not represent the condition named by the test.
+        await using var fixture = await WorkspaceFixture.CreateAsync(
+            "write-untracked",
+            temporaryRoot: "/tmp");
         File.SetUnixFileMode(
             fixture.Root,
             UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
@@ -409,14 +414,19 @@ public partial class CliWorkspaceCodingAgentRunnerTests
         public string BaseCommit { get; }
         public string Behavior { get; }
 
-        public static async Task<WorkspaceFixture> CreateAsync(string behavior, bool includeGitTool = false)
+        public static async Task<WorkspaceFixture> CreateAsync(
+            string behavior,
+            bool includeGitTool = false,
+            string? temporaryRoot = null)
         {
             if (!OperatingSystem.IsLinux() || !File.Exists(BubblewrapTestEnvironment.Command))
             {
                 throw new InvalidOperationException("The Bubblewrap test precondition changed after discovery.");
             }
 
-            var root = Path.Combine(Path.GetTempPath(), $"vyral-workspace-agent-{Guid.NewGuid():N}");
+            var root = Path.Combine(
+                temporaryRoot ?? Path.GetTempPath(),
+                $"vyral-workspace-agent-{Guid.NewGuid():N}");
             var workspace = Path.Combine(root, "workspace");
             Directory.CreateDirectory(Path.Combine(workspace, "src"));
             File.SetUnixFileMode(
