@@ -35,6 +35,8 @@ here so each document has a clear audience and owner.
 
 - [Adapter contributor guide](contributing/adapter-contributor.md) — adapter
   contracts, conformance, capability claims, and qualification evidence.
+- [Workspace and build-artifact hygiene](contributing/worktree-hygiene.md) —
+  canonical checkout boundaries, worktree placement, and evidence-based teardown.
 - [Release process](maintainers/releasing.md) — build evidence, publication
   gates, provenance, and registry requirements.
 - [Temporal operator guide](temporal-operator-guide.md) — supported Temporal

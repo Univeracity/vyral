@@ -8,6 +8,10 @@ silently widen the provider-agnostic contract.
 [adapter contributor guide](docs/contributing/adapter-contributor.md) for contracts, conformance fixtures, live gates,
 qualification levels, and the PR checklist.
 
+Local maintainers and agents should follow the
+[workspace and build-artifact hygiene guide](docs/contributing/worktree-hygiene.md) so isolated
+work is registered, reviewable, and removed after handoff without risking unique evidence.
+
 **Execution plugin authors** (portable handlers, not provider adapters): see
 [design/execution-runtime-plugin-authoring.md](design/execution-runtime-plugin-authoring.md) and
 [src/Vyral.Execution/README.md](src/Vyral.Execution/README.md).

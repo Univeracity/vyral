@@ -45,6 +45,7 @@ docs/concepts/*
 !docs/contributing/
 docs/contributing/*
 !docs/contributing/adapter-contributor.md
+!docs/contributing/worktree-hygiene.md
 !docs/guides/
 docs/guides/*
 !docs/guides/consumer-handoff.md
