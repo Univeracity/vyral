@@ -112,15 +112,73 @@ The confidence number answers a bounded classification question under the old
 schema. It does not own the catalog identity decision, and a higher number
 cannot repair a missing distinction.
 
-## Receipt and ledger boundary
+## Local receipt ledger
 
 The receipt is privacy-minimized: it carries digests and decision metadata,
-not the prompt or source text. It is not signed and does not prove that the
-provider observation is independently true. Applications that need a durable
-ledger can store it in CanonicalStore beside their domain decision, or bind it
-into separately signed evidence. That storage and authorization policy remains
-application-owned.
+not the prompt or source text. An application can append it to an explicit
+local SQLite ledger in the same command that evaluates the policy:
 
-The canonical schemas are `AiDecisionPolicy` and `AiDecisionReceipt` in the
-public JSON Schema bundle. The cross-language fixture is under
-`conformance/ai-decision/v1`.
+```bash
+./scripts/vyral decide \
+  --policy conformance/ai-decision/v1/policy.json \
+  --result conformance/ai-decision/v1/provider-result.json \
+  --ledger ./.vyral/decisions.sqlite
+```
+
+Vyral does not choose a ledger path implicitly. When `--ledger` is present,
+the command emits a `vyral.ai-decision-ledger-entry.v1` object. The ledger
+retains the normalized receipt only; it does not retain the policy, provider
+result, prompt, source text, or escalation payload.
+
+Inspect and verify the chain locally:
+
+```bash
+./scripts/vyral decisions list --ledger ./.vyral/decisions.sqlite
+./scripts/vyral decisions show --ledger ./.vyral/decisions.sqlite --sequence 0
+./scripts/vyral decisions verify --ledger ./.vyral/decisions.sqlite
+```
+
+Each entry contains a canonical receipt hash and the preceding entry hash.
+Append, list, show, and replay operations verify the complete existing chain
+before returning data or writing another entry. The SQLite adapter also checks
+that indexed columns still agree with the stored entry envelope.
+
+The `verify` result includes `entryCount` and `headEntryHash`. Retain both in a
+separate trusted location and supply them later when truncation or complete
+replacement must be detected:
+
+```bash
+./scripts/vyral decisions verify \
+  --ledger ./.vyral/decisions.sqlite \
+  --expect-count 12 \
+  --expect-head sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+A chain that verifies without an external checkpoint establishes only internal
+consistency. A process with write access can replace the database and recompute
+the entire chain. Entries are not signed, do not prove that provider evidence
+is true, and do not authorize the selected branch. Applications can bind the
+head into separately signed evidence or store receipts in CanonicalStore beside
+their domain decisions when that stronger boundary is needed.
+
+Replay requires the caller to supply the original policy and provider result.
+Vyral evaluates them at the retained receipt timestamp and compares the exact
+normalized receipt hash:
+
+```bash
+./scripts/vyral decisions replay \
+  --ledger ./.vyral/decisions.sqlite \
+  --sequence 0 \
+  --policy conformance/ai-decision/v1/policy.json \
+  --result conformance/ai-decision/v1/provider-result.json
+```
+
+Replay compares evidence; it does not invoke the accepted, rejected, or
+escalation path. The local adapter caps entries at 1 MiB and ledgers at 100,000
+entries. A larger deployment should move the same entry contract behind an
+application-owned durable store and retention policy.
+
+The canonical schemas are `AiDecisionPolicy`, `AiDecisionReceipt`, and
+`AiDecisionLedgerEntry` in the public JSON Schema bundle. Cross-language
+fixtures are under `conformance/ai-decision/v1` and
+`conformance/ai-decision-ledger/v1`.

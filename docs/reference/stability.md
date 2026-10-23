@@ -73,7 +73,7 @@ evidence supports a stronger claim.
 | Python Extropic registered-workload integration | `prototype` |
 | Core .NET contracts | `public` |
 | Stateless MCP endpoint | `preview` |
-| Application-owned AI decision policy and receipt | `preview` |
+| Application-owned AI decision policy, receipt, and ledger entry | `preview` |
 | Azure, AWS, Google, pgvector, Cloudflare, and specialized store adapters | `preview` unless the qualification report says otherwise |
 | AWS, Google, and Temporal execution adapters | `prototype` |
 | Dynamic external adapter discovery | Deferred; host composition is the supported workaround |

@@ -73,6 +73,10 @@
                       LogicalName="Vyral.Tests.Conformance.ai-decision-v1-provider-result.json" />
     <EmbeddedResource Include="..\..\conformance\ai-decision\v1\receipt.json"
                       LogicalName="Vyral.Tests.Conformance.ai-decision-v1-receipt.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-decision-ledger\v1\manifest.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-decision-ledger-v1-manifest.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-decision-ledger\v1\entry.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-decision-ledger-v1-entry.json" />
   </ItemGroup>
 
   <ItemGroup>

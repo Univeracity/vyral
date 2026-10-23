@@ -3191,6 +3191,16 @@ export interface AiDecisionReceipt {
   evaluatedAtUtc: string;
 }
 
+export interface AiDecisionLedgerEntry {
+  schema: string;
+  sequence: number;
+  recordedAtUtc: string;
+  receipt: AiDecisionReceipt;
+  receiptHash: string;
+  previousEntryHash: string | null;
+  entryHash: string;
+}
+
 export interface VyralRequestOptions {
   headers?: HeadersInit;
   signal?: AbortSignal;
