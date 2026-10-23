@@ -1,0 +1,11 @@
+{
+  "schema": "vyral.ai-decision-conformance.v1",
+  "policy": "policy.json",
+  "providerResult": "provider-result.json",
+  "receipt": "receipt.json",
+  "canonicalization": "UTF-8 JSON with object keys sorted by ordinal UTF-16 code units, arrays preserved, printable ASCII JSON strings with every other UTF-16 code unit escaped as lowercase \\uXXXX, and finite numbers in shortest round-trip form with lowercase exponents and normalized exponent signs and leading zeros",
+  "expectedPolicyHash": "sha256:0bafeabfa2a825d058d609434ec600f7ea9675153362c0b1d2aed03cbef872b3",
+  "expectedAnswerHash": "sha256:a608a98f810a6327998fa39ef1e82b7e0ed3cfcdd97e383705416a9f0d780e32",
+  "expectedOutcome": "accept",
+  "expectedReason": "accepted"
+}
