@@ -69,6 +69,7 @@ wheel_path, sdist_path = sys.argv[1:]
 required_package_files = {
     "vyral_runtime/__main__.py",
     "vyral_runtime/_local_experience.py",
+    "vyral_runtime/_local_inspection.py",
     "vyral_runtime/_starter.py",
     "vyral_runtime/_contracts/public-sdk-surface.json",
     "vyral_runtime/_contracts/vyral-public.schema.json",
@@ -98,6 +99,7 @@ required_package_files = {
     "vyral_runtime/_conformance/ai-decision/v1/receipt.json",
     "vyral_runtime/_conformance/ai-decision-ledger/v1/manifest.json",
     "vyral_runtime/_conformance/ai-decision-ledger/v1/entry.json",
+    "vyral_runtime/_local_runtime_inspection.schema.json",
     "vyral_runtime/py.typed",
 }
 with zipfile.ZipFile(wheel_path) as archive:
@@ -127,6 +129,7 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "README.md",
         "src/vyral_runtime/__main__.py",
         "src/vyral_runtime/_local_experience.py",
+        "src/vyral_runtime/_local_inspection.py",
         "src/vyral_runtime/_starter.py",
         "src/vyral_runtime/_contracts/public-sdk-surface.json",
         "src/vyral_runtime/_contracts/vyral-public.schema.json",
@@ -154,6 +157,7 @@ with tarfile.open(sdist_path, "r:gz") as archive:
         "src/vyral_runtime/_conformance/ai-decision/v1/receipt.json",
         "src/vyral_runtime/_conformance/ai-decision-ledger/v1/manifest.json",
         "src/vyral_runtime/_conformance/ai-decision-ledger/v1/entry.json",
+        "src/vyral_runtime/_local_runtime_inspection.schema.json",
     }
     missing = sorted(required_sdist_files - names)
     if missing:
@@ -243,9 +247,15 @@ assert (
     <= first["timings"]["durableReceiptMs"]
     <= first["timings"]["completedMs"]
 )
+assert inspection["schema"] == "vyral.local-runtime-inspection.v1"
+assert inspection["readOnly"] is True
 assert inspection["topology"] == "local-single-node"
+assert inspection["storageSchema"]["status"] == "current"
 assert inspection["providers"]["records"]["healthy"] is True
+assert inspection["providers"]["canonical"]["healthy"] is True
+assert inspection["providers"]["objects"]["healthy"] is True
 assert inspection["providers"]["execution"]["healthy"] is True
+assert inspection["blockers"] == []
 assert replay["execution"]["runId"] == first["execution"]["runId"]
 assert replay["execution"]["admissionReplayed"] is True
 assert replay["execution"]["dispatchedRuns"] == 0

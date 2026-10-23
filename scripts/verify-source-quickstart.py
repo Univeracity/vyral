@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -81,6 +82,28 @@ def _run_id(output: str) -> str:
     return match.group(1)
 
 
+def _tree_snapshot(root: Path) -> dict[str, tuple[object, ...]]:
+    paths = (root, *sorted(root.rglob("*"), key=lambda path: path.as_posix()))
+    snapshot: dict[str, tuple[object, ...]] = {}
+    for path in paths:
+        relative = "." if path == root else path.relative_to(root).as_posix()
+        metadata = path.lstat()
+        digest = None
+        target = None
+        if path.is_symlink():
+            target = os.readlink(path)
+        elif path.is_file():
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        snapshot[relative] = (
+            metadata.st_mode,
+            metadata.st_size,
+            metadata.st_mtime_ns,
+            digest,
+            target,
+        )
+    return snapshot
+
+
 def main() -> int:
     started = perf_counter()
     with tempfile.TemporaryDirectory(
@@ -157,6 +180,7 @@ def main() -> int:
                 "persisted corpus and run."
             )
 
+        state_before_inspection = _tree_snapshot(state_root)
         inspection = _json(
             working_directory,
             "inspect",
@@ -168,16 +192,30 @@ def main() -> int:
             inspection.get("providers"), "inspection.providers"
         )
         if (
-            inspection.get("topology") != "local-single-node"
+            inspection.get("schema")
+            != "vyral.local-runtime-inspection.v1"
+            or inspection.get("readOnly") is not True
+            or inspection.get("topology") != "local-single-node"
             or _mapping(providers.get("records"), "records").get("healthy")
+            is not True
+            or _mapping(
+                providers.get("canonical"), "canonical"
+            ).get("healthy")
+            is not True
+            or _mapping(providers.get("objects"), "objects").get("healthy")
             is not True
             or _mapping(
                 providers.get("execution"), "execution"
             ).get("healthy")
             is not True
+            or inspection.get("blockers") != []
         ):
             raise SourceQuickstartError(
                 "The source quickstart did not leave inspectable healthy state."
+            )
+        if state_before_inspection != _tree_snapshot(state_root):
+            raise SourceQuickstartError(
+                "Source inspection changed the selected runtime tree."
             )
 
         reset = _json(
@@ -259,6 +297,7 @@ def main() -> int:
                 "citationCount": len(citations),
                 "durableRestartCompleted": True,
                 "secondProcessReplayed": True,
+                "readOnlyInspectionVerified": True,
                 "generatedApplicationCompleted": True,
                 "generatedApplicationReplayed": True,
                 "safeReset": True,

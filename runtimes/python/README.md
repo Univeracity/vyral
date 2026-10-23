@@ -98,6 +98,18 @@ Inspect the state and its material limitations independently:
 vyral inspect
 ```
 
+Inspection treats the selected tree as read-only, never constructs the runtime,
+and never initializes, repairs, adopts, or migrates local state. It opens a
+checkpointed database as immutable; when committed WAL state is present, it
+inspects a stable private snapshot instead of creating SQLite sidecars beside
+the source. An absent, legacy, or newer storage schema fails with an explanation
+instead of being changed. A successful inspection emits the versioned
+`vyral.local-runtime-inspection.v1` shape; `--json` exposes the complete shape.
+The bundled [JSON Schema](src/vyral_runtime/_local_runtime_inspection.schema.json)
+defines that machine-readable contract.
+The command exits with status 1 when inspection succeeds but reports readiness
+blockers, and status 2 for an invalid or incompatible runtime directory.
+
 The quickstart records an ownership marker and will reset only a dedicated
 directory bearing that marker:
 

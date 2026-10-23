@@ -301,6 +301,10 @@ class HostCliTests(unittest.TestCase):
                     "adapter": "SQLiteRecordStore",
                     "healthy": True,
                 },
+                "canonical": {
+                    "adapter": "SQLiteCanonicalStore",
+                    "healthy": True,
+                },
                 "objects": {
                     "adapter": "FileObjectStore",
                     "healthy": True,
@@ -312,6 +316,7 @@ class HostCliTests(unittest.TestCase):
                 },
             },
             "warnings": ["prototype evidence only"],
+            "blockers": [],
         }
         output = StringIO()
         with patch(
@@ -326,6 +331,51 @@ class HostCliTests(unittest.TestCase):
         self.assertIn("Embeddings: local-token-hash", output.getvalue())
         self.assertIn("Warning: prototype evidence only", output.getvalue())
 
+    def test_inspect_reports_blockers_and_returns_nonzero(self) -> None:
+        inspection = {
+            "rootPath": "/tmp/vyral-demo",
+            "topology": "local-single-node",
+            "runtime": {
+                "version": "0.1.4",
+                "contractVersion": "0.3.0",
+                "maturity": "prototype",
+                "fullLocalReady": False,
+            },
+            "providers": {
+                "records": {
+                    "adapter": "SQLiteRecordStore",
+                    "healthy": True,
+                },
+                "canonical": {
+                    "adapter": "SQLiteCanonicalStore",
+                    "healthy": True,
+                },
+                "objects": {
+                    "adapter": "FileObjectStore",
+                    "healthy": False,
+                },
+                "embeddings": {"provider": "local-token-hash"},
+                "execution": {
+                    "adapter": "python-local-sqlite",
+                    "healthy": True,
+                },
+            },
+            "warnings": [],
+            "blockers": ["Filesystem object storage diagnostics failed."],
+        }
+        output = StringIO()
+        with patch(
+            "vyral_runtime.host.cli.inspect_local_runtime",
+            return_value=inspection,
+        ), redirect_stdout(output):
+            status = main(["inspect", "--root", "/tmp/vyral-demo"])
+
+        self.assertEqual(1, status)
+        self.assertIn(
+            "Blocker: Filesystem object storage diagnostics failed.",
+            output.getvalue(),
+        )
+
     def test_inspect_uses_the_quickstart_default(self) -> None:
         inspection = {
             "rootPath": "/tmp/vyral-demo",
@@ -338,11 +388,13 @@ class HostCliTests(unittest.TestCase):
             },
             "providers": {
                 "records": {"adapter": "SQLiteRecordStore"},
+                "canonical": {"adapter": "SQLiteCanonicalStore"},
                 "objects": {"adapter": "FileObjectStore"},
                 "embeddings": {"provider": "local-token-hash"},
                 "execution": {"adapter": "python-local-sqlite"},
             },
             "warnings": [],
+            "blockers": [],
         }
         with patch(
             "vyral_runtime.host.cli.inspect_local_runtime",

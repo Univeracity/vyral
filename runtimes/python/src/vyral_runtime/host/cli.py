@@ -673,8 +673,9 @@ def _inspect_main(argv: Sequence[str], display_name: str) -> int:
     parser = argparse.ArgumentParser(
         prog=f"{display_name} inspect",
         description=(
-            "Explain the active providers, topology, readiness, and "
-            "limitations for an existing local runtime directory."
+            "Read an existing local runtime without initializing or migrating "
+            "it, then explain its providers, topology, readiness, and "
+            "limitations."
         ),
     )
     parser.add_argument(
@@ -695,9 +696,11 @@ def _inspect_main(argv: Sequence[str], display_name: str) -> int:
         inspection = inspect_local_runtime(arguments.root)
     except (OSError, RuntimeError, ValueError) as error:
         parser.error(str(error))
+    blockers = inspection["blockers"]
+    assert isinstance(blockers, list)
     if arguments.json:
         print(json.dumps(inspection, indent=2, sort_keys=True))
-        return 0
+        return 1 if blockers else 0
     runtime = inspection["runtime"]
     providers = inspection["providers"]
     assert isinstance(runtime, dict)
@@ -710,7 +713,13 @@ def _inspect_main(argv: Sequence[str], display_name: str) -> int:
         f"{runtime['maturity']} / fullLocalReady="
         f"{str(runtime['fullLocalReady']).lower()}"
     )
-    for name in ("records", "objects", "embeddings", "execution"):
+    for name in (
+        "records",
+        "canonical",
+        "objects",
+        "embeddings",
+        "execution",
+    ):
         provider = providers[name]
         assert isinstance(provider, dict)
         identity = (
@@ -729,7 +738,9 @@ def _inspect_main(argv: Sequence[str], display_name: str) -> int:
     assert isinstance(warnings, list)
     for warning in warnings:
         print(f"Warning: {warning}")
-    return 0
+    for blocker in blockers:
+        print(f"Blocker: {blocker}")
+    return 1 if blockers else 0
 
 
 def _wildcard_bind(host: str) -> bool:

@@ -77,10 +77,12 @@ Create an editable application when you are ready to build:
 ```
 
 The runtime distribution and command are both `vyral`; `vyral-runtime` remains
-a compatibility command alias. Use `./scripts/vyral inspect` to explain the local
-providers and limitations. Windows users can invoke the source launcher with
-`python scripts/vyral`. Installation, custom state paths, JSON output, reset,
-and server instructions are in the
+a compatibility command alias. Use `./scripts/vyral inspect` to read an existing
+runtime and explain its local providers and limitations. Inspection is
+non-mutating: it neither initializes nor migrates state, and it fails clearly
+when the selected directory is not a current Vyral runtime. Windows users can
+invoke the source launcher with `python scripts/vyral`. Installation, custom
+state paths, JSON output, reset, and server instructions are in the
 [Python runtime guide](runtimes/python).
 
 Evaluate an application-owned branch policy locally, using the portable

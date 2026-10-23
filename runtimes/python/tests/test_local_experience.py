@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import hashlib
+from importlib import resources
+import json
+import os
 from pathlib import Path
+import shutil
+import sqlite3
 import tempfile
 import unittest
+
+from jsonschema import Draft202012Validator
 
 from vyral_runtime._local_experience import (
     inspect_local_runtime,
@@ -12,6 +20,41 @@ from vyral_runtime._local_experience import (
 )
 from vyral_runtime.local import QueryEnvelope
 from vyral_runtime.runtime import VyralRuntime
+from vyral_runtime.storage import (
+    STORAGE_SCHEMA_COMPONENT,
+    STORAGE_SCHEMA_VERSION,
+)
+
+
+def _tree_snapshot(root: Path) -> dict[str, tuple[object, ...]]:
+    paths = (root, *sorted(root.rglob("*"), key=lambda path: path.as_posix()))
+    snapshot: dict[str, tuple[object, ...]] = {}
+    for path in paths:
+        relative = "." if path == root else path.relative_to(root).as_posix()
+        metadata = path.lstat()
+        digest = None
+        target = None
+        if path.is_symlink():
+            target = os.readlink(path)
+        elif path.is_file():
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        snapshot[relative] = (
+            metadata.st_mode,
+            metadata.st_size,
+            metadata.st_mtime_ns,
+            digest,
+            target,
+        )
+    return snapshot
+
+
+def _validate_inspection(inspection: dict[str, object]) -> None:
+    schema_resource = resources.files("vyral_runtime").joinpath(
+        "_local_runtime_inspection.schema.json"
+    )
+    schema = json.loads(schema_resource.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(inspection)
 
 
 class LocalExperienceTests(unittest.TestCase):
@@ -106,8 +149,17 @@ class LocalExperienceTests(unittest.TestCase):
                 self.assertEqual(3, len(records))
                 self.assertTrue(all(not record.vectors for record in records))
 
+            before_inspection = _tree_snapshot(root)
             inspection = inspect_local_runtime(root)
+            self.assertEqual(before_inspection, _tree_snapshot(root))
+            self.assertEqual(
+                "vyral.local-runtime-inspection.v1",
+                inspection["schema"],
+            )
+            self.assertTrue(inspection["readOnly"])
+            _validate_inspection(inspection)
             self.assertEqual("local-single-node", inspection["topology"])
+            self.assertEqual([], inspection["blockers"])
             providers = inspection["providers"]
             self.assertIsInstance(providers, dict)
             assert isinstance(providers, dict)
@@ -116,6 +168,139 @@ class LocalExperienceTests(unittest.TestCase):
             assert isinstance(embeddings, dict)
             self.assertEqual("lexical", embeddings["semanticQuality"])
             self.assertFalse(embeddings["requiresNetwork"])
+
+    def test_inspect_does_not_initialize_an_empty_directory(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-inspect-empty-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            root.mkdir()
+            before = _tree_snapshot(root)
+
+            with self.assertRaisesRegex(ValueError, "not initialized"):
+                inspect_local_runtime(root)
+
+            self.assertEqual(before, _tree_snapshot(root))
+
+    def test_inspect_rejects_a_non_sqlite_file_without_changing_it(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-inspect-foreign-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            root.mkdir()
+            (root / "vyral.sqlite").write_bytes(b"not a SQLite database")
+            before = _tree_snapshot(root)
+
+            with self.assertRaisesRegex(ValueError, "invalid SQLite header"):
+                inspect_local_runtime(root)
+
+            self.assertEqual(before, _tree_snapshot(root))
+
+    def test_inspect_does_not_adopt_a_legacy_database(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-inspect-legacy-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            root.mkdir()
+            database = sqlite3.connect(root / "vyral.sqlite")
+            try:
+                database.execute(
+                    "CREATE TABLE vyral_py_legacy(value TEXT NOT NULL)"
+                )
+                database.commit()
+            finally:
+                database.close()
+            before = _tree_snapshot(root)
+
+            with self.assertRaisesRegex(ValueError, "never adopts or migrates"):
+                inspect_local_runtime(root)
+
+            self.assertEqual(before, _tree_snapshot(root))
+
+    def test_inspect_refuses_a_newer_schema_without_changing_it(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-inspect-newer-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            with VyralRuntime.open_local(root):
+                pass
+            database = sqlite3.connect(root / "vyral.sqlite")
+            try:
+                database.execute(
+                    """
+                    UPDATE vyral_py_runtime_schema
+                    SET schema_version = ?
+                    WHERE component = ?
+                    """,
+                    (STORAGE_SCHEMA_VERSION + 1, STORAGE_SCHEMA_COMPONENT),
+                )
+                database.commit()
+            finally:
+                database.close()
+            before = _tree_snapshot(root)
+
+            with self.assertRaisesRegex(ValueError, "supports at most"):
+                inspect_local_runtime(root)
+
+            self.assertEqual(before, _tree_snapshot(root))
+
+    def test_inspect_reports_missing_object_state_without_recreating_it(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-inspect-objects-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            with VyralRuntime.open_local(root):
+                pass
+            shutil.rmtree(root / "objects")
+            before = _tree_snapshot(root)
+
+            inspection = inspect_local_runtime(root)
+
+            self.assertEqual(before, _tree_snapshot(root))
+            self.assertFalse((root / "objects").exists())
+            _validate_inspection(inspection)
+            self.assertEqual("blocked", inspection["runtime"]["status"])
+            self.assertIn(
+                "Filesystem object storage diagnostics failed.",
+                inspection["blockers"],
+            )
+
+    def test_inspect_reports_a_missing_table_without_repairing_it(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="vyral-local-inspect-table-"
+        ) as temporary:
+            root = Path(temporary) / "state"
+            with VyralRuntime.open_local(root):
+                pass
+            database = sqlite3.connect(root / "vyral.sqlite")
+            try:
+                database.execute("DROP TABLE vyral_execution_timers")
+                database.commit()
+            finally:
+                database.close()
+            before = _tree_snapshot(root)
+
+            inspection = inspect_local_runtime(root)
+
+            self.assertEqual(before, _tree_snapshot(root))
+            _validate_inspection(inspection)
+            providers = inspection["providers"]
+            self.assertIsInstance(providers, dict)
+            assert isinstance(providers, dict)
+            execution = providers["execution"]
+            self.assertIsInstance(execution, dict)
+            assert isinstance(execution, dict)
+            self.assertFalse(execution["healthy"])
+            self.assertIn(
+                "vyral_execution_timers",
+                execution["missingTables"],
+            )
+            self.assertIn(
+                "SQLite durable execution diagnostics failed.",
+                inspection["blockers"],
+            )
 
     def test_reset_requires_a_dedicated_owned_directory(self) -> None:
         with tempfile.TemporaryDirectory(

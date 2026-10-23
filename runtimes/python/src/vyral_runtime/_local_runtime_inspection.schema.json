@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvyral.com/schemas/local-runtime-inspection/v1/schema.json",
+  "title": "Vyral local runtime inspection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "readOnly",
+    "rootPath",
+    "topology",
+    "storageSchema",
+    "runtime",
+    "providers",
+    "warnings",
+    "blockers"
+  ],
+  "properties": {
+    "schema": { "const": "vyral.local-runtime-inspection.v1" },
+    "readOnly": { "const": true },
+    "rootPath": { "$ref": "#/$defs/nonEmptyString" },
+    "topology": { "const": "local-single-node" },
+    "storageSchema": { "$ref": "#/$defs/storageSchema" },
+    "runtime": { "$ref": "#/$defs/runtime" },
+    "providers": { "$ref": "#/$defs/providers" },
+    "warnings": { "$ref": "#/$defs/messages" },
+    "blockers": { "$ref": "#/$defs/messages" }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "messages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "missingTables": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "storageSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component",
+        "version",
+        "supportedVersion",
+        "migratedByRuntimeVersion",
+        "status"
+      ],
+      "properties": {
+        "component": { "const": "portable-local" },
+        "version": { "$ref": "#/$defs/nonNegativeInteger" },
+        "supportedVersion": { "$ref": "#/$defs/nonNegativeInteger" },
+        "migratedByRuntimeVersion": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "const": "current" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "contractVersion",
+        "status",
+        "maturity",
+        "fullLocalReady"
+      ],
+      "properties": {
+        "version": { "$ref": "#/$defs/nonEmptyString" },
+        "contractVersion": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["ok", "blocked"] },
+        "maturity": { "$ref": "#/$defs/nonEmptyString" },
+        "fullLocalReady": { "type": "boolean" }
+      }
+    },
+    "sqliteCommon": {
+      "type": "object",
+      "required": [
+        "healthy",
+        "quickCheck",
+        "foreignKeyViolationCount",
+        "journalMode",
+        "missingTables"
+      ],
+      "properties": {
+        "healthy": { "type": "boolean" },
+        "quickCheck": { "$ref": "#/$defs/nonEmptyString" },
+        "foreignKeyViolationCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "journalMode": { "enum": ["wal", "delete", "unknown"] },
+        "missingTables": { "$ref": "#/$defs/missingTables" }
+      }
+    },
+    "records": {
+      "allOf": [
+        { "$ref": "#/$defs/sqliteCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "adapter",
+            "databasePath",
+            "healthy",
+            "quickCheck",
+            "foreignKeyViolationCount",
+            "journalMode",
+            "missingTables",
+            "fts5Available",
+            "databaseBytes"
+          ],
+          "properties": {
+            "adapter": { "const": "SQLiteRecordStore" },
+            "databasePath": { "$ref": "#/$defs/nonEmptyString" },
+            "healthy": { "type": "boolean" },
+            "quickCheck": { "$ref": "#/$defs/nonEmptyString" },
+            "foreignKeyViolationCount": { "$ref": "#/$defs/nonNegativeInteger" },
+            "journalMode": { "enum": ["wal", "delete", "unknown"] },
+            "missingTables": { "$ref": "#/$defs/missingTables" },
+            "fts5Available": { "type": "boolean" },
+            "databaseBytes": { "$ref": "#/$defs/nonNegativeInteger" }
+          }
+        }
+      ]
+    },
+    "canonical": {
+      "allOf": [
+        { "$ref": "#/$defs/sqliteCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "adapter",
+            "databasePath",
+            "healthy",
+            "quickCheck",
+            "foreignKeyViolationCount",
+            "journalMode",
+            "missingTables"
+          ],
+          "properties": {
+            "adapter": { "const": "SQLiteCanonicalStore" },
+            "databasePath": { "$ref": "#/$defs/nonEmptyString" },
+            "healthy": { "type": "boolean" },
+            "quickCheck": { "$ref": "#/$defs/nonEmptyString" },
+            "foreignKeyViolationCount": { "$ref": "#/$defs/nonNegativeInteger" },
+            "journalMode": { "enum": ["wal", "delete", "unknown"] },
+            "missingTables": { "$ref": "#/$defs/missingTables" }
+          }
+        }
+      ]
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "rootPath",
+        "healthy",
+        "rootExists",
+        "containerCount",
+        "objectCount",
+        "metadataSidecarCount",
+        "missingMetadataCount",
+        "orphanMetadataCount",
+        "temporaryFileCount",
+        "symbolicLinkCount",
+        "contentBytes",
+        "temporaryBytes"
+      ],
+      "properties": {
+        "adapter": { "const": "FileObjectStore" },
+        "rootPath": { "$ref": "#/$defs/nonEmptyString" },
+        "healthy": { "type": "boolean" },
+        "rootExists": { "type": "boolean" },
+        "containerCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "objectCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "metadataSidecarCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "missingMetadataCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "orphanMetadataCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "temporaryFileCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "symbolicLinkCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "contentBytes": { "$ref": "#/$defs/nonNegativeInteger" },
+        "temporaryBytes": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "embeddings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "dimensions",
+        "semanticQuality",
+        "requiresNetwork"
+      ],
+      "properties": {
+        "provider": { "$ref": "#/$defs/nonEmptyString" },
+        "model": { "$ref": "#/$defs/nonEmptyString" },
+        "dimensions": { "type": "integer", "minimum": 1 },
+        "semanticQuality": { "$ref": "#/$defs/nonEmptyString" },
+        "requiresNetwork": { "type": "boolean" }
+      }
+    },
+    "execution": {
+      "allOf": [
+        { "$ref": "#/$defs/sqliteCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "adapter",
+            "healthy",
+            "quickCheck",
+            "foreignKeyViolationCount",
+            "journalMode",
+            "missingTables",
+            "activeRuns",
+            "maxActiveRuns"
+          ],
+          "properties": {
+            "adapter": { "const": "python-local-sqlite" },
+            "healthy": { "type": "boolean" },
+            "quickCheck": { "$ref": "#/$defs/nonEmptyString" },
+            "foreignKeyViolationCount": { "$ref": "#/$defs/nonNegativeInteger" },
+            "journalMode": { "enum": ["wal", "delete", "unknown"] },
+            "missingTables": { "$ref": "#/$defs/missingTables" },
+            "activeRuns": { "$ref": "#/$defs/nonNegativeInteger" },
+            "maxActiveRuns": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "records",
+        "canonical",
+        "objects",
+        "embeddings",
+        "execution"
+      ],
+      "properties": {
+        "records": { "$ref": "#/$defs/records" },
+        "canonical": { "$ref": "#/$defs/canonical" },
+        "objects": { "$ref": "#/$defs/objects" },
+        "embeddings": { "$ref": "#/$defs/embeddings" },
+        "execution": { "$ref": "#/$defs/execution" }
+      }
+    }
+  }
+}

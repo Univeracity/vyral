@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 from time import perf_counter
 
+from ._local_inspection import inspect_local_runtime
 from .embeddings import EmbeddingProviderRegistry
 from .execution import (
     ExecutionRunContext,
@@ -397,64 +398,6 @@ async def run_local_quickstart(
         restart_recovery_ms=restart_recovery_ms,
         completed_ms=completed_ms,
     )
-
-
-def inspect_local_runtime(root_path: str | Path) -> dict[str, object]:
-    root = Path(root_path).expanduser().resolve()
-    if not root.is_dir():
-        raise ValueError(f"Local runtime directory does not exist: {root}")
-    with VyralRuntime.open_local(root) as runtime:
-        readiness = runtime.readiness()
-        provider = runtime.embeddings.provider
-        descriptor = next(
-            item
-            for item in EmbeddingProviderRegistry().get_providers()
-            if item.provider == provider.provider_id
-        )
-        storage = runtime.records.diagnostics()
-        execution = runtime.execution.diagnostics()
-        objects = runtime.objects.diagnostics()
-        return {
-            "rootPath": str(root),
-            "topology": "local-single-node",
-            "runtime": {
-                "version": readiness.runtime_version,
-                "contractVersion": readiness.contract_version,
-                "status": readiness.status,
-                "maturity": readiness.maturity,
-                "fullLocalReady": readiness.full_local_ready,
-            },
-            "providers": {
-                "records": {
-                    "adapter": "SQLiteRecordStore",
-                    "healthy": storage.healthy,
-                    "databasePath": str(runtime.config.database_path)
-                    if runtime.config is not None
-                    else None,
-                },
-                "objects": {
-                    "adapter": "FileObjectStore",
-                    "healthy": objects.healthy,
-                    "rootPath": str(runtime.config.object_root_path)
-                    if runtime.config is not None
-                    else None,
-                },
-                "embeddings": {
-                    "provider": provider.provider_id,
-                    "model": provider.model_id,
-                    "dimensions": provider.dimensions,
-                    "semanticQuality": descriptor.semantic_quality,
-                    "requiresNetwork": descriptor.requires_network,
-                },
-                "execution": {
-                    "adapter": "python-local-sqlite",
-                    "healthy": bool(execution["healthy"]),
-                    "activeRuns": execution["activeRuns"],
-                },
-            },
-            "warnings": list(readiness.warnings),
-            "blockers": list(readiness.blockers),
-        }
 
 
 def prepare_local_quickstart_root(root_path: str | Path) -> Path:
