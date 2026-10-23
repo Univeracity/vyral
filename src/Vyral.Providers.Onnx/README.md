@@ -86,12 +86,13 @@ or `onnx/model.onnx`, and `vocab.txt`) into those paths, or point
 ## Calibration
 
 `tools/Vyral.OnnxJudgeCalibration` is a console harness: given a JSONL file
-of labeled examples (`{context, options: [{id, label}], correctId}`), it runs
-the real model with the production hypothesis template, collects entailment
-logits, and fits one temperature via `OnnxJudgeCalibrationFitter` (minimizing
-negative log-likelihood by golden-section search — a real, minimal
-calibration procedure, not a stand-in for retraining the model itself, which
-this repo's local-first, no-training-framework posture does not attempt).
+of labeled examples (`{context, options: [{id, label}], correctId}`) and an
+adjacent dataset manifest, it runs the real model with the production
+hypothesis template, collects entailment logits, and fits one temperature via
+`OnnxJudgeCalibrationFitter` (minimizing negative log-likelihood by
+golden-section search — a real, minimal calibration procedure, not a stand-in
+for retraining the model itself, which this repo's local-first,
+no-training-framework posture does not attempt).
 
 ```sh
 dotnet run --project tools/Vyral.OnnxJudgeCalibration -- \
@@ -102,6 +103,38 @@ dotnet run --project tools/Vyral.OnnxJudgeCalibration -- \
   .vyral/models/mobilebert-uncased-mnli-quantized/calibration.json \
   Xenova/mobilebert-uncased-mnli:model_quantized
 ```
+
+By default the harness requires
+`<examples.jsonl>.manifest.json`. The manifest uses
+`vyral.onnx-judge-calibration-dataset.v1`, must attest
+`labelSource: "human"`, and binds the exact JSONL bytes with a lowercase
+SHA-256 digest. A different manifest path can be supplied as the final
+argument. The assertion is operator provenance, not proof that a human really
+created the labels: absent, altered, or explicitly non-human datasets cannot
+produce an artifact that Vyral reports as fitted, but software cannot detect a
+false `human` attestation. Operators must not relabel model- or Jev-derived
+output as human data. Jev output is never calibration truth, training data, or
+a distillation target.
+
+The current dataset schema calibrates label-only Choice templates: the
+template must contain `{label}` and cannot contain `{prompt}`, because the
+examples do not carry a separate prompt field. The harness uses the default
+provider's 512-token ceiling. A custom tokenization or truncation policy needs
+its own controlled harness and fit; do not reuse this artifact merely because
+the declared model id matches.
+
+The generated `vyral.onnx-judge-calibration.v2` artifact also binds the fit to
+the model id, entailment class index, question type, and hypothesis-template
+digest. A mismatch fails the provider's calibration doctor check. The bundled
+harness artifact is auto-discovered only by the exact default CPU scoring
+configuration; GPU, tokenizer, truncation, class-index, model-id, and template
+overrides remain uncalibrated unless they explicitly name their own matching
+artifact. The bundled harness fits Choice questions, so that artifact sets
+`calibrated=true` only
+for matching Choice answers; Noul and Score remain explicitly uncalibrated
+unless each receives its own correctly scoped fit. Legacy calibration JSON
+without this closure can still be read as historical configuration, but it no
+longer causes an answer to claim calibration.
 
 The bundled example set (30 hand-labeled, domain-neutral topic-classification
 examples — no case-specific or third-party data) measured 86.7% raw accuracy

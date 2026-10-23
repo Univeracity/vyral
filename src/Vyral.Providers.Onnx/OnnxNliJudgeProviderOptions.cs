@@ -138,6 +138,16 @@ public static class OnnxNliJudgeProviderTargets
     {
         overrides ??= new OnnxNliJudgeProviderOptions();
         var useDefaultModel = string.IsNullOrWhiteSpace(overrides.ModelPath);
+        var useDefaultCalibration = cpuOnly &&
+            useDefaultModel &&
+            string.IsNullOrWhiteSpace(overrides.CalibrationPath) &&
+            (string.IsNullOrWhiteSpace(overrides.ModelId) || string.Equals(overrides.ModelId, DefaultModelId, StringComparison.Ordinal)) &&
+            string.IsNullOrWhiteSpace(overrides.VocabPath) &&
+            overrides.EntailmentIndex == DefaultEntailmentIndex &&
+            overrides.MaxTokens == 512 &&
+            overrides.Lowercase is null or true &&
+            string.IsNullOrWhiteSpace(overrides.OutputName) &&
+            string.Equals(overrides.ChoiceHypothesisTemplate, "This example is about: {label}.", StringComparison.Ordinal);
         return new OnnxNliJudgeProviderOptions
         {
             ProviderId = string.IsNullOrWhiteSpace(overrides.ProviderId) ? (cpuOnly ? CpuProviderId : GpuProviderId) : overrides.ProviderId,
@@ -163,7 +173,7 @@ public static class OnnxNliJudgeProviderTargets
             CudaMemoryLimitMb = overrides.CudaMemoryLimitMb ?? (cpuOnly ? null : 512),
             CpuOnly = cpuOnly,
             CalibrationPath = string.IsNullOrWhiteSpace(overrides.CalibrationPath)
-                ? (useDefaultModel ? DefaultCalibrationPath : null)
+                ? (useDefaultCalibration ? DefaultCalibrationPath : null)
                 : overrides.CalibrationPath,
             ChoiceHypothesisTemplate = string.IsNullOrWhiteSpace(overrides.ChoiceHypothesisTemplate) ? "This example is about: {label}." : overrides.ChoiceHypothesisTemplate,
             ScoreHypothesisTemplate = string.IsNullOrWhiteSpace(overrides.ScoreHypothesisTemplate) ? "On this scale, the correct level is: {label}." : overrides.ScoreHypothesisTemplate

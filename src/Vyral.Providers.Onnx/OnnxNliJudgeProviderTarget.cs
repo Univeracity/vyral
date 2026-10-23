@@ -16,6 +16,8 @@ namespace Vyral.Providers.Onnx;
 /// </summary>
 public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQualificationPlanner, IProviderModelCatalog, IProviderDoctor
 {
+    public const string NoulCalibrationScope = "vyral.onnx-nli.noul.raw-class-softmax.v1";
+
     private readonly OnnxNliJudgeProviderOptions _options;
     private readonly IReadOnlyDictionary<string, ProviderModePolicy> _policies;
     private readonly object _runtimeLock = new();
@@ -196,7 +198,9 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
                         ["modelFilePresent"] = modelPath != null,
                         ["vocabFilePresent"] = vocabPath != null,
                         ["calibrated"] = calibration?.IsFitted ?? false,
-                        ["calibrationTemperature"] = calibration?.Temperature ?? 1.0
+                        ["calibratedQuestionType"] = calibration?.IsFitted == true ? calibration.QuestionType : null,
+                        ["calibrationTemperature"] = calibration?.IsFitted == true ? calibration.Temperature : 1.0,
+                        ["calibrationDatasetSha256"] = calibration?.IsFitted == true ? calibration.DatasetSha256 : null
                     }
                 }
             }
@@ -261,13 +265,18 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
                 Message = calibrationError != null
                     ? $"Calibration file is present but invalid: {calibrationError}"
                     : (calibration?.IsFitted ?? false)
-                        ? $"Loaded a fitted calibration (temperature {calibration!.Temperature:F3} from {calibration.SampleCount} labeled examples)."
-                        : "No fitted calibration is loaded; entailment probabilities are an uncalibrated heuristic proxy, not a validated likelihood. Fit one with OnnxJudgeCalibrationFitter and set CalibrationPath.",
+                        ? $"Loaded a human-label-attested {calibration!.QuestionType} calibration (temperature {calibration.Temperature:F3} from {calibration.SampleCount} labeled examples)."
+                        : "No provenance-complete fitted calibration is loaded; entailment probabilities are an uncalibrated heuristic proxy, not a validated likelihood. Fit one with OnnxJudgeCalibrationFitter and set CalibrationPath.",
                 Details = new Dictionary<string, object?>
                 {
                     ["calibrationPath"] = _options.CalibrationPath,
                     ["calibrated"] = calibration?.IsFitted ?? false,
-                    ["temperature"] = calibration?.Temperature ?? 1.0
+                    ["temperature"] = calibration?.IsFitted == true ? calibration.Temperature : 1.0,
+                    ["questionType"] = calibration?.IsFitted == true ? calibration.QuestionType : null,
+                    ["labelSource"] = calibration?.IsFitted == true ? calibration.LabelSource : null,
+                    ["datasetId"] = calibration?.IsFitted == true ? calibration.DatasetId : null,
+                    ["datasetVersion"] = calibration?.IsFitted == true ? calibration.DatasetVersion : null,
+                    ["datasetSha256"] = calibration?.IsFitted == true ? calibration.DatasetSha256 : null
                 }
             },
             new()
@@ -300,7 +309,7 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
         }
 
         var runtime = GetRuntime();
-        var calibration = LoadCalibration() ?? OnnxJudgeCalibration.Identity(_options.ModelId);
+        var loadedCalibration = LoadCalibration();
         var premise = request.Context ?? string.Empty;
         var answers = new List<AiJudgeAnswer>(request.Questions.Count);
 
@@ -326,6 +335,7 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
                 var classifications = await runtime.ClassifyAsync(premise, hypotheses, ct);
                 var classification = classifications[0];
                 RequireEntailmentIndex(classification.Logits.Length);
+                var calibration = SelectCalibration(loadedCalibration, AiJudgeQuestionTypes.Noul, NoulCalibrationScope);
                 var calibrated = calibration.ApplyToLogits(classification.Logits);
                 var probabilities = OnnxJudgeCalibrationFitter.Softmax(calibrated);
                 var probability = probabilities[_options.EntailmentIndex];
@@ -352,6 +362,7 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
                     throw new ArgumentException($"ai.judge question '{question.Id}' is type 'choice' and requires request.context as the passage to classify against.");
                 }
 
+                var calibration = SelectCalibration(loadedCalibration, AiJudgeQuestionTypes.Choice, _options.ChoiceHypothesisTemplate);
                 var optionProbabilities = await ScoreOptionsByEntailmentAsync(runtime, premise, question, _options.ChoiceHypothesisTemplate, calibration, ct);
                 var probabilities = new Dictionary<string, double>();
                 for (var i = 0; i < question.Options.Count; i++)
@@ -383,6 +394,7 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
                     throw new ArgumentException($"ai.judge question '{question.Id}' is type 'score' and requires request.context as the passage to classify against.");
                 }
 
+                var calibration = SelectCalibration(loadedCalibration, AiJudgeQuestionTypes.Score, _options.ScoreHypothesisTemplate);
                 var levelProbabilities = await ScoreOptionsByEntailmentAsync(runtime, premise, question, _options.ScoreHypothesisTemplate, calibration, ct);
                 var probabilities = new Dictionary<string, double>();
                 var legend = new Dictionary<string, string>();
@@ -458,6 +470,16 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
         }
     }
 
+    private OnnxJudgeCalibration SelectCalibration(
+        OnnxJudgeCalibration? calibration,
+        string questionType,
+        string hypothesisTemplate)
+    {
+        return calibration?.IsApplicableTo(questionType, hypothesisTemplate, _options.EntailmentIndex, _options.ModelId) == true
+            ? calibration
+            : OnnxJudgeCalibration.Identity(_options.ModelId);
+    }
+
     /// <summary>
     /// Labels a Noul answer's full calibrated class distribution using <see cref="OnnxNliJudgeProviderOptions.ClassLabels"/>.
     /// Returns null (not a partial or index-keyed map) when ClassLabels is unset or its length
@@ -500,11 +522,35 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
                 // runs from the repo root or a test runner's output directory.
                 var resolvedPath = TryResolveCalibrationPath(_options.CalibrationPath);
                 _calibration = resolvedPath is null ? null : OnnxJudgeCalibration.TryLoad(resolvedPath);
+                if (_calibration?.IsFitted == true && !IsConfiguredCalibrationApplicable(_calibration))
+                {
+                    throw new InvalidOperationException(
+                        $"Calibration file '{resolvedPath}' is not bound to this model, entailment index, question type, or hypothesis template.");
+                }
                 _calibrationLoaded = true;
             }
 
             return _calibration;
         }
+    }
+
+    private bool IsConfiguredCalibrationApplicable(OnnxJudgeCalibration calibration)
+    {
+        return calibration.IsApplicableTo(
+                   AiJudgeQuestionTypes.Choice,
+                   _options.ChoiceHypothesisTemplate,
+                   _options.EntailmentIndex,
+                   _options.ModelId) ||
+               calibration.IsApplicableTo(
+                   AiJudgeQuestionTypes.Score,
+                   _options.ScoreHypothesisTemplate,
+                   _options.EntailmentIndex,
+                   _options.ModelId) ||
+               calibration.IsApplicableTo(
+                   AiJudgeQuestionTypes.Noul,
+                   NoulCalibrationScope,
+                   _options.EntailmentIndex,
+                   _options.ModelId);
     }
 
     private static string? TryResolveCalibrationPath(string? configured)
@@ -545,6 +591,8 @@ public sealed class OnnxNliJudgeProviderTarget : IProviderTarget, IProviderQuali
             options.EntailmentIndex.ToString(),
             options.ClassLabels is null ? "null" : string.Join(",", options.ClassLabels),
             options.CalibrationPath,
+            options.ChoiceHypothesisTemplate,
+            options.ScoreHypothesisTemplate,
             options.IntraOpNumThreads?.ToString(),
             options.InterOpNumThreads?.ToString(),
             options.ExecutionMode,

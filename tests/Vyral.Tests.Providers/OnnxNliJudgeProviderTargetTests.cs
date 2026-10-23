@@ -18,6 +18,31 @@ public class OnnxNliJudgeProviderTargetTests
     }
 
     [Fact]
+    public void OnnxJudgeProvider_DefaultCalibrationIsOnlyAttachedToExactDefaultCpuScoringConfiguration()
+    {
+        Assert.Equal(
+            OnnxNliJudgeProviderTargets.DefaultCalibrationPath,
+            OnnxNliJudgeProviderTargets.ApplyDefaults(null, cpuOnly: true).CalibrationPath);
+
+        Assert.Null(OnnxNliJudgeProviderTargets.ApplyDefaults(
+            new OnnxNliJudgeProviderOptions { EntailmentIndex = 1 }, cpuOnly: true).CalibrationPath);
+        Assert.Null(OnnxNliJudgeProviderTargets.ApplyDefaults(
+            new OnnxNliJudgeProviderOptions { MaxTokens = 256 }, cpuOnly: true).CalibrationPath);
+        Assert.Null(OnnxNliJudgeProviderTargets.ApplyDefaults(
+            new OnnxNliJudgeProviderOptions { Lowercase = false }, cpuOnly: true).CalibrationPath);
+        Assert.Null(OnnxNliJudgeProviderTargets.ApplyDefaults(
+            new OnnxNliJudgeProviderOptions { ChoiceHypothesisTemplate = "Different: {label}." }, cpuOnly: true).CalibrationPath);
+        Assert.Null(OnnxNliJudgeProviderTargets.ApplyDefaults(null, cpuOnly: false).CalibrationPath);
+
+        Assert.Equal("explicit.json", OnnxNliJudgeProviderTargets.ApplyDefaults(
+            new OnnxNliJudgeProviderOptions
+            {
+                EntailmentIndex = 1,
+                CalibrationPath = "explicit.json"
+            }, cpuOnly: true).CalibrationPath);
+    }
+
+    [Fact]
     public async Task OnnxJudgeProvider_ExposesLocalNetworkFreeJudgeCapability()
     {
         var provider = OnnxNliJudgeProviderTargets.CreateCpu();
@@ -72,6 +97,73 @@ public class OnnxNliJudgeProviderTargetTests
         Assert.Contains(doctor.Checks, check => check.Id == "tokenizer.vocab" && check.Status == ProviderDoctorStatuses.Failed);
         Assert.Contains(doctor.Checks, check => check.Id == "calibration.status" && check.Status == ProviderDoctorStatuses.Warning);
         Assert.Contains(doctor.Checks, check => check.Id == "judgment.equivalence" && check.Status == ProviderDoctorStatuses.Warning);
+    }
+
+    [Fact]
+    public async Task OnnxJudgeProvider_DoctorAcceptsOnlyCalibrationBoundToConfiguredClosure()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vyral-onnx-calibration-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var modelPath = Path.Combine(root, "model.onnx");
+            var vocabPath = Path.Combine(root, "vocab.txt");
+            var calibrationPath = Path.Combine(root, "calibration.json");
+            await File.WriteAllBytesAsync(modelPath, new byte[] { 1 });
+            await File.WriteAllTextAsync(vocabPath, "[UNK]\n");
+            var template = "This example is about: {label}.";
+            var calibration = OnnxJudgeCalibrationFitter.Fit(
+                new[] { new OnnxJudgeCalibrationFitter.LabeledExample(new[] { 2.0, 1.0 }, 0) },
+                new OnnxJudgeCalibrationFitContext
+                {
+                    DatasetId = "fixture",
+                    DatasetVersion = "1",
+                    DatasetSha256 = "sha256:" + new string('a', 64),
+                    LabelSource = OnnxJudgeCalibration.HumanLabelSource,
+                    ModelId = "bound-model",
+                    QuestionType = AiJudgeQuestionTypes.Choice,
+                    HypothesisTemplateSha256 = ProviderHash.Sha256(template),
+                    EntailmentIndex = 0
+                });
+            calibration.Save(calibrationPath);
+
+            var provider = new OnnxNliJudgeProviderTarget(new OnnxNliJudgeProviderOptions
+            {
+                ProviderId = "bound-provider",
+                DisplayName = "Bound provider",
+                ModelId = "bound-model",
+                ModelPath = modelPath,
+                VocabPath = vocabPath,
+                CalibrationPath = calibrationPath,
+                ChoiceHypothesisTemplate = template,
+                EntailmentIndex = 0
+            });
+            var accepted = await provider.DiagnoseAsync();
+            var acceptedCalibration = Assert.Single(accepted.Checks, check => check.Id == "calibration.status");
+            Assert.Equal(ProviderDoctorStatuses.Ok, acceptedCalibration.Status);
+            Assert.Equal("human", acceptedCalibration.Details["labelSource"]);
+            Assert.Equal(AiJudgeQuestionTypes.Choice, acceptedCalibration.Details["questionType"]);
+
+            var mismatched = new OnnxNliJudgeProviderTarget(new OnnxNliJudgeProviderOptions
+            {
+                ProviderId = "mismatched-provider",
+                DisplayName = "Mismatched provider",
+                ModelId = "bound-model",
+                ModelPath = modelPath,
+                VocabPath = vocabPath,
+                CalibrationPath = calibrationPath,
+                ChoiceHypothesisTemplate = "A different template: {label}.",
+                EntailmentIndex = 0
+            });
+            var rejected = await mismatched.DiagnoseAsync();
+            Assert.NotEqual(provider.Profile.ConfigHash, mismatched.Profile.ConfigHash);
+            Assert.Contains(rejected.Checks, check =>
+                check.Id == "calibration.status" && check.Status == ProviderDoctorStatuses.Failed);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
@@ -213,6 +305,100 @@ public class OnnxNliJudgeProviderTargetTests
         Assert.True(score > 1.0, $"Expected the weighted position to lean toward the highest-restriction level for an authorization-gated process; got {score}.");
         var legend = scoreAnswer["legend"]!.AsObject();
         Assert.Equal("requires a specific prior authorization before it may occur", legend["requires_authorization"]?.GetValue<string>());
+    }
+
+    [OnnxJudgeModelFact]
+    public async Task OnnxJudgeProvider_AppliesHumanCalibrationOnlyToItsBoundQuestionType()
+    {
+        var modelDirectory = ResolveModelDirectory(Environment.GetEnvironmentVariable("VYRAL_ONNX_JUDGE_MODEL_DIR")!);
+        var root = Path.Combine(Path.GetTempPath(), "vyral-onnx-scoped-calibration-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            const string modelId = "Xenova/mobilebert-uncased-mnli:model_quantized";
+            const string choiceTemplate = "This example is about: {label}.";
+            var calibrationPath = Path.Combine(root, "calibration.json");
+            OnnxJudgeCalibrationFitter.Fit(
+                new[] { new OnnxJudgeCalibrationFitter.LabeledExample(new[] { 2.0, 1.0 }, 0) },
+                new OnnxJudgeCalibrationFitContext
+                {
+                    DatasetId = "scoped-live-test",
+                    DatasetVersion = "1",
+                    DatasetSha256 = "sha256:" + new string('a', 64),
+                    LabelSource = OnnxJudgeCalibration.HumanLabelSource,
+                    ModelId = modelId,
+                    QuestionType = AiJudgeQuestionTypes.Choice,
+                    HypothesisTemplateSha256 = ProviderHash.Sha256(choiceTemplate),
+                    EntailmentIndex = OnnxNliJudgeProviderTargets.DefaultEntailmentIndex
+                }).Save(calibrationPath);
+
+            var provider = new OnnxNliJudgeProviderTarget(new OnnxNliJudgeProviderOptions
+            {
+                ProviderId = "scoped-calibration-onnx-judge",
+                DisplayName = "Scoped calibration ONNX judge",
+                ModelId = modelId,
+                ModelPath = modelDirectory,
+                CalibrationPath = calibrationPath,
+                ChoiceHypothesisTemplate = choiceTemplate,
+                EntailmentIndex = OnnxNliJudgeProviderTargets.DefaultEntailmentIndex,
+                ExecutionProvider = "cpu",
+                MaxTokens = 128,
+                BatchSize = 4,
+                CpuOnly = true
+            });
+
+            var result = await provider.RunAsync(new ProviderRunRequest
+            {
+                Capability = ProviderCapabilityIds.AiJudge,
+                Operation = "run",
+                Mode = "advisory",
+                Payload = ProviderJson.ToJsonObject(new AiJudgeRequest
+                {
+                    Context = "Employees submit original receipts before travel expenses are reimbursed.",
+                    Questions = new()
+                    {
+                        new()
+                        {
+                            Id = "choice",
+                            Type = AiJudgeQuestionTypes.Choice,
+                            Prompt = "Choose the topic.",
+                            Options = new()
+                            {
+                                new() { Id = "travel", Label = "employee travel reimbursement" },
+                                new() { Id = "weather", Label = "weather forecasting" }
+                            }
+                        },
+                        new()
+                        {
+                            Id = "noul",
+                            Type = AiJudgeQuestionTypes.Noul,
+                            Prompt = "The passage concerns employee travel reimbursement."
+                        },
+                        new()
+                        {
+                            Id = "score",
+                            Type = AiJudgeQuestionTypes.Score,
+                            Prompt = "Rate topic relevance.",
+                            Options = new()
+                            {
+                                new() { Id = "low", Label = "not relevant" },
+                                new() { Id = "high", Label = "highly relevant" }
+                            }
+                        }
+                    }
+                })
+            });
+
+            Assert.Equal(ProviderRunStatus.Succeeded, result.Status);
+            var answers = ProviderRunResults.GetJudge(result).Answers.ToDictionary(answer => answer.QuestionId);
+            Assert.True(answers["choice"].Calibrated);
+            Assert.False(answers["noul"].Calibrated);
+            Assert.False(answers["score"].Calibrated);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     /// <summary>

@@ -1,0 +1,7 @@
+{
+  "schema": "vyral.onnx-judge-calibration-dataset.v1",
+  "datasetId": "vyral-generic-topic-entailment",
+  "datasetVersion": "1.0.0",
+  "labelSource": "human",
+  "datasetSha256": "sha256:af72b3c833480a68dc7736672163c7e56cfb67ddde1bdbb70076f431e904d072"
+}
