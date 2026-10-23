@@ -119,6 +119,18 @@ public class GoogleObjectStoreConformanceTests : ObjectStoreConformanceTests
 {
     protected override IObjectStore CreateObjectStore()
     {
+        if (!GoogleLiveSettings.IsGcsConfigured)
+        {
+            // Keep request-bound validation offline and make any accidental
+            // provider call fail against a reserved non-routable endpoint.
+            return new CloudStorageObjectStore(
+                new StorageClientBuilder
+                {
+                    BaseUri = "https://vyral.invalid/",
+                    UnauthenticatedAccess = true
+                }.Build());
+        }
+
         var bucket = GoogleLiveSettings.GcsBucket!;
         var storageClient = StorageClient.Create(GoogleLiveSettings.CreateLiveCredential());
         var keyPrefix = GoogleLiveSettings.UniquePrefix("vyral-obj");
@@ -157,7 +169,7 @@ public class GoogleObjectStoreConformanceTests : ObjectStoreConformanceTests
     public Task ObjectStore_RejectsOversizedContinuationToken() =>
         RunObjectStore_RejectsOversizedContinuationToken();
 
-    [Fact]
+    [GoogleGcsLiveFact]
     public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
         RunObjectStore_RejectsReadsAbovePortableContentLimit();
 }

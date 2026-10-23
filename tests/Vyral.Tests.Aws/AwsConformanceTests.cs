@@ -149,7 +149,7 @@ public class AwsObjectStoreConformanceTests : ObjectStoreConformanceTests
     public Task ObjectStore_RejectsOversizedContinuationToken() =>
         RunObjectStore_RejectsOversizedContinuationToken();
 
-    [Fact]
+    [AwsS3LiveFact]
     public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
         RunObjectStore_RejectsReadsAbovePortableContentLimit();
 

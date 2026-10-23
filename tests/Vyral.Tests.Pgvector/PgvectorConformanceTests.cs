@@ -157,7 +157,7 @@ public class PgvectorObjectStoreConformanceTests : ObjectStoreConformanceTests
     public Task ObjectStore_RejectsOversizedContinuationToken() =>
         RunObjectStore_RejectsOversizedContinuationToken();
 
-    [Fact]
+    [PgvectorLiveFact]
     public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
         RunObjectStore_RejectsReadsAbovePortableContentLimit();
 }

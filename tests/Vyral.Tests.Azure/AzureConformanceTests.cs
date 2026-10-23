@@ -145,12 +145,21 @@ public class AzureObjectStoreConformanceTests : ObjectStoreConformanceTests
     public Task ObjectStore_RejectsOversizedContinuationToken() =>
         RunObjectStore_RejectsOversizedContinuationToken();
 
-    [Fact]
+    [AzureBlobLiveFact]
     public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
         RunObjectStore_RejectsReadsAbovePortableContentLimit();
 
     protected override IObjectStore CreateObjectStore()
     {
+        if (!AzureLiveSettings.HasBlobSettings)
+        {
+            // Offline conformance cases must reject invalid requests before
+            // attempting any Azure operation. The non-routable endpoint makes
+            // an accidental provider call fail rather than hiding the breach.
+            return new AzureBlobObjectStore(
+                new BlobServiceClient(new Uri("https://vyral.invalid")));
+        }
+
         var settings = AzureLiveSettings.Blob();
         var serviceClient = new BlobServiceClient(settings.ConnectionString);
         var containerName = AzureLiveSettings.UniqueContainerName(settings.ContainerPrefix);

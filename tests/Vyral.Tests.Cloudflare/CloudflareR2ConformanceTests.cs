@@ -59,7 +59,7 @@ public class CloudflareR2ObjectStoreConformanceTests : ObjectStoreConformanceTes
     public Task ObjectStore_RejectsOversizedContinuationToken() =>
         RunObjectStore_RejectsOversizedContinuationToken();
 
-    [Fact]
+    [CloudflareR2LiveFact]
     public Task ObjectStore_RejectsReadsAbovePortableContentLimit() =>
         RunObjectStore_RejectsReadsAbovePortableContentLimit();
 
@@ -75,6 +75,18 @@ public class CloudflareR2ObjectStoreConformanceTests : ObjectStoreConformanceTes
 
     protected override IObjectStore CreateObjectStore()
     {
+        if (!CloudflareR2LiveSettings.IsR2Configured)
+        {
+            // Keep request-bound validation offline and make any accidental
+            // provider call fail against a closed loopback endpoint.
+            return R2ObjectStore.Create(new CloudflareR2Options
+            {
+                ServiceUrl = "http://127.0.0.1:1",
+                AccessKeyId = "offline-fixture",
+                SecretAccessKey = "offline-fixture"
+            });
+        }
+
         var bucket = CloudflareR2LiveSettings.Bucket!;
         var keyPrefix = CloudflareR2LiveSettings.UniquePrefix();
         var store = R2ObjectStore.Create(new CloudflareR2Options

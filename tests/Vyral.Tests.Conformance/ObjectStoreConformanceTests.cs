@@ -206,6 +206,8 @@ public abstract class ObjectStoreConformanceTests
         });
     }
 
+    // This scenario writes a real object before exercising bounded reads.
+    // Remote adapters must expose it through their opt-in live-test attribute.
     protected async Task RunObjectStore_RejectsReadsAbovePortableContentLimit()
     {
         await WithStoreAsync(async store =>
