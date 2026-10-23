@@ -1,0 +1,54 @@
+{
+  "status": "Succeeded",
+  "provider": "local-onnx-nli",
+  "capability": "ai.judge",
+  "operation": "run",
+  "mode": "mechanics",
+  "output": {
+    "answers": [
+      {
+        "questionId": "reuse",
+        "choice": "same_item",
+        "probabilities": {
+          "same_item": 0.94,
+          "different_item": 0.06
+        },
+        "probability": null,
+        "score": null,
+        "legend": null,
+        "confidence": 0.94,
+        "rawClassProbabilities": null,
+        "labelMassCoverage": null,
+        "rawLabelProbabilities": null,
+        "rotationAgreement": null,
+        "calibrated": true
+      }
+    ],
+    "validationStatus": "provider_json",
+    "modelId": "onnx-nli-fixture"
+  },
+  "failureClass": null,
+  "providerStatus": "ok",
+  "error": null,
+  "rejection": null,
+  "trace": {
+    "traceId": "trace-1",
+    "timestamp": "2026-10-23T05:29:59Z",
+    "provider": "local-onnx-nli",
+    "capability": "ai.judge",
+    "operation": "run",
+    "mode": "mechanics",
+    "inputHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "outputHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "modelId": "onnx-nli-fixture",
+    "adapterId": "onnx-nli",
+    "configHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "durationMs": 12.5,
+    "failureClass": null,
+    "authorityBoundary": "caller retains decision and execution authority",
+    "artifactRefs": [],
+    "meteringReceiptHashes": []
+  },
+  "metering": [],
+  "decision": null
+}

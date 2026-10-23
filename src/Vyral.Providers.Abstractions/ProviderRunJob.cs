@@ -29,6 +29,10 @@ public sealed class ProviderRunJob
     [JsonPropertyName("correlationId")]
     public string CorrelationId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Digest of the admitted provider request, including behavior-affecting policy fields. This
+    /// is distinct from the provider trace input hash, which covers only the provider payload.
+    /// </summary>
     [JsonPropertyName("requestHash")]
     public string RequestHash { get; set; } = string.Empty;
 

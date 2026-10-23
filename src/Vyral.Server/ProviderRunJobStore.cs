@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Vyral.Providers.Abstractions;
@@ -34,7 +35,7 @@ public sealed class ProviderRunJobStore
             Operation = request.Operation,
             Mode = request.Mode,
             CorrelationId = string.IsNullOrWhiteSpace(request.CorrelationId) ? Guid.NewGuid().ToString("N") : request.CorrelationId,
-            RequestHash = ProviderHash.Sha256(request.Payload.ToJsonString(ProviderJson.Options)),
+            RequestHash = ProviderHash.Sha256(JsonSerializer.Serialize(request, ProviderJson.Options)),
             CreatedAt = DateTime.UtcNow
         };
 

@@ -15,6 +15,7 @@ CONFORMANCE_TARGET_ROOT = PACKAGE / "_conformance"
 CONFORMANCE_TREES = {
     ROOT / "conformance/runtime/v1": CONFORMANCE_TARGET_ROOT / "runtime/v1",
     ROOT / "conformance/ai-metering/v1": CONFORMANCE_TARGET_ROOT / "ai-metering/v1",
+    ROOT / "conformance/ai-decision/v1": CONFORMANCE_TARGET_ROOT / "ai-decision/v1",
 }
 
 CONTRACT_FILES = {

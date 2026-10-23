@@ -33,6 +33,32 @@ public static class ProviderRunRequests
         int? timeoutSeconds = null)
         => Build(ProviderCapabilityIds.AiJudge, judge, provider, modelId, mode, timeoutSeconds);
 
+    /// <summary>
+    /// Creates the attenuated request passed across a provider-adapter boundary. Host-owned
+    /// decision policy is deliberately removed so an adapter cannot inspect or alter the branch
+    /// criteria it will later be evaluated against.
+    /// </summary>
+    public static ProviderRunRequest ForProviderInvocation(ProviderRunRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return new ProviderRunRequest
+        {
+            Provider = request.Provider,
+            Capability = request.Capability,
+            Operation = request.Operation,
+            Mode = request.Mode,
+            ModelId = request.ModelId,
+            Payload = request.Payload.DeepClone().AsObject(),
+            CorrelationId = request.CorrelationId,
+            ContextRefs = request.ContextRefs.ToList(),
+            TimeoutSeconds = request.TimeoutSeconds,
+            MaxOutputBytes = request.MaxOutputBytes,
+            ArtifactDirectory = request.ArtifactDirectory,
+            MeteringContext = request.MeteringContext,
+            DecisionPolicy = null
+        };
+    }
+
     public static ProviderRunRequest ForExtract(
         AiExtractRequest extract,
         string? provider = null,

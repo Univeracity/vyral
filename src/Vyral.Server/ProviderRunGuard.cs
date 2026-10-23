@@ -17,6 +17,11 @@ public sealed class ProviderRunGuard
 
     public async Task<ProviderRunAdmission> TryEnterAsync(string provider, ProviderRunRequest request, CancellationToken ct)
     {
+        if (request.DecisionPolicy is not null && AiDecisionPolicyEvaluator.Validate(request.DecisionPolicy, request.Capability).Count != 0)
+        {
+            return ProviderRunAdmission.Rejected(CreateResult(provider, request, ProviderRunStatus.Rejected, ProviderFailureClasses.Schema, "invalid_decision_policy"));
+        }
+
         var timeoutStatus = ValidateTimeout(request);
         if (timeoutStatus is not null)
         {

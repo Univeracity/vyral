@@ -2517,6 +2517,7 @@ export interface ProviderRunRequest {
   maxOutputBytes?: number | null;
   artifactDirectory?: string | null;
   meteringContext?: AiMeteringContext | null;
+  decisionPolicy?: AiDecisionPolicy | null;
 }
 
 export interface ProviderRunResult {
@@ -2532,6 +2533,7 @@ export interface ProviderRunResult {
   rejection?: ProviderRunRejectionDiagnostic | null;
   trace?: ProviderTraceEvent | null;
   metering?: Array<AiMeteringReceipt>;
+  decision?: AiDecisionReceipt | null;
 }
 
 export interface ProviderRunRejectionDiagnostic {
@@ -3142,6 +3144,66 @@ export interface ProviderRunJobProgress {
   observation: JsonObject | null;
   invocation: JsonObject | null;
   reconciliationRequired: boolean;
+}
+
+export interface AiDecisionPredicate {
+  operator: "in" | "at_least" | "at_most";
+  values?: Array<string>;
+  threshold?: number | null;
+}
+
+export interface AiDecisionEvidenceRequirements {
+  requireCalibrated?: boolean;
+  minimumConfidence?: number | null;
+  minimumLabelMassCoverage?: number | null;
+  minimumRotationAgreement?: number | null;
+  allowedValidationStatuses?: Array<string>;
+}
+
+export interface AiDecisionPolicy {
+  schema: string;
+  id: string;
+  version: string;
+  questionId: string;
+  answerKind: "choice" | "probability" | "score";
+  accept: AiDecisionPredicate;
+  reject: AiDecisionPredicate;
+  evidence: AiDecisionEvidenceRequirements;
+  escalationRoute: string;
+}
+
+export interface AiDecisionProviderEvidence {
+  traceId?: string | null;
+  adapterId?: string | null;
+  configHash?: string | null;
+  inputHash?: string | null;
+  outputHash?: string | null;
+  answerHash?: string | null;
+}
+
+export interface AiDecisionReceipt {
+  schema: string;
+  policyId: string;
+  policyVersion: string;
+  policyHash: string;
+  questionId: string;
+  answerKind: "choice" | "probability" | "score";
+  outcome: "accept" | "reject" | "escalate";
+  reason: "accepted" | "rejected" | "no_rule_match" | "provider_not_succeeded" | "invalid_provider_evidence" | "invalid_provider_output" | "answer_missing" | "answer_ambiguous" | "answer_shape_mismatch" | "uncalibrated" | "confidence_unavailable" | "confidence_below_minimum" | "label_mass_coverage_unavailable" | "label_mass_coverage_below_minimum" | "rotation_agreement_unavailable" | "rotation_agreement_below_minimum" | "validation_status_not_allowed";
+  escalationRoute?: string | null;
+  provider: string;
+  providerRunStatus: "Succeeded" | "Failed" | "TimedOut" | "Rejected" | "Unsupported" | "NotConfigured" | "Cancelled";
+  providerStatus?: string | null;
+  modelId?: string | null;
+  validationStatus?: string | null;
+  choice?: string | null;
+  value?: number | null;
+  calibrated?: boolean | null;
+  confidence?: number | null;
+  labelMassCoverage?: number | null;
+  rotationAgreement?: number | null;
+  evidence: AiDecisionProviderEvidence;
+  evaluatedAtUtc: string;
 }
 
 export interface VyralRequestOptions {

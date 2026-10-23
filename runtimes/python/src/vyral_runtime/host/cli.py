@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from importlib import import_module
 import ipaddress
 import json
@@ -16,6 +17,7 @@ from .._local_experience import (
     reset_local_quickstart,
     run_local_quickstart_sync,
 )
+from ..decisions import DecisionPolicyError, evaluate_decision_policy
 from .application import create_host_application
 from ._http_authority import validate_allowed_hosts
 from .mcp import McpApplicationConfig
@@ -41,6 +43,8 @@ def main(
         return _quickstart_main(selected[1:], display_name)
     if selected and selected[0] == "inspect":
         return _inspect_main(selected[1:], display_name)
+    if selected and selected[0] == "decide":
+        return _decide_main(selected[1:], display_name)
     if selected and selected[0] == "serve":
         selected = selected[1:]
     return _serve_main(selected, display_name)
@@ -60,6 +64,7 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
             f"  {display_name} inspect\n"
             f"  {display_name} init\n"
             f"  {display_name} run ./vyral_app.py\n"
+            f"  {display_name} decide --policy policy.json --result result.json\n"
             f"  {display_name} serve --root ./.vyral\n\n"
             "The explicit 'serve' command is also accepted before the "
             "server options."
@@ -244,6 +249,65 @@ def _serve_main(argv: Sequence[str], display_name: str) -> int:
         access_log=arguments.access_log,
     )
     return 0
+
+
+def _decide_main(argv: Sequence[str], display_name: str) -> int:
+    parser = argparse.ArgumentParser(
+        prog=f"{display_name} decide",
+        description=(
+            "Evaluate one application-owned branch policy over a completed "
+            "ai.judge provider result. This command runs locally and never "
+            "invokes an escalation route."
+        ),
+    )
+    parser.add_argument(
+        "--policy",
+        required=True,
+        help="JSON file containing vyral.ai-decision-policy.v1.",
+    )
+    parser.add_argument(
+        "--result",
+        required=True,
+        help="JSON file containing one Vyral ProviderRunResult.",
+    )
+    parser.add_argument(
+        "--evaluated-at",
+        help=(
+            "Optional timezone-aware ISO-8601 timestamp for deterministic "
+            "replay; current UTC time is used when omitted."
+        ),
+    )
+    arguments = parser.parse_args(argv)
+    try:
+        policy = _read_bounded_json(arguments.policy)
+        result = _read_bounded_json(arguments.result)
+        if not isinstance(policy, dict) or not isinstance(result, dict):
+            raise DecisionPolicyError(
+                "policy and result files must each contain one JSON object"
+            )
+        evaluated_at = None
+        if arguments.evaluated_at:
+            evaluated_at = datetime.fromisoformat(
+                arguments.evaluated_at.replace("Z", "+00:00")
+            )
+        receipt = evaluate_decision_policy(
+            policy,
+            result,
+            evaluated_at=evaluated_at,
+        )
+    except (DecisionPolicyError, OSError, ValueError) as error:
+        parser.error(str(error))
+    print(json.dumps(receipt, indent=2, sort_keys=True, ensure_ascii=False))
+    return 0
+
+
+def _read_bounded_json(path: str, max_bytes: int = 1024 * 1024) -> object:
+    target = Path(path).expanduser()
+    with target.open("rb") as stream:
+        payload = stream.read(max_bytes + 1)
+    if len(payload) > max_bytes:
+        raise ValueError(f"JSON input exceeds the {max_bytes}-byte local limit")
+    return json.loads(payload.decode("utf-8"))
 
 
 def _init_main(argv: Sequence[str], display_name: str) -> int:

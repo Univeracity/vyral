@@ -55,4 +55,12 @@ public sealed class ProviderRunRequest
     /// </summary>
     [JsonPropertyName("meteringContext")]
     public AiMeteringContext? MeteringContext { get; set; }
+
+    /// <summary>
+    /// Optional application-owned policy evaluated locally after an <c>ai.judge</c> result. Vyral
+    /// hosts remove it before invoking a provider adapter, and report escalation rather than
+    /// automatically invoking it.
+    /// </summary>
+    [JsonPropertyName("decisionPolicy")]
+    public AiDecisionPolicy? DecisionPolicy { get; set; }
 }

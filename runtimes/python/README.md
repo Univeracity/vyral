@@ -127,6 +127,19 @@ output. `vyral-runtime` remains a compatibility command alias. Install the
 published runtime with `python -m pip install vyral` without changing the
 local commands.
 
+Evaluate a completed `ai.judge` result against an application-owned policy
+without running a server or invoking an escalation route:
+
+```bash
+vyral decide --policy policy.json --result provider-result.json
+```
+
+The command emits a `vyral.ai-decision-receipt.v1` object. Python applications
+can call `evaluate_decision_policy` directly. Policy validation, canonical
+hashes, and the golden receipt are shared with the .NET implementation through
+`conformance/ai-decision/v1`; see the
+[decision contract guide](../../docs/concepts/ai-decisions.md).
+
 ### Reproducible server deployment profile
 
 The published REST/MCP host has a separate hash-verified profile for the

@@ -42,6 +42,7 @@ docs/concepts/*
 !docs/concepts/generation-bound-retrieval.md
 !docs/concepts/object-access.md
 !docs/concepts/ai-metering.md
+!docs/concepts/ai-decisions.md
 !docs/contributing/
 docs/contributing/*
 !docs/contributing/adapter-contributor.md

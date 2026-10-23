@@ -2654,6 +2654,7 @@ class ProviderRunRequest(_ProviderRunRequestRequired, total=False):
     maxOutputBytes: int | None
     artifactDirectory: str | None
     meteringContext: AiMeteringContext | None
+    decisionPolicy: AiDecisionPolicy | None
 
 class _ProviderRunResultRequired(TypedDict):
     status: Literal['Succeeded', 'Failed', 'TimedOut', 'Rejected', 'Unsupported', 'NotConfigured', 'Cancelled']
@@ -2670,6 +2671,7 @@ class ProviderRunResult(_ProviderRunResultRequired, total=False):
     rejection: ProviderRunRejectionDiagnostic | None
     trace: ProviderTraceEvent | None
     metering: list[AiMeteringReceipt]
+    decision: AiDecisionReceipt | None
 
 class _ProviderRunRejectionDiagnosticRequired(TypedDict):
     source: Literal['vyral_policy', 'vyral_guardrail', 'vyral_classification', 'provider_policy', 'provider_runtime', 'configuration', 'unsupported', 'unknown']
@@ -3320,3 +3322,66 @@ class _ProviderRunJobProgressRequired(TypedDict):
 
 class ProviderRunJobProgress(_ProviderRunJobProgressRequired, total=False):
     pass
+
+class _AiDecisionPredicateRequired(TypedDict):
+    operator: Literal['in', 'at_least', 'at_most']
+
+class AiDecisionPredicate(_AiDecisionPredicateRequired, total=False):
+    values: list[str]
+    threshold: float | None
+
+class AiDecisionEvidenceRequirements(TypedDict, total=False):
+    requireCalibrated: bool
+    minimumConfidence: float | None
+    minimumLabelMassCoverage: float | None
+    minimumRotationAgreement: float | None
+    allowedValidationStatuses: list[str]
+
+class _AiDecisionPolicyRequired(TypedDict):
+    schema: str
+    id: str
+    version: str
+    questionId: str
+    answerKind: Literal['choice', 'probability', 'score']
+    accept: AiDecisionPredicate
+    reject: AiDecisionPredicate
+    evidence: AiDecisionEvidenceRequirements
+    escalationRoute: str
+
+class AiDecisionPolicy(_AiDecisionPolicyRequired, total=False):
+    """Application-owned branch policy over exactly one ai.judge answer. Vyral hosts remove it before invoking provider adapters."""
+
+class AiDecisionProviderEvidence(TypedDict, total=False):
+    traceId: str | None
+    adapterId: str | None
+    configHash: str | None
+    inputHash: str | None
+    outputHash: str | None
+    answerHash: str | None
+
+class _AiDecisionReceiptRequired(TypedDict):
+    schema: str
+    policyId: str
+    policyVersion: str
+    policyHash: str
+    questionId: str
+    answerKind: Literal['choice', 'probability', 'score']
+    outcome: Literal['accept', 'reject', 'escalate']
+    reason: Literal['accepted', 'rejected', 'no_rule_match', 'provider_not_succeeded', 'invalid_provider_evidence', 'invalid_provider_output', 'answer_missing', 'answer_ambiguous', 'answer_shape_mismatch', 'uncalibrated', 'confidence_unavailable', 'confidence_below_minimum', 'label_mass_coverage_unavailable', 'label_mass_coverage_below_minimum', 'rotation_agreement_unavailable', 'rotation_agreement_below_minimum', 'validation_status_not_allowed']
+    provider: str
+    providerRunStatus: Literal['Succeeded', 'Failed', 'TimedOut', 'Rejected', 'Unsupported', 'NotConfigured', 'Cancelled']
+    evidence: AiDecisionProviderEvidence
+    evaluatedAtUtc: str
+
+class AiDecisionReceipt(_AiDecisionReceiptRequired, total=False):
+    """Evidence-bearing application branch decision. It is not a truth claim or authorization to execute the branch."""
+    escalationRoute: str | None
+    providerStatus: str | None
+    modelId: str | None
+    validationStatus: str | None
+    choice: str | None
+    value: float | None
+    calibrated: bool | None
+    confidence: float | None
+    labelMassCoverage: float | None
+    rotationAgreement: float | None

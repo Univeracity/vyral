@@ -11401,6 +11401,16 @@
               "type": "null"
             }
           ]
+        },
+        "decisionPolicy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiDecisionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -11528,6 +11538,16 @@
           "items": {
             "$ref": "#/$defs/AiMeteringReceipt"
           }
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiDecisionReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -14624,6 +14644,396 @@
         },
         "reconciliationRequired": {
           "type": "boolean"
+        }
+      }
+    },
+    "AiDecisionPredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operator"
+      ],
+      "properties": {
+        "operator": {
+          "type": "string",
+          "enum": [
+            "in",
+            "at_least",
+            "at_most"
+          ]
+        },
+        "values": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "threshold": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "operator": {
+              "const": "in"
+            },
+            "values": {
+              "minItems": 1
+            },
+            "threshold": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "values"
+          ]
+        },
+        {
+          "properties": {
+            "operator": {
+              "enum": [
+                "at_least",
+                "at_most"
+              ]
+            },
+            "values": {
+              "maxItems": 0
+            },
+            "threshold": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "threshold"
+          ]
+        }
+      ]
+    },
+    "AiDecisionEvidenceRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requireCalibrated": {
+          "type": "boolean",
+          "default": true
+        },
+        "minimumConfidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "minimumLabelMassCoverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "minimumRotationAgreement": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "allowedValidationStatuses": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      }
+    },
+    "AiDecisionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Application-owned branch policy over exactly one ai.judge answer. Vyral hosts remove it before invoking provider adapters.",
+      "required": [
+        "schema",
+        "id",
+        "version",
+        "questionId",
+        "answerKind",
+        "accept",
+        "reject",
+        "evidence",
+        "escalationRoute"
+      ],
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "vyral.ai-decision-policy.v1"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "answerKind": {
+          "type": "string",
+          "enum": [
+            "choice",
+            "probability",
+            "score"
+          ]
+        },
+        "accept": {
+          "$ref": "#/$defs/AiDecisionPredicate"
+        },
+        "reject": {
+          "$ref": "#/$defs/AiDecisionPredicate"
+        },
+        "evidence": {
+          "$ref": "#/$defs/AiDecisionEvidenceRequirements"
+        },
+        "escalationRoute": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "AiDecisionProviderEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "traceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "adapterId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "configHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "inputHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "outputHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "answerHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "AiDecisionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Evidence-bearing application branch decision. It is not a truth claim or authorization to execute the branch.",
+      "required": [
+        "schema",
+        "policyId",
+        "policyVersion",
+        "policyHash",
+        "questionId",
+        "answerKind",
+        "outcome",
+        "reason",
+        "provider",
+        "providerRunStatus",
+        "evidence",
+        "evaluatedAtUtc"
+      ],
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "vyral.ai-decision-receipt.v1"
+        },
+        "policyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "policyVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "policyHash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "answerKind": {
+          "type": "string",
+          "enum": [
+            "choice",
+            "probability",
+            "score"
+          ]
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "accept",
+            "reject",
+            "escalate"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "rejected",
+            "no_rule_match",
+            "provider_not_succeeded",
+            "invalid_provider_evidence",
+            "invalid_provider_output",
+            "answer_missing",
+            "answer_ambiguous",
+            "answer_shape_mismatch",
+            "uncalibrated",
+            "confidence_unavailable",
+            "confidence_below_minimum",
+            "label_mass_coverage_unavailable",
+            "label_mass_coverage_below_minimum",
+            "rotation_agreement_unavailable",
+            "rotation_agreement_below_minimum",
+            "validation_status_not_allowed"
+          ]
+        },
+        "escalationRoute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "providerRunStatus": {
+          "type": "string",
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "TimedOut",
+            "Rejected",
+            "Unsupported",
+            "NotConfigured",
+            "Cancelled"
+          ]
+        },
+        "providerStatus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "choice": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "calibrated": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "labelMassCoverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rotationAgreement": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "$ref": "#/$defs/AiDecisionProviderEvidence"
+        },
+        "evaluatedAtUtc": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     }

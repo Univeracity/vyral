@@ -7,6 +7,31 @@ namespace Vyral.Tests.Local;
 public class ProviderRunGuardDeadlineTests
 {
     [Fact]
+    public async Task GuardRejectsInvalidDecisionPolicyBeforeAdmission()
+    {
+        var guard = new ProviderRunGuard(new());
+        var request = new ProviderRunRequest
+        {
+            Capability = ProviderCapabilityIds.AiChat,
+            DecisionPolicy = new AiDecisionPolicy
+            {
+                Id = "wrong-capability",
+                Version = "1",
+                QuestionId = "q1",
+                Accept = new() { Operator = AiDecisionOperators.In, Values = new() { "yes" } },
+                Reject = new() { Operator = AiDecisionOperators.In, Values = new() { "no" } }
+            }
+        };
+
+        await using var admission = await guard.TryEnterAsync("local", request, CancellationToken.None);
+
+        Assert.False(admission.Accepted);
+        Assert.Equal(ProviderRunStatus.Rejected, admission.RejectionResult!.Status);
+        Assert.Equal(ProviderFailureClasses.Schema, admission.RejectionResult.FailureClass);
+        Assert.Equal("invalid_decision_policy", admission.RejectionResult.ProviderStatus);
+    }
+
+    [Fact]
     public void ExistingDefaultsAndConfiguredOperationalMetadataRemainDistinct()
     {
         var original = ProviderRunGuardOptions.FromConfiguration(new ConfigurationBuilder().Build());

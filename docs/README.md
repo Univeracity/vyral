@@ -16,6 +16,8 @@ here so each document has a clear audience and owner.
 - [AI metering receipts](concepts/ai-metering.md) — signed runner/session
   observations, per-measurement provenance, receipt chains, and independent
   review boundaries.
+- [Application-owned AI decisions](concepts/ai-decisions.md) — local policy
+  evaluation, explicit abstention, portable receipts, and escalation boundaries.
 - [Execution runtime limitations](reference/execution-runtime-limitations.md) —
   portable guarantees and adapter-specific boundaries.
 - [Extropic execution](guides/extropic-execution.md) — experimental,

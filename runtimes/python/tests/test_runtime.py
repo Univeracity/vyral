@@ -58,7 +58,7 @@ class ContractBundleTests(unittest.TestCase):
         self.assertEqual("3.1.0", bundle.summary.openapi_version)
         self.assertEqual(130, bundle.summary.operation_count)
         self.assertEqual(134, bundle.summary.rest_operation_count)
-        self.assertEqual(282, bundle.summary.schema_count)
+        self.assertEqual(287, bundle.summary.schema_count)
         self.assertEqual(
             "sha256:" + sha256((ROOT / "contracts/public-sdk-surface.json").read_bytes()).hexdigest(),
             bundle.summary.catalog_sha256,

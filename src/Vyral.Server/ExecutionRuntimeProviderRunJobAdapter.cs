@@ -201,7 +201,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             Operation = result?.Operation ?? request?.Operation ?? string.Empty,
             Mode = result?.Mode ?? request?.Mode ?? string.Empty,
             CorrelationId = request?.CorrelationId ?? run.CorrelationId,
-            RequestHash = ProviderHash.Sha256(request?.Payload.ToJsonString(ProviderJson.Options)),
+            RequestHash = run.PayloadHash,
             CreatedAt = run.CreatedAtUtc,
             StartedAt = run.StartedAtUtc,
             CompletedAt = run.CompletedAtUtc,
@@ -534,9 +534,10 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                             throw new InvalidOperationException("Provider progress widened the execution deadline.");
                         return observe(item, token);
                     }
+                    var providerRequest = ProviderRunRequests.ForProviderInvocation(request);
                     result = target is IProviderProgressTarget observedTarget
-                        ? await observedTarget.RunWithProgressAsync(request, ObserveBoundAsync, admission.DeadlineUtc, admission.CancellationToken)
-                        : await target.RunAsync(request, admission.CancellationToken);
+                        ? await observedTarget.RunWithProgressAsync(providerRequest, ObserveBoundAsync, admission.DeadlineUtc, admission.CancellationToken)
+                        : await target.RunAsync(providerRequest, admission.CancellationToken);
                     // A cooperative provider may return cancellation instead of throwing.
                     // The guard knows whether its own timer, rather than the caller, expired.
                     if (result.Status == ProviderRunStatus.Cancelled && admission.TimedOut && !ct.IsCancellationRequested)
@@ -567,6 +568,11 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
 
             elapsed.Stop();
             var observedCompletedAt = DateTimeOffset.UtcNow;
+            if (request.DecisionPolicy is not null &&
+                AiDecisionPolicyEvaluator.Validate(request.DecisionPolicy, request.Capability).Count == 0)
+            {
+                result.Decision = AiDecisionPolicyEvaluator.Evaluate(request.DecisionPolicy, result, observedCompletedAt);
+            }
             await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
                 request,
                 result,

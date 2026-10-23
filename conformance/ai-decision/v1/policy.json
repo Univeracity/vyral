@@ -1,0 +1,29 @@
+{
+  "schema": "vyral.ai-decision-policy.v1",
+  "id": "catalog-item-reuse",
+  "version": "1.0.0",
+  "questionId": "reuse",
+  "answerKind": "choice",
+  "accept": {
+    "operator": "in",
+    "values": [
+      "same_item"
+    ],
+    "threshold": null
+  },
+  "reject": {
+    "operator": "in",
+    "values": [
+      "different_item"
+    ],
+    "threshold": null
+  },
+  "evidence": {
+    "requireCalibrated": true,
+    "minimumConfidence": 0.8,
+    "minimumLabelMassCoverage": null,
+    "minimumRotationAgreement": null,
+    "allowedValidationStatuses": []
+  },
+  "escalationRoute": "manual-review"
+}

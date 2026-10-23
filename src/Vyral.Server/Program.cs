@@ -2233,7 +2233,7 @@ static async Task<ProviderRunResult> RunProviderWithGuardAsync(IProviderTarget t
         providerInvoked = true;
         try
         {
-            result = await target.RunAsync(request, admission.CancellationToken);
+            result = await target.RunAsync(ProviderRunRequests.ForProviderInvocation(request), admission.CancellationToken);
         }
         catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
         {
@@ -2255,6 +2255,11 @@ static async Task<ProviderRunResult> RunProviderWithGuardAsync(IProviderTarget t
     }
 
     elapsed.Stop();
+    if (request.DecisionPolicy is not null &&
+        AiDecisionPolicyEvaluator.Validate(request.DecisionPolicy, request.Capability).Count == 0)
+    {
+        result.Decision = AiDecisionPolicyEvaluator.Evaluate(request.DecisionPolicy, result);
+    }
     await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
         request,
         result,

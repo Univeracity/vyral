@@ -65,6 +65,14 @@
                       LogicalName="Vyral.Tests.Conformance.ai-metering-v1-receipt.json" />
     <EmbeddedResource Include="..\..\conformance\ai-metering\v1\review.json"
                       LogicalName="Vyral.Tests.Conformance.ai-metering-v1-review.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-decision\v1\manifest.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-decision-v1-manifest.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-decision\v1\policy.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-decision-v1-policy.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-decision\v1\provider-result.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-decision-v1-provider-result.json" />
+    <EmbeddedResource Include="..\..\conformance\ai-decision\v1\receipt.json"
+                      LogicalName="Vyral.Tests.Conformance.ai-decision-v1-receipt.json" />
   </ItemGroup>
 
   <ItemGroup>
