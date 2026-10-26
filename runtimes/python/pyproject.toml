@@ -38,7 +38,8 @@ extropic = [
 extropic-torx = [
   "extro-sim>=0.5,<0.6",
   "extro-torx==0.0.3",
-  "jax>=0.11,<0.12"
+  "jax==0.6.2; python_version < '3.12'",
+  "jax>=0.11,<0.12; python_version >= '3.12'"
 ]
 dev = [
   "build>=1.2,<2",

@@ -117,20 +117,25 @@ print(json.dumps({
 
 
 def main() -> int:
-    if sys.version_info < (3, 11):
-        raise SystemExit("The Torx proof requires Python 3.11 or newer.")
+    if sys.version_info < (3, 10):
+        raise SystemExit("The Torx proof requires Python 3.10 or newer.")
 
     import jax
     import extro_sim
 
     torx_version = importlib.metadata.version("extro-torx")
-    if torx_version != "0.0.1":
+    if torx_version != "0.0.3":
         raise SystemExit(
-            "The Torx proof requires extro-torx 0.0.1, got "
+            "The Torx proof requires extro-torx 0.0.3, got "
             f"{torx_version}."
         )
-    if not jax.__version__.startswith("0.11."):
-        raise SystemExit(f"The Torx proof requires JAX 0.11.x, got {jax.__version__}.")
+    expected_jax_line = "0.6." if sys.version_info < (3, 12) else "0.11."
+    if not jax.__version__.startswith(expected_jax_line):
+        raise SystemExit(
+            "The Torx proof requires JAX "
+            f"{expected_jax_line}x on Python {sys.version_info.major}."
+            f"{sys.version_info.minor}, got {jax.__version__}."
+        )
     if not extro_sim.__version__.startswith("0.5."):
         raise SystemExit(
             "The Torx proof requires extro-sim 0.5.x, got "
