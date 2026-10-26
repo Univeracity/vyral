@@ -103,11 +103,13 @@ placeholder compute function. It evaluates a two-wire circuit with an explicit
 seed and returns a normalized JSON distribution through the same
 registered-workload boundary.
 
-Torx 0.0.1 requires Python 3.11 or newer. The proof extra pins the current Torx
-and JAX compatibility line without changing Vyral's Python 3.10 baseline:
+Torx 0.0.3 supports Python 3.10 or newer. The proof extra pins JAX 0.6.2 on
+Python 3.10 and 3.11, the newest JAX line supporting those interpreters, and
+JAX 0.11.x on Python 3.12 and newer. CI exercises both compatibility paths,
+including Vyral's Python 3.10 baseline:
 
 ```bash
-python3.12 -m venv .venv
+python3.10 -m venv .venv
 . .venv/bin/activate
 python -m pip install --editable "runtimes/python[extropic-torx]"
 python scripts/verify-python-extropic-torx.py
@@ -157,9 +159,10 @@ platform failures. Provider error detail is kept out of public results.
 
 - Compatibility is pinned to `extro-sim >=0.5,<0.6`. The SDK and provider are
   new enough that minor contract changes should be expected and reviewed.
-- The optional local Torx proof pins `extro-torx ==0.0.1` and JAX 0.11.x. Torx
-  is not a Vyral runtime dependency and its Python 3.11 floor does not narrow
-  the base runtime's supported Python versions.
+- The optional local Torx proof pins `extro-torx ==0.0.3`, JAX 0.6.2 below
+  Python 3.12, and JAX 0.11.x on Python 3.12 and newer. Torx is not a Vyral
+  runtime dependency, and the proof preserves the base runtime's Python 3.10
+  floor.
 - Vyral serializes plain registered Python functions by value so the sandbox
   does not need the host application's module. Imported packages must already
   exist in the sandbox image. Callable objects and helpers imported from other
