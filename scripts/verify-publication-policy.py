@@ -139,7 +139,7 @@ def main() -> int:
         "name: package-release-v0.3.4",
         'SOURCE_DATE_EPOCH: "315532800"',
         "NuGet/login@8d196754b4036150537f80ac539e15c2f1028841",
-        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
+        "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086",
         "skip-existing: true",
         "Verify public package availability",
     ):
