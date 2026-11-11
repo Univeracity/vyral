@@ -70,11 +70,13 @@ jobs:
       - name: Install release gate tooling
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          # GitHub's Ubuntu mirror list prefers the runner-local Azure mirror. A mirror
-          # outage must fail this bootstrap promptly instead of consuming the entire
-          # release-integrity budget before any Vyral checks run.
+          # The runner-local mirror and archive.ubuntu.com have both failed during
+          # this gate. Use independent HTTPS mirrors; apt verifies Ubuntu's signed
+          # repository metadata and packages regardless of the selected mirror.
           if [[ -f /etc/apt/apt-mirrors.txt ]]; then
-            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' \
+            printf '%s\n' \
+              'https://mirrors.mit.edu/ubuntu/' \
+              'https://mirrors.edge.kernel.org/ubuntu/' \
               | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           fi
 
