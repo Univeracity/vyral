@@ -62,9 +62,9 @@ updates:
     open-pull-requests-limit: 5
     ignore:
       # Upgrade the SDK and runtime together during a planned .NET migration.
-      - dependency-name: mcr.microsoft.com/dotnet/sdk
+      - dependency-name: dotnet/sdk
         update-types: ["version-update:semver-major"]
-      - dependency-name: mcr.microsoft.com/dotnet/aspnet
+      - dependency-name: dotnet/aspnet
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
