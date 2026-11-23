@@ -60,6 +60,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Upgrade the SDK and runtime together during a planned .NET migration.
+      - dependency-name: dotnet/sdk
+        update-types: ["version-update:semver-major"]
+      - dependency-name: dotnet/aspnet
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /workers/execution-smoke-go
