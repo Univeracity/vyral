@@ -43,7 +43,7 @@ jobs:
   analyze:
     name: Analyze ${{ matrix.language }}
     needs: scope
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -51,7 +51,7 @@ jobs:
         include:
           - language: csharp
             scope: csharp
-            build_mode: autobuild
+            build_mode: manual
           - language: javascript-typescript
             scope: javascript
             build_mode: none
@@ -83,6 +83,8 @@ jobs:
       - name: Set up .NET
         if: ${{ steps.selection.outputs.enabled == 'true' && matrix.language == 'csharp' }}
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/vyral-codeql-dotnet
         with:
           dotnet-version: 10.0.x
 
@@ -90,7 +92,7 @@ jobs:
         if: ${{ steps.selection.outputs.enabled == 'true' && matrix.language == 'go' }}
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache: false
 
       - name: Initialize CodeQL
@@ -99,6 +101,12 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build_mode }}
+
+      - name: Build the .NET solution for CodeQL
+        if: ${{ steps.selection.outputs.enabled == 'true' && matrix.language == 'csharp' }}
+        run: |
+          scripts/verify-dotnet-lockfiles.sh
+          dotnet build Vyral.sln --configuration Release --no-restore --no-incremental
 
       - name: Analyze
         if: ${{ steps.selection.outputs.enabled == 'true' }}
