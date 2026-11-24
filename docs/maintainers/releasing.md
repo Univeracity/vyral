@@ -118,19 +118,16 @@ GitHub-verified signed `server-v0.3.1` tag at current `main` and a successful
 Release Integrity run for that commit. It does not republish the unaffected
 NuGet, PyPI, or npm artifacts.
 
-The server's `0.3.6` source authorization is likewise container-only:
+The server's `0.3.7` security patch is container-only:
 [`packaging/worker-container-release.json`](../../packaging/worker-container-release.json)
 and the manual [`Publish server container`](../../.github/workflows/publish-worker-container.yml)
-workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.6`. It requires a
-GitHub-verified signed `server-v0.3.6` tag at current `main`, successful canonical
+workflow authorize only `ghcr.io/univeracity/vyral-server:0.3.7`. It requires a
+GitHub-verified signed `server-v0.3.7` tag at current `main`, successful canonical
 Release Integrity evidence containing the hosted-worker receipt, and a second
 MCP and hosted-worker qualification plus pinned Trivy scan against the exact published digest. The
-hosted-worker entrypoint is preview and initially hosts only
-`vyral.artifacts.record-ingest`. This patch adds the `ai.judge` contract and
-prototype local and remote targets, a configurable object upload limit, and
-opt-in object access policies. No provider-specific NuGet package is authorized
-for publication by this container release; the judge targets are not
-`live_qualified` by this source change.
+hosted-worker entrypoint remains preview and hosts only
+`vyral.artifacts.record-ingest`. The patch carries the ASP.NET Core 10.0.15
+[November security fixes](https://github.com/dotnet/announcements/issues/504).
 
 Before dispatching it, configure the exact publisher tuple in the cohort
 manifest at each trusted registry: `Univeracity/vyral`, workflow file

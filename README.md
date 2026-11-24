@@ -209,7 +209,7 @@ runtime `0.1.4`, and HTTP SDK archives `0.3.4`). It advances independently of th
 The HTTP SDKs are available as release archives. JavaScript npm publication is deferred;
 the lightweight Python HTTP SDK remains outside PyPI publication.
 
-The server image version described by this source is `ghcr.io/univeracity/vyral-server:0.3.6`;
+The server image version described by this source is `ghcr.io/univeracity/vyral-server:0.3.7`;
 verify registry availability before deploying, pin its published digest, and use the same API-key
 and runtime restrictions shown above. The default entrypoint remains the public
 API server. A separate, least-privilege deployment can run the preview generic
