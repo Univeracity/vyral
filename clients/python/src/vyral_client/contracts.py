@@ -3305,6 +3305,7 @@ class _AiJudgeResultRequired(TypedDict):
 
 class AiJudgeResult(_AiJudgeResultRequired, total=False):
     modelId: str | None
+
 class _AiDecisionPredicateRequired(TypedDict):
     operator: Literal['in', 'at_least', 'at_most']
 
