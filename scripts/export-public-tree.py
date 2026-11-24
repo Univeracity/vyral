@@ -175,6 +175,7 @@ REQUIRED_FILES = {
     "docs/reference/execution-runtime-limitations.md",
     "docs/reference/stability.md",
     "examples/python/retrieval_migration.py",
+    "examples/python/catalog_decision.py",
     "examples/python/canonical_store_cutover.py",
     "examples/python/stateless_mcp_round_robin.py",
     "src/Vyral.Cloudflare/WorkerR2GenerationProjection/README.md",

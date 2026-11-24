@@ -96,6 +96,21 @@ Consider a fictional equipment-rental catalog. A supplier submits “18 V drill,
 two batteries, charger, hard case,” and retrieval finds an existing “18 V bare
 drill” record.
 
+Run the [catalog example](../../examples/python/catalog_decision.py) from the
+source checkout:
+
+```bash
+PYTHONPATH=runtimes/python/src python3 examples/python/catalog_decision.py \
+  --ledger ./.vyral/catalog-decisions.sqlite
+```
+
+Four synthetic answers exercise a matching kit, a bare tool versus a kit,
+missing packaging data, and uncalibrated evidence. The application routes the
+missing-packaging case to review even when the judge policy would accept.
+The example appends receipts, reopens the ledger, and checks that replay
+matches each receipt. The synthetic confidence and calibration fields exercise
+policy mechanics.
+
 1. Deterministic validation checks required fields and exact identifiers.
 2. A local judge answers `same_item`, `different_item`, or `insufficient_schema`.
 3. The policy accepts only a calibrated, sufficiently confident `same_item`
