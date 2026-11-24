@@ -25,7 +25,158 @@ class HostCliTests(unittest.TestCase):
         self.assertIn("vyral init", output.getvalue())
         self.assertIn("vyral inspect", output.getvalue())
         self.assertIn("vyral run ./vyral_app.py", output.getvalue())
+        self.assertIn("vyral decide --policy", output.getvalue())
+        self.assertIn("vyral decisions verify", output.getvalue())
         self.assertIn("vyral                 # run the local proof", output.getvalue())
+
+    def test_decide_evaluates_local_files_without_server_extra(self) -> None:
+        policy = {
+            "schema": "vyral.ai-decision-policy.v1",
+            "id": "support-gate",
+            "version": "1",
+            "questionId": "q1",
+            "answerKind": "probability",
+            "accept": {
+                "operator": "at_least",
+                "values": [],
+                "threshold": 0.8,
+            },
+            "reject": {
+                "operator": "at_most",
+                "values": [],
+                "threshold": 0.2,
+            },
+            "evidence": {
+                "requireCalibrated": True,
+                "minimumConfidence": None,
+                "minimumLabelMassCoverage": None,
+                "minimumRotationAgreement": None,
+                "allowedValidationStatuses": [],
+            },
+            "escalationRoute": "human",
+        }
+        result = {
+            "status": "Succeeded",
+            "provider": "local-onnx-nli",
+            "capability": "ai.judge",
+            "output": {
+                "answers": [
+                    {
+                        "questionId": "q1",
+                        "probability": 0.91,
+                        "confidence": 0.91,
+                        "calibrated": True,
+                    }
+                ],
+                "validationStatus": "provider_json",
+                "modelId": "local-fixture",
+            },
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            policy_path = Path(temporary) / "policy.json"
+            result_path = Path(temporary) / "result.json"
+            policy_path.write_text(json.dumps(policy), encoding="utf-8")
+            result_path.write_text(json.dumps(result), encoding="utf-8")
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    [
+                        "decide",
+                        "--policy",
+                        str(policy_path),
+                        "--result",
+                        str(result_path),
+                        "--evaluated-at",
+                        "2026-10-23T05:30:00Z",
+                    ]
+                )
+        self.assertEqual(0, status)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual("accept", receipt["outcome"])
+        self.assertEqual("2026-10-23T05:30:00Z", receipt["evaluatedAtUtc"])
+
+    def test_decision_ledger_cli_append_inspect_verify_and_replay(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        fixture = root / "conformance" / "ai-decision" / "v1"
+        with tempfile.TemporaryDirectory() as temporary:
+            ledger = Path(temporary) / "state" / "decisions.sqlite"
+            result_path = Path(temporary) / "provider-result.json"
+            result = json.loads(
+                (fixture / "provider-result.json").read_text(encoding="utf-8")
+            )
+            result["rawPrompt"] = "SENSITIVE_PROMPT_MUST_NOT_BE_RETAINED"
+            result_path.write_text(json.dumps(result), encoding="utf-8")
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    [
+                        "decide",
+                        "--policy",
+                        str(fixture / "policy.json"),
+                        "--result",
+                        str(result_path),
+                        "--evaluated-at",
+                        "2026-10-23T05:30:00Z",
+                        "--ledger",
+                        str(ledger),
+                        "--recorded-at",
+                        "2026-10-23T06:30:00Z",
+                    ]
+                )
+            self.assertEqual(0, status)
+            entry = json.loads(output.getvalue())
+            self.assertEqual(0, entry["sequence"])
+            self.assertNotIn(
+                b"SENSITIVE_PROMPT_MUST_NOT_BE_RETAINED",
+                ledger.read_bytes(),
+            )
+
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    ["decisions", "list", "--ledger", str(ledger)]
+                )
+            self.assertEqual(0, status)
+            listing = json.loads(output.getvalue())
+            self.assertEqual(
+                entry["entryHash"], listing["entries"][0]["entryHash"]
+            )
+
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    [
+                        "decisions",
+                        "verify",
+                        "--ledger",
+                        str(ledger),
+                        "--expect-head",
+                        entry["entryHash"],
+                        "--expect-count",
+                        "1",
+                    ]
+                )
+            self.assertEqual(0, status)
+            self.assertTrue(json.loads(output.getvalue())["valid"])
+
+            output = StringIO()
+            with redirect_stdout(output):
+                status = main(
+                    [
+                        "decisions",
+                        "replay",
+                        "--ledger",
+                        str(ledger),
+                        "--sequence",
+                        "0",
+                        "--policy",
+                        str(fixture / "policy.json"),
+                        "--result",
+                        str(result_path),
+                    ]
+                )
+            self.assertEqual(0, status)
+            self.assertTrue(json.loads(output.getvalue())["matches"])
 
     def test_init_creates_an_editable_application_without_server_extra(
         self,

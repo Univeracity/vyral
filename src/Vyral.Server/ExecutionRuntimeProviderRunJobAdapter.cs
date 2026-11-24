@@ -190,7 +190,9 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
             Operation = result?.Operation ?? request?.Operation ?? string.Empty,
             Mode = result?.Mode ?? request?.Mode ?? string.Empty,
             CorrelationId = request?.CorrelationId ?? run.CorrelationId,
-            RequestHash = ProviderHash.Sha256(request?.Payload.ToJsonString(ProviderJson.Options)),
+            RequestHash = request?.DecisionPolicy is null
+                ? ProviderHash.Sha256(request?.Payload.ToJsonString(ProviderJson.Options))
+                : run.PayloadHash,
             CreatedAt = run.CreatedAtUtc,
             StartedAt = run.StartedAtUtc,
             CompletedAt = run.CompletedAtUtc,
@@ -418,7 +420,7 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
                 providerInvoked = true;
                 try
                 {
-                    result = await target.RunAsync(request, admission.CancellationToken);
+                    result = await target.RunAsync(ProviderRunRequests.ForProviderInvocation(request), admission.CancellationToken);
                 }
                 catch (OperationCanceledException) when (admission.TimedOut && !ct.IsCancellationRequested)
                 {
@@ -441,6 +443,11 @@ public sealed class ExecutionRuntimeProviderRunJobAdapter
 
             elapsed.Stop();
             var observedCompletedAt = DateTimeOffset.UtcNow;
+            if (request.DecisionPolicy is not null &&
+                AiDecisionPolicyEvaluator.Validate(request.DecisionPolicy, request.Capability).Count == 0)
+            {
+                result.Decision = AiDecisionPolicyEvaluator.Evaluate(request.DecisionPolicy, result, observedCompletedAt);
+            }
             await ProviderMetering.AttachAsync(result, AiMeteringReceiptFactory.CreateProviderRunSummary(
                 request,
                 result,

@@ -83,6 +83,23 @@ providers and limitations. Windows users can invoke the source launcher with
 and server instructions are in the
 [Python runtime guide](runtimes/python).
 
+Evaluate an application-owned branch policy locally, using the portable
+fixture, without starting a server or downloading a model:
+
+```bash
+./scripts/vyral decide \
+  --policy conformance/ai-decision/v1/policy.json \
+  --result conformance/ai-decision/v1/provider-result.json \
+  --evaluated-at 2026-10-23T05:30:00Z
+```
+
+Add `--ledger ./.vyral/decisions.sqlite` to retain only the resulting
+privacy-minimized receipt in a hash-linked local ledger. Inspect it with
+`./scripts/vyral decisions list` and verify it with
+`./scripts/vyral decisions verify`; see the
+[decision contract guide](docs/concepts/ai-decisions.md) for replay and trusted
+head checkpoints.
+
 | You need… | Start here |
 | --- | --- |
 | Try Vyral locally | [Quick start](#quick-start) |
@@ -428,6 +445,14 @@ point-in-time exchange, not a repeatable isolated live-qualification gate.
 Every answer carries a `calibrated` flag so callers cannot mistake an
 uncalibrated or vendor-claimed-but-unverified score for a validated
 likelihood.
+
+An optional `decisionPolicy` on the provider request evaluates one answer into
+`accept`, `reject`, or `escalate` after the provider returns. The provider does
+not receive the policy, invalid policies are rejected before provider capacity
+is reserved, and escalation remains a caller-owned route rather than an
+automatic fallback. The resulting portable receipt records the policy hash,
+evidence diagnostics, model and adapter identity, and trace hashes. See
+[application-owned AI decisions](docs/concepts/ai-decisions.md).
 
 The [local runtime provider guide](docs/reference/local-runtime-providers.md)
 describes the opt-in native chat and Choice-only log-probability judge.

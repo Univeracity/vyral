@@ -1,0 +1,31 @@
+{
+  "answerKind": "choice",
+  "calibrated": true,
+  "choice": "same_item",
+  "confidence": 0.94,
+  "escalationRoute": null,
+  "evaluatedAtUtc": "2026-10-23T05:30:00Z",
+  "evidence": {
+    "adapterId": "onnx-nli",
+    "answerHash": "sha256:a608a98f810a6327998fa39ef1e82b7e0ed3cfcdd97e383705416a9f0d780e32",
+    "configHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "inputHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "outputHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "traceId": "trace-1"
+  },
+  "labelMassCoverage": null,
+  "modelId": "onnx-nli-fixture",
+  "outcome": "accept",
+  "policyHash": "sha256:0bafeabfa2a825d058d609434ec600f7ea9675153362c0b1d2aed03cbef872b3",
+  "policyId": "catalog-item-reuse",
+  "policyVersion": "1.0.0",
+  "provider": "local-onnx-nli",
+  "providerRunStatus": "Succeeded",
+  "providerStatus": "ok",
+  "questionId": "reuse",
+  "reason": "accepted",
+  "rotationAgreement": null,
+  "schema": "vyral.ai-decision-receipt.v1",
+  "validationStatus": "provider_json",
+  "value": null
+}

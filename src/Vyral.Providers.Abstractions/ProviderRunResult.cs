@@ -53,4 +53,11 @@ public sealed class ProviderRunResult
     /// </summary>
     [JsonIgnore]
     public List<AiMeteringMeasurement> MeteringMeasurements { get; set; } = new();
+
+    /// <summary>
+    /// Local application-policy evaluation when the request supplied <c>decisionPolicy</c>.
+    /// Presence does not authorize execution of the selected branch.
+    /// </summary>
+    [JsonPropertyName("decision")]
+    public AiDecisionReceipt? Decision { get; set; }
 }
