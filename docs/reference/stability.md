@@ -52,7 +52,7 @@ together.
 The general GitHub package release is `v0.3.4`: core NuGet and HTTP SDK packages
 use `0.3.4`, and the prototype Python runtime uses `0.1.4`. The HTTP SDKs
 are attached as archives; npm registry delivery is deferred. The server container
-remains the separately tagged `server-v0.3.6` release. Contract catalog versions
+remains the separately tagged `server-v0.3.7` release. Contract catalog versions
 remain `0.3.0` within this compatible patch; execution evidence remains on `0.2.0`.
 
 Source versions do not assert registry availability. The first publication
